@@ -4,10 +4,10 @@
 
 Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
 
-Maven coordinates: `org.podval:org.podval.xml:0.0.1`
+Maven coordinates: `org.podval:org.podval.xml:0.0.2`
 
 ----
-implementation 'org.podval:org.podval.xml:0.0.1'
+implementation 'org.podval:org.podval.xml:0.0.2'
 ----
 
 `zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
