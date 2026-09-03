@@ -11,8 +11,34 @@ description = 'XML AST, codecs, named catalogs, and store path model'
 group = 'org.podval'
 version = '0.0.1'
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+final String gitHubRepository = 'dubinsky/xml'
+final String gitHubRepositoryUrl = "https://github.com/$gitHubRepository"
+final String orgName = 'Podval Group'
+final String orgUrl = 'https://www.podval.org'
+
 scala.scalaVersion = '3.9.0'
+
+// Maven Central wants a -javadoc jar; this project is Scala-only, so package scaladoc.
+tasks.register('javadocJar', Jar) {
+  from scaladoc
+  archiveClassifier = 'javadoc'
+}
+
+java {
+  toolchain.languageVersion = JavaLanguageVersion.of(25)
+  withSourcesJar()
+  withJavadocJar()
+}
+
+tasks.named('jar', Jar) {
+  manifest {
+    attributes(
+      'Implementation-Title'  : project.name,
+      'Implementation-Version': archiveVersion,
+      'Implementation-Vendor' : orgName
+    )
+  }
+}
 
 String zioBlocksVersion = '0.0.51'
 
@@ -55,44 +81,10 @@ tasks.withType(ScalaCompile).configureEach {
   }
 }
 
-jar {
-  manifest {
-    attributes(
-      'Implementation-Title'  : project.description,
-      'Implementation-Version': project.version
-    )
-  }
-}
-
-tasks.register('sourcesJar', Jar) {
-  from sourceSets.main.allSource
-  archiveClassifier.set('sources')
-}
-
-tasks.register('scaladocJar', Jar) {
-  from scaladoc.destinationDir
-  archiveClassifier.set('scaladoc')
-}
-scaladocJar.dependsOn scaladoc
-
-tasks.register('javadocJar', Jar) {
-  from javadoc.destinationDir
-  archiveClassifier.set('javadoc')
-}
-javadocJar.dependsOn(javadoc)
-
-final String gitHubRepository = 'dubinsky/xml'
-final String gitHubRepositoryUrl = "https://github.com/$gitHubRepository"
-final String orgName = 'Podval Group'
-final String orgUrl = 'https://www.podval.org'
-
 publishing {
   publications {
     library(MavenPublication) {
       from components.java
-      artifact sourcesJar
-      artifact scaladocJar
-      artifact javadocJar
 
       pom {
         name = project.name
@@ -131,12 +123,10 @@ publishing {
   }
 }
 
-if (findProperty('signingKey')) {
-  signing {
-    sign publishing.publications.library
-    useInMemoryPgpKeys(
-      findProperty('signingKey') as String,
-      findProperty('signingPassword') as String
-    )
-  }
+signing {
+  useInMemoryPgpKeys(
+    findProperty('signingKey') as String,
+    findProperty('signingPassword') as String
+  )
+  sign publishing.publications.library
 }
