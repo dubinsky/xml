@@ -10,6 +10,14 @@ Maven coordinates: `org.podval:org.podval.xml:0.0.1`
 implementation 'org.podval:org.podval.xml:0.0.1'
 ----
 
+`zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
+`given Html` and `given ScalaXml` need an extra dependency, not pulled in by default:
+
+----
+implementation "dev.zio:zio-blocks-html_3:0.0.51"
+implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
+----
+
 == Packages
 
 `org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX/StAX parsers; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
