@@ -3,8 +3,8 @@ plugins {
   id 'scala'
   id 'maven-publish'
   id 'signing'
+  id 'io.github.ben-manes.versions' version '0.61.0'
   id 'org.podval.tools.scalajs' version '1.0.4'
-  id 'com.gradleup.nmcp.aggregation' version '1.6.2'
 }
 
 description = 'XML AST, codecs, named catalogs, and store path model'
@@ -24,6 +24,24 @@ dependencies {
   implementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
   implementation 'org.typelevel:paiges-core_3:0.4.4'
   testImplementation 'org.scalatest:scalatest_3:3.2.20'
+}
+
+def isNonStable = { String version ->
+  boolean stableKeyword = ['RELEASE', 'FINAL', 'GA'].any { it -> version.toUpperCase().contains(it) }
+  String regex = /^[0-9,.v-]+(-r)?$/
+  return !stableKeyword && !(version ==~ regex)
+}
+
+// Maven has zio-blocks-schema_3:0.017 (a padded 0.0.17), which both Maven and Gradle
+// rank above 0.0.x because the second component is 17.
+def hasPaddedNumericComponent = { String version ->
+  version.tokenize('.-').any { it.length() > 1 && it ==~ /0\d+/ }
+}
+
+tasks.named("dependencyUpdates").configure {
+  rejectVersionIf {
+    isNonStable(it.candidate.version) || hasPaddedNumericComponent(it.candidate.version)
+  }
 }
 
 tasks.withType(ScalaCompile).configureEach {
@@ -120,19 +138,5 @@ if (findProperty('signingKey')) {
       findProperty('signingKey') as String,
       findProperty('signingPassword') as String
     )
-  }
-}
-
-// https://gradleup.com/nmcp/
-// ./gradlew nmcpZipAggregation - to see what will be published
-// ./gradlew publishAggregationToCentralPortal - to publish
-// https://central.sonatype.com/publishing/deployments - to release
-nmcpAggregation {
-  publishAllProjectsProbablyBreakingProjectIsolation()
-
-  centralPortal {
-    publishingType = "USER_MANAGED"
-    username = findProperty('mavenCentralUsername') as String
-    password = findProperty('mavenCentralPassword') as String
   }
 }
