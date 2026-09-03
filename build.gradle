@@ -9,7 +9,7 @@ plugins {
 
 description = 'XML AST, codecs, named catalogs, and store path model'
 group = 'org.podval'
-version = '0.0.1'
+version = '0.0.2'
 
 final String gitHubRepository = 'dubinsky/xml'
 final String gitHubRepositoryUrl = "https://github.com/$gitHubRepository"
