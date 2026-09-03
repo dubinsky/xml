@@ -68,10 +68,6 @@
     <name n="день" lang="ru"/>
   </selector>
   <selector>
-    <name n="day" lang="en"/>
-    <name n="день" lang="ru"/>
-  </selector>
-  <selector>
     <name n="day of the week" lang="en"/>
     <name n="день недели" lang="ru"/>
   </selector>

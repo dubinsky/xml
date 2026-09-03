@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.2] - 2026-09-03
 - cleanup
+- drop duplicate `day` selector in `Selector.xml`
 
 ## [0.0.1] - 2026-09-02
 - Initial release, extracted from [site-publisher](https://github.com/dubinsky/site-publisher).

@@ -9,3 +9,16 @@ final class SelectorSpec extends AnyFunSuite:
     assert(Selector.getForName("names").title.contains("Имена"))
     assert(Selector.getForName("parsha").names.hasName("parsha"))
   }
+
+  test("Selector.forName matches any language name") {
+    assert(Selector.forName("разряд").isDefined)
+    assert(Selector.forName("category").isDefined)
+    assert(Selector.forName("книга").isDefined)
+    assert(Selector.forName("item").isEmpty)
+  }
+
+  test("catalog has a single day selector") {
+    val days: Seq[Seq[String]] =
+      Selector.values.filter(_.names.hasName("day")).map(_.names.names.map(_.name))
+    assert(days.length == 1, days)
+  }
