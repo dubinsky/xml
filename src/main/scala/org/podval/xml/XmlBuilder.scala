@@ -3,7 +3,7 @@ package org.podval.xml
 import zio.blocks.schema.xml.Xml
 import scala.collection.mutable
 
-// TODO abstract this and XmlParser over XmlAst
+// TODO abstract XmlBuilder, XmlParser, and catalog loading over XmlAst and make ZIO Blocks XML optional too.
 // TODO make XML prologue and epilogue comments/processing instructions
 // round-trippable
 final class XmlBuilder:

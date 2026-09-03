@@ -87,20 +87,23 @@ publishing {
       from components.java
 
       pom {
-        name = project.name
+        name = 'Podval XML'
         description = project.description
         url = gitHubRepositoryUrl
+        inceptionYear = '2026'
         scm {
           url = gitHubRepositoryUrl
-          connection = "scm:git:git://github.com/${gitHubRepository}.git"
-          developerConnection = "scm:git:ssh://github.com/${gitHubRepository}.git"
+          connection = "scm:git:https://github.com/${gitHubRepository}.git"
+          developerConnection = "scm:git:ssh://git@github.com/${gitHubRepository}.git"
+        }
+        issueManagement {
+          system = 'GitHub'
+          url = "$gitHubRepositoryUrl/issues"
         }
         licenses {
           license {
-            name = 'The Apache Software License, Version 2.0'
+            name = 'Apache-2.0'
             url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-            distribution = 'repo'
-            comments = 'A business-friendly OSS license'
           }
         }
         organization {
