@@ -1,0 +1,43 @@
+= org.podval.xml
+:toc:
+:toclevels: 3
+
+Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
+
+Maven coordinates: `org.podval:org.podval.xml:0.0.1`
+
+----
+implementation 'org.podval:org.podval.xml:0.0.1'
+----
+
+== Packages
+
+`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX/StAX parsers; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
+`org.podval.metadata`:: multilingual `Name` / `Names` / `Language` catalogs.
+`org.podval.store`:: in-memory named tree and path `resolve`.
+
+== Parse and catalogs
+
+`XmlParser` loads from a string, URL, file, or classpath resource. XInclude is off unless `xinclude = true` (store `xi:include/@href` stays a page ref). Expansion is implemented here, not via Xerces; `xml:base` on included roots is relative to the initial document.
+
+A catalog is a named wrapper whose children are one record type: `codec.decodeCatalog(root, name)` or `XmlParser.parseCatalog(resource, name, codec)`.
+
+== Codec
+
+`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes on leaf records, leftover `XmlExtras`, `XmlNode` identity). Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`).
+
+== Build
+
+----
+./gradlew build
+./gradlew test
+----
+
+Publish to Maven Central (local, `USER_MANAGED`):
+
+----
+./gradlew nmcpZipAggregation
+./gradlew publishAggregationToCentralPortal
+----
+
+Then release the deployment at https://central.sonatype.com/publishing/deployments .
