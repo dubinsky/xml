@@ -5,8 +5,8 @@ package org.podval.xml
 // ZIO Blocks HTML does not support comments nor processing instructions
 abstract class Ast2Ast[FromElement, ToElement](from: XmlAst[FromElement], to: XmlAst[ToElement]):
   def convert(element: FromElement): ToElement = to.element(
-    from.getName(element),
-    from.getAttributes(element),
+    from.getExpandedName(element),
+    from.getExpandedAttributes(element),
     convertChildren(from.getChildren(element))
   )
 

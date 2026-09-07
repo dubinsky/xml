@@ -5,7 +5,11 @@ import zio.blocks.schema.Schema
 // TODO remove this; store XmlAst together with the extras
 /** AST-independent XML tree. Identity fields copy through any `XmlAst`. */
 enum XmlNode derives CanEqual:
-  case Element(name: String, attributes: Seq[(String, String)], children: Seq[XmlNode])
+  case Element(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)],
+    children: Seq[XmlNode]
+  )
   case Text(value: String)
   case CData(value: String)
 
@@ -15,8 +19,8 @@ object XmlNode:
 
   def fromElement[E: XmlAst](element: E): Element =
     Element(
-      name = element.getName,
-      attributes = element.getAttributes,
+      name = element.getExpandedName,
+      attributes = element.getExpandedAttributes,
       children = element.getChildren.flatMap(fromNode)
     )
 
@@ -42,7 +46,7 @@ object XmlNode:
     override def isRecordLike: Boolean = true
     override def unsafeDecode[E: XmlAst](element: E): Element = fromElement(element)
     override def encodeNamed[E: XmlAst](name: String, value: Element): E =
-      toElement(value.copy(name = name))
+      toElement(value.copy(name = XmlExpandedName.parse(name, existing = Some(value.name))))
     override def encode[E: XmlAst](value: Element): E = toElement(value)
 
   val codec: XmlCodec[XmlNode] = new XmlCodec[XmlNode]:

@@ -59,7 +59,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: BoxWithExtras = codec.decode(parse("""<BoxWithExtras n="1" role="x"><note>hi</note></BoxWithExtras>""")).toOption.get
     assert(decoded.n == "1")
     assert(decoded.extras.attributes == Seq("role" -> "x"))
-    assert(decoded.extras.children.collect { case XmlNode.Element(name, _, _) => name } == Seq("note"))
+    assert(decoded.extras.children.collect { case XmlNode.Element(name, _, _) => name.qualifiedName } == Seq("note"))
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get("n").contains("1"))
     assert(encoded.get("role").contains("x"))
@@ -71,7 +71,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val xml: String = """<Text lang="ru"><body><p>a<hi>b</hi></p></body></Text>"""
     val decoded: Text = codec.decode(parse(xml)).toOption.get
     assert(decoded.lang.contains("ru"))
-    assert(decoded.body.name == "body")
+    assert(decoded.body.name.qualifiedName == "body")
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get("lang").contains("ru"))
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName) == Seq("body"))

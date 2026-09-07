@@ -8,13 +8,16 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
 
   override def cdata(text: String): Node = scala.xml.PCData(text)
 
-  override def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element =
-    val (prefix, label) = splitQualified(name)
+  override def element(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)],
+    children: Nodes
+  ): Element =
     scala.xml.Elem(
-      prefix = prefix,
-      label = label,
+      prefix = name.prefix.filter(_.nonEmpty).orNull,
+      label = name.localName,
       attributes = toMetaData(attributes),
-      scope = toScope(attributes),
+      scope = toScope(name, attributes),
       minimizeEmpty = false,
       child = children*
     )
@@ -35,51 +38,96 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getName: String =
-      qualifiedName(element.prefix, element.label)
+    override def getExpandedName: XmlExpandedName =
+      fromScope(element.scope, element.prefix, element.label, isAttribute = false)
 
-    override def rename(name: String): Element =
-      val (prefix, label) = splitQualified(name)
-      element.copy(prefix = prefix, label = label)
+    override def getName: String = element.getExpandedName.qualifiedName
+
+    override def localName: String = element.getExpandedName.localName
+
+    override def getPrefix: Option[String] = element.getExpandedName.prefix
+
+    override def getNamespace: Option[String] = element.getExpandedName.namespace
+
+    override def rename(name: String): Element = renamed(element, name)
+
+    override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
+      element.attributes.iterator.map: attribute =>
+        val prefix: String = attribute match
+          case prefixed: scala.xml.PrefixedAttribute => prefixed.pre
+          case _ => null
+        (
+          fromScope(element.scope, prefix, attribute.key, isAttribute = true),
+          scala.xml.NodeSeq.fromSeq(attribute.value).text
+        )
+      .toSeq
+
+    override def getAttributes: Seq[(String, String)] =
+      XmlExpandedName.asPairs(element.getExpandedAttributes)
+
+    override def setAttributes(attributes: Seq[(String, String)]): Element =
+      withAttributes(element, attributes)
+
+    override def set(attribute: String, value: String): Element =
+      withAttribute(element, attribute, value)
+
+    override def set(attribute: XmlAttribute, value: String): Element =
+      withAttribute(element, attribute.name, value)
 
     override def getChildren: Nodes =
       element.child
 
     override def setChildren(children: Nodes): Element =
-      element.copy(child = children)
+      withChildren(element, children)
 
-    override def getAttributes: Seq[(String, String)] =
-      element.attributes.iterator.map: attribute =>
-        (attribute.prefixedKey, scala.xml.NodeSeq.fromSeq(attribute.value).text)
-      .toSeq
-
-    override def setAttributes(attributes: Seq[(String, String)]): Element =
-      element.copy(attributes = toMetaData(attributes), scope = toScope(attributes))
+  private def fromScope(
+    scope: scala.xml.NamespaceBinding,
+    prefix: String,
+    local: String,
+    isAttribute: Boolean
+  ): XmlExpandedName =
+    val p: Option[String] = Option(prefix).filter(_.nonEmpty)
+    val namespace: Option[String] =
+      XmlNamespace.wellKnown(p, local, isAttribute).orElse:
+        if isAttribute && p.isEmpty then None
+        else
+          val key: String = p.orNull
+          Option(scope.getURI(key)).filter(uri => uri != null && uri.nonEmpty)
+    XmlExpandedName(local, p, namespace)
 
   // scala.xml rejects prefix ""; unprefixed names use null.
-  private def splitQualified(name: String): (String, String) =
-    val colon: Int = name.indexOf(':')
-    if colon <= 0 then (null, name)
-    else (name.substring(0, colon), name.substring(colon + 1))
-
-  private def qualifiedName(prefix: String, label: String): String =
-    if prefix == null then label else s"$prefix:$label"
-
-  private def toMetaData(attributes: Seq[(String, String)]): scala.xml.MetaData =
+  private def toMetaData(attributes: Seq[(XmlExpandedName, String)]): scala.xml.MetaData =
     attributes.foldRight(scala.xml.Null: scala.xml.MetaData):
-      case ((key, value), next) =>
-        val (prefix, local) = splitQualified(key)
-        scala.xml.Attribute(prefix, local, value, next)
+      case ((name, value), next) =>
+        scala.xml.Attribute(name.prefix.filter(_.nonEmpty).orNull, name.localName, value, next)
 
-  // scala.xml stores namespace URIs on `scope`, not on the name. `xmlns*` stay
-  // attributes so `XmlAst.getAttributes` / the writer still emit them.
-  private def toScope(attributes: Seq[(String, String)]): scala.xml.NamespaceBinding =
-    attributes.foldLeft(xmlScope):
-      case (scope, ("xmlns", uri)) =>
-        scala.xml.NamespaceBinding(null, uri, scope)
-      case (scope, (key, uri)) if key.startsWith("xmlns:") =>
-        scala.xml.NamespaceBinding(key.substring(6), uri, scope)
-      case (scope, _) => scope
+  // `xmlns*` stay attributes so the writer still emits them. Bindings also come
+  // from expanded names so a child without its own xmlns keeps the URI.
+  private def toScope(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)]
+  ): scala.xml.NamespaceBinding =
+    val declared: scala.xml.NamespaceBinding =
+      attributes.foldLeft(xmlScope):
+        case (scope, (n, uri)) if n.qualifiedName == "xmlns" =>
+          scala.xml.NamespaceBinding(null, uri, scope)
+        case (scope, (n, uri)) if n.prefix.contains("xmlns") =>
+          scala.xml.NamespaceBinding(n.localName, uri, scope)
+        case (scope, _) => scope
+    (name +: attributes.map(_._1)).foldLeft(declared)(bind)
+
+  private def bind(
+    scope: scala.xml.NamespaceBinding,
+    name: XmlExpandedName
+  ): scala.xml.NamespaceBinding =
+    name.namespace match
+      case None => scope
+      case Some(_) if name.prefix.contains("xmlns") => scope
+      case Some(_) if name.prefix.isEmpty && name.localName == "xmlns" => scope
+      case Some(uri) =>
+        val prefix: String = name.prefix.filter(_.nonEmpty).orNull
+        if Option(scope.getURI(prefix)).contains(uri) then scope
+        else scala.xml.NamespaceBinding(prefix, uri, scope)
 
   private val xmlScope: scala.xml.NamespaceBinding =
     scala.xml.NamespaceBinding("xml", XmlNamespace.xml, scala.xml.TopScope)

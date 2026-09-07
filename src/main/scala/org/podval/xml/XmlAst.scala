@@ -21,7 +21,66 @@ trait XmlAst[ELEMENT]:
 
   final def element(name: String): Element = element(name, Seq.empty, Seq.empty)
 
-  def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element
+  final def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element =
+    element(
+      XmlExpandedName.parse(name, attributes, isAttribute = false),
+      XmlExpandedName.attributes(attributes),
+      children
+    )
+
+  def element(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)],
+    children: Nodes
+  ): Element
+
+  final def renamed(element: Element, name: String): Element =
+    this.element(
+      XmlExpandedName.parse(
+        name,
+        element.getAttributes,
+        isAttribute = false,
+        existing = Some(element.getExpandedName)
+      ),
+      element.getExpandedAttributes,
+      element.getChildren
+    )
+
+  final def withChildren(element: Element, children: Nodes): Element =
+    this.element(element.getExpandedName, element.getExpandedAttributes, children)
+
+  final def withAttributes(element: Element, attributes: Seq[(String, String)]): Element =
+    this.element(
+      XmlExpandedName.parse(
+        element.getName,
+        attributes,
+        isAttribute = false,
+        existing = Some(element.getExpandedName)
+      ),
+      XmlExpandedName.attributes(attributes),
+      element.getChildren
+    )
+
+  final def withAttribute(element: Element, attribute: String, value: String): Element =
+    val parsed: XmlExpandedName = XmlExpandedName.parse(
+      attribute,
+      element.getAttributes,
+      isAttribute = true
+    )
+    val other: Seq[(XmlExpandedName, String)] =
+      element.getExpandedAttributes.filterNot((name, _) => name.qualifiedName == parsed.qualifiedName)
+    val attrs: Seq[(XmlExpandedName, String)] =
+      if value.nonEmpty then other.appended(parsed -> value) else other
+    this.element(
+      XmlExpandedName.parse(
+        element.getName,
+        XmlExpandedName.asPairs(attrs),
+        isAttribute = false,
+        existing = Some(element.getExpandedName)
+      ),
+      attrs,
+      element.getChildren
+    )
 
   // Concatenate only: text nodes already carry author whitespace. Joining with a space
   // puts a gap before punctuation after inline markup (`</persName>,` → "е ,").
@@ -48,14 +107,17 @@ trait XmlAst[ELEMENT]:
 
   // Element name
   extension (element: Element)
-    def getName: String
+    def getExpandedName: XmlExpandedName
 
-    /* final */ def localName: String =
-      val name: String = element.getName
-      val colon: Int = name.lastIndexOf(':')
-      if colon < 0 then name else name.substring(colon + 1)
+    def getName: String = element.getExpandedName.qualifiedName
 
-    def rename(name: String): Element
+    def localName: String = element.getExpandedName.localName
+
+    def getPrefix: Option[String] = element.getExpandedName.prefix
+
+    def getNamespace: Option[String] = element.getExpandedName.namespace
+
+    def rename(name: String): Element = renamed(element, name)
 
     def isElement(elem: XmlElement): Boolean = element.getName == elem.name
     
@@ -65,7 +127,7 @@ trait XmlAst[ELEMENT]:
   extension (element: Element)
     def getChildren: Nodes
 
-    def setChildren(children: Nodes): Element
+    def setChildren(children: Nodes): Element = withChildren(element, children)
 
     def setText(text: String): Element = element.setChildren(Seq(this.text(text)))
 
@@ -123,9 +185,13 @@ trait XmlAst[ELEMENT]:
 
   // Attributes
   extension (element: Element)
-    def getAttributes: Seq[(String, String)]
+    def getExpandedAttributes: Seq[(XmlExpandedName, String)]
 
-    def setAttributes(attributes: Seq[(String, String)]): Element
+    def getAttributes: Seq[(String, String)] =
+      XmlExpandedName.asPairs(element.getExpandedAttributes)
+
+    def setAttributes(attributes: Seq[(String, String)]): Element =
+      withAttributes(element, attributes)
 
     def get(attribute: XmlAttribute): Option[String] =
       get(attribute.name)
@@ -137,12 +203,7 @@ trait XmlAst[ELEMENT]:
       set(attribute.name, value)
 
     def set(attribute: String, value: String): Element =
-      val otherAttributes: Seq[(String, String)] = element.getAttributes.filterNot(_._1 == attribute)
-      element.setAttributes(
-        if value.nonEmpty
-        then otherAttributes.appended(attribute -> value)
-        else otherAttributes
-      )
+      withAttribute(element, attribute, value)
 
     def set(attribute: XmlAttribute, value: Option[String]): Element =
       set(attribute.name, value)

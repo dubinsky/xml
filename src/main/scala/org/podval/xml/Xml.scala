@@ -6,14 +6,18 @@ import zio.blocks.schema.xml.{XmlName, Xml as XML}
 // XML AST for ZIO Blocks XML
 given Xml: XmlAst[XML.Element]:
   override type Node = XML
- 
+
   override def text(text: String): Node = XML.Text(text)
 
   override def cdata(text: String): Node = XML.CData(text)
 
-  override def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element = XML.Element(
-    name = xmlName(name, attributes, isAttribute = false),
-    attributes = toAttributes(attributes),
+  override def element(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)],
+    children: Nodes
+  ): Element = XML.Element(
+    name = toZio(name, attributes, isAttribute = false),
+    attributes = Chunk.from(attributes).map((attr, value) => (toZio(attr, attributes, isAttribute = true), value)),
     children = Chunk.from(children)
   )
 
@@ -33,61 +37,55 @@ given Xml: XmlAst[XML.Element]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getName: String =
-      element.name.qualifiedName
+    override def getExpandedName: XmlExpandedName =
+      fromZio(element.name)
 
-    override def rename(name: String): Element =
-      element.copy(name = xmlName(name, element.getAttributes, isAttribute = false, existing = Some(element.name)))
+    override def getName: String = element.getExpandedName.qualifiedName
+
+    override def localName: String = element.getExpandedName.localName
+
+    override def getPrefix: Option[String] = element.getExpandedName.prefix
+
+    override def getNamespace: Option[String] = element.getExpandedName.namespace
+
+    override def rename(name: String): Element = renamed(element, name)
+
+    override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
+      element.attributes.map((name, value) => (fromZio(name), value))
 
     override def getAttributes: Seq[(String, String)] =
-      element.attributes.map((xmlName, value) => (xmlName.qualifiedName, value))
+      XmlExpandedName.asPairs(element.getExpandedAttributes)
 
     override def setAttributes(attributes: Seq[(String, String)]): Element =
-      element.copy(
-        name = xmlName(element.getName, attributes, isAttribute = false, existing = Some(element.name)),
-        attributes = toAttributes(attributes)
-      )
+      withAttributes(element, attributes)
+
+    override def set(attribute: String, value: String): Element =
+      withAttribute(element, attribute, value)
+
+    override def set(attribute: XmlAttribute, value: String): Element =
+      withAttribute(element, attribute.name, value)
 
     override def getChildren: Nodes =
       element.children
 
     override def setChildren(children: Nodes): Element =
-      element.copy(children = Chunk.from(children))
+      withChildren(element, children)
 
-  private def toAttributes(attributes: Seq[(String, String)]): Chunk[(XmlName, String)] =
-    Chunk.from(attributes).map((name, value) => (xmlName(name, attributes, isAttribute = true), value))
+  private def fromZio(name: XmlName): XmlExpandedName =
+    XmlExpandedName(name.localName, name.prefix, name.namespace)
 
-  // ZIO `XmlName.apply(String)` does not split a prefix. Unprefixed attributes
-  // do not take the default namespace (https://www.w3.org/TR/xml-names/).
-  private def xmlName(
-    name: String,
-    attributes: Seq[(String, String)],
-    isAttribute: Boolean,
-    existing: Option[XmlName] = None
-  ): XmlName =
-    val parsed: XmlName = parseQualified(name)
-    val namespace: Option[String] =
-      namespaceOf(parsed.prefix, parsed.localName, attributes, isAttribute)
-        .orElse(existing.filter(_.prefix == parsed.prefix).flatMap(_.namespace))
-    parsed.copy(namespace = namespace)
-
-  private def parseQualified(name: String): XmlName =
-    val colon: Int = name.indexOf(':')
-    if colon <= 0 then XmlName(name)
-    else XmlName(
-      localName = name.substring(colon + 1),
-      prefix = Some(name.substring(0, colon)),
-      namespace = None
-    )
-
-  private def namespaceOf(
-    prefix: Option[String],
-    local: String,
-    attributes: Seq[(String, String)],
+  private def toZio(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)],
     isAttribute: Boolean
-  ): Option[String] =
-    XmlNamespace.wellKnown(prefix, local, isAttribute).orElse:
-      prefix match
-        case Some(p) => attributes.collectFirst { case (n, v) if n == s"xmlns:$p" => v }
-        case None if !isAttribute => attributes.collectFirst { case (n, v) if n == "xmlns" => v }
-        case None => None
+  ): XmlName =
+    val pairs: Seq[(String, String)] = XmlExpandedName.asPairs(attributes)
+    val namespace: Option[String] =
+      name.namespace
+        .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute))
+        .orElse(XmlExpandedName.xmlnsUri(name.prefix, pairs, isAttribute))
+    XmlName(
+      localName = name.localName,
+      prefix = name.prefix,
+      namespace = namespace
+    )

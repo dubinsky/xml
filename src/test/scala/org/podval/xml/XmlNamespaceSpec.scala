@@ -206,6 +206,39 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(round.get("xmlns:tei").contains(tei))
     assert(children(round).map(_.getName) == Seq("tei:hi"))
     assert(children(round).head.name.prefix.contains("tei"))
+    assert(children(round).head.name.namespace.contains(tei))
+    val scalaChild: ScalaXml.Element =
+      ScalaXml.getChildren(scalaEl).flatMap(ScalaXml.asElement).head
+    assert(scalaChild.scope.getURI("tei") == tei)
+  }
+
+  test("Ast2Ast keeps a prefixed attribute URI without xmlns on that element") {
+    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
+    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+    val xml: Xml.Element = parse(
+      s"""<p xmlns:xlink="${XmlNamespace.xlink}"><ref xlink:href="a.xml"/></p>"""
+    )
+    val round: Xml.Element = ScalaXmlToXml.convert(XmlToScalaXml.convert(xml))
+    val href: XmlName = attrName(children(round).head, "xlink:href")
+    assert(href.namespace.contains(XmlNamespace.xlink))
+  }
+
+  test("XmlNode round-trip keeps inherited element namespace") {
+    val xml: Xml.Element = parse(s"""<tei:p xmlns:tei="$tei"><tei:hi>a</tei:hi></tei:p>""")
+    val node: XmlNode.Element = XmlNode.fromElement(xml)
+    assert(node.name.namespace.contains(tei))
+    assert(node.children.collect { case XmlNode.Element(name, _, _) => name.namespace }.flatten == Seq(tei))
+    val round: Xml.Element = XmlNode.toElement(node)
+    assert(round.name.namespace.contains(tei))
+    assert(children(round).head.name.namespace.contains(tei))
+  }
+
+  test("set keeps inherited namespace") {
+    val child: Xml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
+    val updated: Xml.Element = child.set("xml:id", "n1")
+    assert(updated.name.namespace.contains(tei))
+    assert(updated.get("n").contains("1"))
+    assert(attrName(updated, "n").namespace.isEmpty)
   }
 
   test("writer emits xmlns and prefixed names") {

@@ -11,9 +11,13 @@ given Html: XmlAst[XML.Element]:
 
   override def cdata(text: String): Node = Html.text(XmlEncode.escape(text))
 
-  override def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element = XML.Element.Generic(
-    tag = name,
-    attributes = Chunk.from(attributes).map((name, value) => mkAttribute(name, value)),
+  override def element(
+    name: XmlExpandedName,
+    attributes: Seq[(XmlExpandedName, String)],
+    children: Nodes
+  ): Element = XML.Element.Generic(
+    tag = name.qualifiedName,
+    attributes = Chunk.from(attributes).map((name, value) => mkAttribute(name.qualifiedName, value)),
     children = Chunk.from(children)
   )
 
@@ -31,36 +35,45 @@ given Html: XmlAst[XML.Element]:
     override def asAtom: Option[String] = node.asText
 
   extension (element: Element)
-    override def getName: String = element.tag
+    override def getExpandedName: XmlExpandedName =
+      XmlExpandedName.parseQualified(element.tag)
 
-    override def rename(name: String): Element = XML.Element.Generic(
-      tag = name,
-      attributes = element.attributes,
-      children = element.children
-    )
+    override def getName: String = element.getExpandedName.qualifiedName
 
-    override def getChildren: Nodes = element.children
+    override def localName: String = element.getExpandedName.localName
 
-    override def setChildren(children: Nodes): Element = XML.Element.Generic(
-      tag = element.tag,
-      attributes = element.attributes,
-      children = Chunk.from(children)
-    )
+    override def getPrefix: Option[String] = element.getExpandedName.prefix
 
-    override def setAttributes(attributes: Seq[(String, String)]): Element = XML.Element.Generic(
-      tag = element.tag,
-      children = element.children,
-      attributes = Chunk.from(attributes).map((name, value) => mkAttribute(name, value))
-    )
+    override def getNamespace: Option[String] = element.getExpandedName.namespace
+
+    override def rename(name: String): Element = renamed(element, name)
 
     /**
      * Merge ZIO Blocks multi-valued attrs (`className += …` is an AppendValue)
      * as Dom.render does: last `:=` is the base, then every `+=` in order.
      * One pair per name, sorted by name. Boolean attributes pass through.
      */
-    override def getAttributes: Seq[(String, String)] =
+    override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
       Chunk.from(element.attributes.groupBy(attributeName).view.mapValues(mergeAttribute))
         .sortBy(_._1)
+        .map((name, value) => (XmlExpandedName.parse(name, isAttribute = true), value))
+
+    override def getAttributes: Seq[(String, String)] =
+      XmlExpandedName.asPairs(element.getExpandedAttributes)
+
+    override def setAttributes(attributes: Seq[(String, String)]): Element =
+      withAttributes(element, attributes)
+
+    override def set(attribute: String, value: String): Element =
+      withAttribute(element, attribute, value)
+
+    override def set(attribute: XmlAttribute, value: String): Element =
+      withAttribute(element, attribute.name, value)
+
+    override def getChildren: Nodes = element.children
+
+    override def setChildren(children: Nodes): Element =
+      withChildren(element, children)
 
   private def mkAttribute(name: String, value: String) = XML.Attribute.KeyValue(
     name,
