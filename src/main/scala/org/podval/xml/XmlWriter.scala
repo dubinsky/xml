@@ -24,14 +24,7 @@ object XmlWriter:
       .appended('\n')
 
   def render[Element: XmlAst](config: XmlWriterConfig, document: XmlDocument[Element], width: Int): String =
-    val head: Seq[String] =
-      document.declaration.map(declarationMarkup).toSeq ++
-        document.doctype.map(doctypeMarkup) ++
-        document.prolog.map(miscMarkup)
-    val tail: Seq[String] = document.epilog.map(miscMarkup)
-    val prefix: String = if head.isEmpty then "" else head.mkString("\n") + "\n"
-    val suffix: String = if tail.isEmpty then "" else tail.mkString("\n") + "\n"
-    prefix + render(config, document.root, width) + suffix
+    document.prefix + render(config, document.root, width) + document.suffix
 
   private def fromElement[Element](
     element: Element,
@@ -238,37 +231,11 @@ object XmlWriter:
     .orElse(node.asAtom.map(preformat))
     .getOrElse(preformat(node.getText))
 
-  private def declarationMarkup(declaration: XmlDeclaration): String =
-    val encoding: String = declaration.encoding.fold("")(value => s""" encoding="$value"""")
-    val standalone: String = declaration.standalone.fold(""): value =>
-      s""" standalone="${if value then "yes" else "no"}""""
-    s"""<?xml version="${declaration.version}"$encoding$standalone?>"""
-
-  private def doctypeMarkup(doctype: XmlDoctype): String =
-    (doctype.publicId, doctype.systemId) match
-      case (Some(publicId), Some(systemId)) =>
-        s"""<!DOCTYPE ${doctype.name} PUBLIC "$publicId" "$systemId">"""
-      case (None, Some(systemId)) =>
-        s"""<!DOCTYPE ${doctype.name} SYSTEM "$systemId">"""
-      case (Some(publicId), None) =>
-        s"""<!DOCTYPE ${doctype.name} PUBLIC "$publicId">"""
-      case (None, None) =>
-        s"<!DOCTYPE ${doctype.name}>"
-
-  private def miscMarkup(misc: XmlMisc): String = misc match
-    case XmlMisc.Comment(value) => commentString(value)
-    case XmlMisc.ProcessingInstruction(target, data) => processingInstructionString(target, data)
-
-  private def commentString(value: String): String = s"<!--$value-->"
-
-  private def processingInstructionString(target: String, data: String): String =
-    if data.isEmpty then s"<?$target?>" else s"<?$target $data?>"
-
   private def commentMarkup(value: String): String =
-    commentString(value).replace("\n", XmlWriter.hiddenNewline)
+    XmlMisc.commentMarkup(value).replace("\n", XmlWriter.hiddenNewline)
 
   private def processingInstructionMarkup(target: String, data: String): String =
-    processingInstructionString(target, data).replace("\n", XmlWriter.hiddenNewline)
+    XmlMisc.processingInstructionMarkup(target, data).replace("\n", XmlWriter.hiddenNewline)
 
   /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
   private def cdataMarkup(value: String): String =
