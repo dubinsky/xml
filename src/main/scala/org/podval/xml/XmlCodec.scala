@@ -2,6 +2,7 @@ package org.podval.xml
 
 import zio.blocks.schema.Schema
 import zio.blocks.schema.derive.Deriver
+import zio.blocks.schema.xml.{Xml as XML}
 import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
@@ -29,10 +30,25 @@ object XmlCodec:
   final val Element = "xml.element"
   /** Character content of this element: `@Modifier.config(XmlCodec.Text, "")`. */
   final val Text = "xml.text"
-  /** Leftover attributes and children: `@Modifier.config(XmlCodec.Extras, "")`. */
-  final val Extras = "xml.extras"
   final val NamespaceUri = "xml.namespace.uri"
   final val NamespacePrefix = "xml.namespace.prefix"
+
+  /** Identity field: copy a named child as canonical ZIO XML. Same-AST decode keeps the node. */
+  val elementCodec: XmlCodec[XML.Element] = new XmlCodec[XML.Element]:
+    override def elementName: String = "element"
+    override def isRecordLike: Boolean = true
+    override def unsafeDecode[E: XmlAst](element: E): XML.Element = toZioElement(element)
+    override def encodeNamed[E: XmlAst](name: String, value: XML.Element): E =
+      fromZioElement(Xml.renamed(value, name))
+    override def encode[E: XmlAst](value: XML.Element): E = fromZioElement(value)
+
+  private def toZioElement[E: XmlAst](element: E): XML.Element =
+    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[XML.Element]
+    else element.to[XML.Element]
+
+  private def fromZioElement[E: XmlAst](element: XML.Element): E =
+    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[E]
+    else element.to[E]
 
   val deriver: Deriver[XmlCodec] = XmlCodecDeriver
 

@@ -197,12 +197,9 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(href.namespace.contains(XmlNamespace.xlink.uri))
   }
 
-  test("XmlNode round-trip keeps inherited element namespace") {
+  test("converted round-trip keeps inherited element namespace") {
     val xml: Xml.Element = parse(s"""<tei:p xmlns:tei="$tei"><tei:hi>a</tei:hi></tei:p>""")
-    val node: XmlNode.Element = XmlNode.fromElement(xml)
-    assert(node.name.namespace.contains(tei))
-    assert(node.children.collect { case XmlNode.Element(name, _, _) => name.namespace }.flatten == Seq(tei))
-    val round: Xml.Element = XmlNode.toElement(node)
+    val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.name.namespace.contains(tei))
     assert(children(round).head.name.namespace.contains(tei))
   }

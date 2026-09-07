@@ -1,7 +1,9 @@
 package org.podval.xml
 
 import zio.blocks.chunk.Chunk
+import zio.blocks.schema.Schema
 import zio.blocks.schema.xml.{XmlName, Xml as XML}
+import zio.blocks.typeid.TypeId
 
 // XML AST for ZIO Blocks XML
 given Xml: XmlAst[XML.Element]:
@@ -102,3 +104,7 @@ given Xml: XmlAst[XML.Element]:
       prefix = name.prefix,
       namespace = namespace
     )
+
+/** Opaque schema so records can hold identity `Xml.Element` fields. Codec is `XmlCodec.elementCodec`. */
+given xmlElementSchema: Schema[XML.Element] =
+  Schema[Unit].transform(_ => XML.Element.empty, _ => ())(using TypeId.of[XML.Element])

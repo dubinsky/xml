@@ -54,27 +54,27 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(result.swap.toOption.get.getMessage.contains("Unparsed elements"))
   }
 
-  test("XmlExtras keeps leftover attributes and children") {
-    val codec: XmlCodec[BoxWithExtras] = XmlCodec.derived(using BoxWithExtras.schema)
-    val decoded: BoxWithExtras = codec.decode(parse("""<BoxWithExtras n="1" role="x"><note>hi</note></BoxWithExtras>""")).toOption.get
-    assert(decoded.n == "1")
-    assert(decoded.extras.attributes == Seq("role" -> "x"))
-    assert(decoded.extras.children.collect { case XmlNode.Element(name, _, _) => name.qualifiedName } == Seq("note"))
-    val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.get("n").contains("1"))
-    assert(encoded.get("role").contains("x"))
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName) == Seq("note"))
+  test("unparsed attributes are an error") {
+    val codec: XmlCodec[Box] = XmlCodec.derived(using Box.schema)
+    val result: Either[XmlError, Box] = codec.decode(parse("""<Box n="1" role="x"/>"""))
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.getMessage.contains("Unparsed attributes"))
   }
 
-  test("identity XmlNode.Element round-trips mixed content") {
+  test("identity Xml.Element round-trips mixed content") {
     val codec: XmlCodec[Text] = XmlCodec.derived(using Text.schema)
-    val xml: String = """<Text lang="ru"><body><p>a<hi>b</hi></p></body></Text>"""
+    val xml: String = """<Text lang="ru"><body><!--n--><p>a<hi>b</hi></p></body></Text>"""
     val decoded: Text = codec.decode(parse(xml)).toOption.get
     assert(decoded.lang.contains("ru"))
-    assert(decoded.body.name.qualifiedName == "body")
+    assert(decoded.body.getName == "body")
+    assert(decoded.body.getChildren.exists(_.asComment.contains("n")))
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get("lang").contains("ru"))
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName) == Seq("body"))
+    assert(encoded.getChildren.flatMap(_.asElement).head.getChildren.exists(_.asComment.contains("n")))
+    val scalaEl: ScalaXml.Element = codec.encode(decoded)
+    assert(ScalaXml.getName(scalaEl) == "Text")
+    assert(codec.decode(scalaEl).toOption.get.body.getChildren.flatMap(_.asElement).map(_.getName) == Seq("p"))
   }
 
   test("sealed trait sequence uses case element names") {
@@ -231,16 +231,9 @@ final case class Box(
 object Box:
   given schema: Schema[Box] = Schema.derived
 
-final case class BoxWithExtras(
-  @Modifier.config(XmlCodec.Attribute, "") n: String,
-  extras: XmlExtras
-) derives CanEqual
-object BoxWithExtras:
-  given schema: Schema[BoxWithExtras] = Schema.derived
-
 final case class Text(
   @Modifier.config(XmlCodec.Attribute, "") lang: Option[String],
-  @Modifier.config(XmlCodec.Element, "body") body: XmlNode.Element
+  @Modifier.config(XmlCodec.Element, "body") body: Xml.Element
 ) derives CanEqual
 object Text:
   given schema: Schema[Text] = Schema.derived

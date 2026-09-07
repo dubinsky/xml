@@ -235,9 +235,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
   override def instanceOverrides: IndexedSeq[InstanceOverride] =
     recursiveRecordCache.remove()
     Chunk(
-      InstanceOverrideByType(TypeId.of[XmlNode], Lazy(XmlNode.codec)),
-      InstanceOverrideByType(TypeId.of[XmlNode.Element], Lazy(XmlNode.elementCodec)),
-      InstanceOverrideByType(TypeId.of[XmlExtras], Lazy(XmlExtras.codec))
+      InstanceOverrideByType(TypeId.of[zio.blocks.schema.xml.Xml.Element], Lazy(XmlCodec.elementCodec))
     )
 
   private val recursiveRecordCache: ThreadLocal[java.util.HashMap[TypeId[?], Array[FieldInfo]]] =
@@ -276,7 +274,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
       nodes.zipWithIndex.foreach: (node, idx) =>
         if node.asElement.isDefined then available += idx
       val regs: Registers = Registers(constructor.usedRegisters)
-      var extrasIndex: Int = -1
       var idx: Int = 0
       while idx < fieldInfos.length do
         val info: FieldInfo = fieldInfos(idx)
@@ -287,7 +284,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
               xmlTag.flatMap(tag => tag.fromName(localName(name)).orElse(tag.fromName(name))) match
                 case Some(k) => store(regs, info.offset, info.typeTag, k)
                 case None => throw XmlError(s"Unknown element: $name")
-            case FieldKind.Extras => extrasIndex = idx
             case FieldKind.Text =>
               val text: String = characterData(element)
               val value: Any =
@@ -343,26 +339,17 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
           case e: XmlError => throw e.at(info.fieldName)
         idx += 1
 
-      if extrasIndex >= 0 then
-        val leftoverAttrs: Seq[(String, String)] = attrs.iterator.filterNot((key, _) => isIgnoredLeftoverAttribute(key)).toSeq
-        val hasTextField: Boolean = fieldInfos.exists(_.kind == FieldKind.Text)
-        val leftoverNodes: Seq[XmlNode] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
-          val leftoverElement: Boolean = available.contains(nodeIdx)
-          val leftoverText: Boolean = node.asElement.isEmpty && !hasTextField
-          if leftoverElement || leftoverText then XmlNode.fromNode(using ast)(node) else None
-        store(regs, fieldInfos(extrasIndex).offset, 0, XmlExtras(leftoverAttrs, leftoverNodes))
-      else
-        val leftoverAttrs: Seq[String] = attrs.keys.iterator.filterNot(isIgnoredLeftoverAttribute).toSeq
-        if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
-        val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
-          if available.contains(nodeIdx) then node.asElement.map(ast.getName) else None
-        if leftoverElements.nonEmpty then throw XmlError(s"Unparsed elements: ${leftoverElements.mkString(", ")}")
-        val leftoverText: Boolean = nodes.zipWithIndex.exists: (node, nodeIdx) =>
-          !available.contains(nodeIdx) &&
-            node.asElement.isEmpty &&
-            node.asAtom.exists(_.trim.nonEmpty) &&
-            !fieldInfos.exists(_.kind == FieldKind.Text)
-        if leftoverText then throw XmlError("Unparsed character content")
+      val leftoverAttrs: Seq[String] = attrs.keys.iterator.filterNot(isIgnoredLeftoverAttribute).toSeq
+      if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
+      val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
+        if available.contains(nodeIdx) then node.asElement.map(ast.getName) else None
+      if leftoverElements.nonEmpty then throw XmlError(s"Unparsed elements: ${leftoverElements.mkString(", ")}")
+      val leftoverText: Boolean = nodes.zipWithIndex.exists: (node, nodeIdx) =>
+        !available.contains(nodeIdx) &&
+          node.asElement.isEmpty &&
+          node.asAtom.exists(_.trim.nonEmpty) &&
+          !fieldInfos.exists(_.kind == FieldKind.Text)
+      if leftoverText then throw XmlError("Unparsed character content")
       constructor.construct(regs, 0)
 
     override def encodeNamed[E: XmlAst](name: String, value: A): E =
@@ -371,14 +358,11 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
       deconstructor.deconstruct(regs, 0, value)
       val attributes: mutable.ArrayBuffer[(String, String)] = mutable.ArrayBuffer.empty
       val children: mutable.ArrayBuffer[ast.Node] = mutable.ArrayBuffer.empty
-      var extras: XmlExtras = XmlExtras()
       var idx: Int = 0
       while idx < fieldInfos.length do
         val info: FieldInfo = fieldInfos(idx)
         info.kind match
           case FieldKind.Tag => ()
-          case FieldKind.Extras =>
-            extras = load(regs, info.offset, 0).asInstanceOf[XmlExtras]
           case FieldKind.Text =>
             val loaded: Any = load(regs, info.offset, info.typeTag)
             val textOpt: Option[String] =
@@ -410,8 +394,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
               loaded.asInstanceOf[Option[Any]].foreach(appendItem)
             else appendItem(loaded)
         idx += 1
-      extras.attributes.foreach(attributes += _)
-      extras.children.foreach(node => children += XmlNode.toNode(using ast)(node))
       val nsAttrs: Seq[(String, String)] = namespace match
         case Some((uri, prefix)) if prefix.nonEmpty => Seq(s"xmlns:$prefix" -> uri)
         case Some((uri, _)) => Seq("xmlns" -> uri)
@@ -435,7 +417,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
     val codec: XmlCodec[Any] = D.instance(itemReflect.metadata).force.asInstanceOf[XmlCodec[Any]]
     val kind: FieldKind =
       if tagBinding(recordTypeId).exists(_._1 == field.name) then FieldKind.Tag
-      else if isExtrasField(field, itemReflect.typeId) then FieldKind.Extras
       else configValue(field.modifiers, XmlCodec.Attribute) match
         case Some(attr) => FieldKind.Attribute(if attr.isEmpty then field.name else attr)
         case None if configValue(field.modifiers, XmlCodec.Text).isDefined => FieldKind.Text
@@ -482,9 +463,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
 
   private def deconstructSeq(info: FieldInfo, value: Any): Iterator[Any] =
     info.seqParts.get.toItems(value)
-
-  private def isExtrasField(field: Term[?, ?, ?], typeId: TypeId[?]): Boolean =
-    configValue(field.modifiers, XmlCodec.Extras).isDefined || typeId.fullName == "org.podval.xml.XmlExtras"
 
   private def primitiveCodec[A](primitiveType: PrimitiveType[A]): XmlCodec[A] =
     primitiveType match
@@ -637,7 +615,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
     case Attribute(name: String)
     case Text
     case Child
-    case Extras
     case Tag
 
   private final class FieldInfo(
