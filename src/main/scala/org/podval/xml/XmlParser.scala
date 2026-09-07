@@ -21,8 +21,9 @@ object XmlParser:
   def parse(content: String, isXml: Boolean): Either[Throwable, Xml.Element] =
     if isXml then parseXml(content) else parseHtml(content)
 
+  /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
   def parseXml(content: String): Either[Throwable, Xml.Element] =
-    XmlParserStAX.parse(content)
+    XmlParserSax.parseXml(content)
 
   def parseXml(file: File): Either[Throwable, Xml.Element] =
     parseXml(file, xinclude = false)
@@ -35,7 +36,11 @@ object XmlParser:
 
   def parseXml(url: URL, xinclude: Boolean): Either[Throwable, Xml.Element] =
     val loaded: Either[Throwable, Xml.Element] =
-      Using(url.openStream())(XmlParserStAX.parse).fold(Left(_), identity)
+      Using(url.openStream()): stream =>
+        val source: InputSource = InputSource(stream)
+        source.setSystemId(url.toString)
+        XmlParserSax.parseXml(source)
+      .fold(Left(_), identity)
     if xinclude then loaded.flatMap(XmlXInclude.expand(_, url)) else loaded
 
   /** Classpath resource; `name` is `Class.getResource` style (`/org/.../Foo.xml`

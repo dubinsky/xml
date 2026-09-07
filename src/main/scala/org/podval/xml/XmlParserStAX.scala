@@ -9,6 +9,7 @@ import javax.xml.stream.{XMLEventReader, XMLInputFactory, XMLStreamException}
 import javax.xml.stream.events.{Attribute, Characters, Comment, EndElement, EntityReference, ProcessingInstruction,
   StartElement}
 
+// Note: not used; kept for fun.
 object XmlParserStAX:
   def parse(content: String): Either[XMLStreamException, Xml.Element] =
     parse(StringReader(content))

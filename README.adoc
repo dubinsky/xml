@@ -20,7 +20,7 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 
 == Packages
 
-`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX/StAX parsers; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
+`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved); StAX parser (CDATA not preserved); writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `Language` catalogs.
 `org.podval.store`:: in-memory named tree and path `resolve`.
 

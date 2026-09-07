@@ -47,9 +47,8 @@ final class XmlWriterSpec extends AnyFunSuite:
     assert(dumped.contains("<![CDATA[  ]]>"), dumped)
   }
 
-  test("SAX round-trip keeps CDATA syntax") {
-    val reader = javax.xml.parsers.SAXParserFactory.newInstance.newSAXParser.getXMLReader
-    val xml: Xml.Element = XmlParserSax.parse(reader, "<p>a<![CDATA[b<c]]>d</p>").toOption.get
+  test("parseXml round-trip keeps CDATA syntax") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<![CDATA[b<c]]>d</p>").toOption.get
     val dumped: String = render(xml)
     assert(dumped.contains("<![CDATA[b<c]]>"), dumped)
   }

@@ -5,8 +5,7 @@ import zio.blocks.schema.xml.Xml
 import scala.collection.mutable
 
 // TODO abstract XmlBuilder, XmlParser, and catalog loading over XmlAst and make ZIO Blocks XML optional too.
-// TODO make XML prologue and epilogue comments/processing instructions
-// round-trippable
+// TODO make XML prologue and epilogue comments/processing instructions round-trippable
 final class XmlBuilder:
   private val elements: mutable.Stack[Xml.Element] = mutable.Stack.empty
 

@@ -5,10 +5,33 @@ import zio.blocks.schema.xml.{Xml, XmlName}
 import org.xml.sax.{Attributes, InputSource, XMLReader}
 import org.xml.sax.ext.LexicalHandler
 import org.xml.sax.helpers.DefaultHandler
+import javax.xml.parsers.SAXParserFactory
 import java.io.{InputStream, Reader, StringReader}
 
 // Note: written by Grok, re-written by me ;)
 object XmlParserSax:
+  /** JDK SAX. `LexicalHandler` reports CDATA; JDK StAX reports it as CHARACTERS
+    * (`isCData=false`), so XML is parsed here, not with StAX. */
+  def xmlReader: XMLReader =
+    val factory: SAXParserFactory = SAXParserFactory.newInstance
+    factory.setNamespaceAware(true)
+    factory.setValidating(false)
+    factory.setXIncludeAware(false)
+    val reader: XMLReader = factory.newSAXParser.getXMLReader
+    // So undeclared `&nbsp;` (FlexMark HTML-as-XML) can become skippedEntity, not a halt.
+    try reader.setFeature("http://apache.org/xml/features/continue-after-fatal-error", true)
+    catch case _: Exception => ()
+    reader
+
+  def parseXml(content: String): Either[Throwable, Xml.Element] =
+    parse(xmlReader, content)
+
+  def parseXml(stream: InputStream): Either[Throwable, Xml.Element] =
+    parse(xmlReader, stream)
+
+  def parseXml(source: InputSource): Either[Throwable, Xml.Element] =
+    parse(xmlReader, source)
+
   def parse(reader: XMLReader, content: String): Either[Throwable, Xml.Element] =
     parse(reader, InputSource(StringReader(content)))
 
@@ -30,6 +53,7 @@ object XmlParserSax:
       val handler: XmlParserSax = XmlParserSax(builder)
 
       reader.setContentHandler(handler)
+      reader.setErrorHandler(handler)
       reader.setProperty("http://xml.org/sax/properties/lexical-handler", handler)
       reader.parse(source)
 
@@ -78,6 +102,15 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
   override def startEntity(name: String): Unit = ()
 
   override def endEntity(name: String): Unit = ()
+
+  override def skippedEntity(name: String): Unit =
+    builder.text(s"&$name;")
+
+  // Undeclared entities (`&nbsp;` in Markdown HTML-as-XML): JDK StAX reported
+  // EntityReference; SAX fatals. Skip that fatal so skippedEntity can emit `&name;`.
+  override def fatalError(e: org.xml.sax.SAXParseException): Unit =
+    if Option(e.getMessage).exists(_.contains("was referenced, but not declared")) then ()
+    else throw e
 
   override def startCDATA(): Unit =
     inCData = true
