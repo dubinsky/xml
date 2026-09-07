@@ -13,6 +13,8 @@ object XmlWriter:
   // Also, element start and end tags must not be separated from the children by newlines...
   private val hiddenNewline: String = "\\n"
 
+  private def hideNewlines(text: String) = text.replace("\n", XmlWriter.hiddenNewline)
+
   def render[Element: XmlAst](config: XmlWriterConfig, element: Element, width: Int): String =
     fromElement(
       element,
@@ -53,7 +55,7 @@ object XmlWriter:
       val canBreakLeft1 = canBreakLeft || whitespaceLeft
       val canBreakRight1 = canBreakRight || whitespaceRight
 
-       if chunks.length == 1 then Seq(
+      if chunks.length == 1 then Seq(
         fromChunk(chunks.head, canBreakLeft1, canBreakRight1)
       ) else
         fromChunk(chunks.head, canBreakLeft = canBreakLeft1, canBreakRight = true) +:
@@ -232,10 +234,10 @@ object XmlWriter:
     .getOrElse(preformat(node.getText))
 
   private def commentMarkup(value: String): String =
-    XmlMisc.commentMarkup(value).replace("\n", XmlWriter.hiddenNewline)
+    hideNewlines(XmlMisc.Comment(value).markup)
 
   private def processingInstructionMarkup(target: String, data: String): String =
-    XmlMisc.processingInstructionMarkup(target, data).replace("\n", XmlWriter.hiddenNewline)
+    hideNewlines(XmlMisc.ProcessingInstruction(target, data).markup)
 
   /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
   private def cdataMarkup(value: String): String =
@@ -243,10 +245,10 @@ object XmlWriter:
       val i: Int = rest.indexOf("]]>")
       if i < 0 then rest :: Nil
       else rest.substring(0, i + 2) :: parts(rest.substring(i + 2))
-    parts(value)
+    hideNewlines(parts(value)
       .map(part => s"<![CDATA[$part]]>")
       .mkString
-      .replace("\n", XmlWriter.hiddenNewline)
+    )
 
   private def preformat(string: String): Seq[String] =
     XmlEncode.encodeXmlSpecials(string).split("\n").toSeq
