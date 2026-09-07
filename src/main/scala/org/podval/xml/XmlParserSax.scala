@@ -154,8 +154,8 @@ private def namespaceOf(
 ): Option[String] =
   XmlNamespace.wellKnown(prefix, local, isAttribute)
     // TagSoup puts the XHTML namespace on every HTML element; drop it.
-    // TODIO is this the best place to drop it?
-    .orElse(noneIfEmpty(uri).filterNot(_ == XmlNamespace.xhtml))
+    // TODO is this the best place to drop it?
+    .orElse(noneIfEmpty(uri).filterNot(_ == XmlNamespace.xhtml.uri))
 
 private def fromAttributes(attributes: Attributes): Seq[(XmlExpandedName, String)] =
   (0 until attributes.getLength).map: i =>

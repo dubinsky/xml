@@ -18,22 +18,25 @@ package org.podval.xml
   If there is no default namespace declaration in scope, the namespace name has no value.
   The namespace name for an unprefixed attribute name always has no value.
 */
+final case class XmlNamespace(
+  uri: String,
+  prefix: Option[String]
+) derives CanEqual
+
 object XmlNamespace:
-  val xml: String = "http://www.w3.org/XML/1998/namespace"
+  val xml: XmlNamespace = XmlNamespace("http://www.w3.org/XML/1998/namespace", Some("xml"))
 
-  val xmlns: String = "http://www.w3.org/2000/xmlns/"
+  val xmlns: XmlNamespace = XmlNamespace("http://www.w3.org/2000/xmlns/", Some("xmlns"))
 
-  val xhtml: String = "http://www.w3.org/1999/xhtml"
+  val xhtml: XmlNamespace = XmlNamespace("http://www.w3.org/1999/xhtml", None)
 
-  val xinclude: String = "http://www.w3.org/2001/XInclude"
+  val xinclude: XmlNamespace = XmlNamespace("http://www.w3.org/2001/XInclude", Some("xi"))
 
-  val xlink: String = "http://www.w3.org/1999/xlink"
+  val xlink: XmlNamespace = XmlNamespace("http://www.w3.org/1999/xlink", Some("xlink"))
 
-  def wellKnown(prefix: Option[String], local: String, isAttribute: Boolean): Option[String] =
-    prefix match
-      case Some("xml") => Some(xml)
-      case Some("xmlns") => Some(xmlns)
-      case None if isAttribute && local == "xmlns" => Some(xmlns)
-      case _ => None
-
-
+  // TODO return Option[XmlNamespace]?
+  def wellKnown(prefix: Option[String], local: String, isAttribute: Boolean): Option[String] = prefix match
+    case p if p == xml.prefix => Some(xml.uri)
+    case p if p == xmlns.prefix => Some(xmlns.uri)
+    case None if isAttribute && xmlns.prefix.contains(local) => Some(xmlns.uri)
+    case _ => None

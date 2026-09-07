@@ -122,9 +122,9 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
   ): scala.xml.NamespaceBinding =
     val declared: scala.xml.NamespaceBinding =
       attributes.foldLeft(xmlScope):
-        case (scope, (n, uri)) if n.qualifiedName == "xmlns" =>
+        case (scope, (n, uri)) if n.prefix.isEmpty && XmlNamespace.xmlns.prefix.contains(n.localName) =>
           scala.xml.NamespaceBinding(null, uri, scope)
-        case (scope, (n, uri)) if n.prefix.contains("xmlns") =>
+        case (scope, (n, uri)) if n.prefix == XmlNamespace.xmlns.prefix =>
           scala.xml.NamespaceBinding(n.localName, uri, scope)
         case (scope, _) => scope
     (name +: attributes.map(_._1)).foldLeft(declared)(bind)
@@ -135,12 +135,12 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
   ): scala.xml.NamespaceBinding =
     name.namespace match
       case None => scope
-      case Some(_) if name.prefix.contains("xmlns") => scope
-      case Some(_) if name.prefix.isEmpty && name.localName == "xmlns" => scope
+      case Some(_) if name.prefix == XmlNamespace.xmlns.prefix => scope
+      case Some(_) if name.prefix.isEmpty && XmlNamespace.xmlns.prefix.contains(name.localName) => scope
       case Some(uri) =>
         val prefix: String = name.prefix.filter(_.nonEmpty).orNull
         if Option(scope.getURI(prefix)).contains(uri) then scope
         else scala.xml.NamespaceBinding(prefix, uri, scope)
 
   private val xmlScope: scala.xml.NamespaceBinding =
-    scala.xml.NamespaceBinding("xml", XmlNamespace.xml, scala.xml.TopScope)
+    scala.xml.NamespaceBinding(XmlNamespace.xml.prefix.orNull, XmlNamespace.xml.uri, scala.xml.TopScope)

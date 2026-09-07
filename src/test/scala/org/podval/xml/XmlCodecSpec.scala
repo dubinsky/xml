@@ -103,7 +103,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.name == "Ada")
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get("xml:id").contains("x"))
-    assert(encoded.attributes.find(_._1.qualifiedName == "xml:id").get._1.namespace.contains(XmlNamespace.xml))
+    assert(encoded.attributes.find(_._1.qualifiedName == "xml:id").get._1.namespace.contains(XmlNamespace.xml.uri))
   }
 
   test("namespace modifiers encode xmlns and a prefixed name") {

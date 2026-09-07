@@ -25,12 +25,10 @@ import java.net.URL
 // So, I need to process XIncludes myself instead of relying on the industry-standard Xerces!
 // What a nightmare...
 object XmlXInclude:
-  val NamespaceUri: String = XmlNamespace.xinclude
-
   def isInclude[E: XmlAst](element: E): Boolean =
     val name: XmlExpandedName = element.getExpandedName
     name.localName == "include" &&
-      (name.namespace.contains(NamespaceUri) || name.prefix.contains("xi"))
+      (name.namespace.contains(XmlNamespace.xinclude.uri) || name.prefix == XmlNamespace.xinclude.prefix)
 
   def expand[E: XmlAst](root: E, documentUrl: URL): Either[Throwable, E] =
     expand(root, documentUrl, documentUrl, Nil)
