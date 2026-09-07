@@ -3,7 +3,7 @@ package org.podval.xml
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
 
-final class HtmlXmlDialectSpec extends AnyFunSuite:
+final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
   private def render(element: Xml.Element, width: Int = 40): String =
     HtmlXmlWriterConfig.render(element, width)
 

@@ -285,7 +285,7 @@ object XmlWriter:
     XmlEncode.encodeXmlSpecials(string).split("\n").toSeq
 
   // TODO from Grok:
-  //- Description: For HTML dialect, `encodeXmlSpecials` is disabled (`HtmlXmlDialect` default).
+  //- Description: For HTML dialect, `encodeXmlSpecials` is disabled (`HtmlXmlWriterConfig` default).
   // Titles, tags, authors, and other front-matter strings rendered via the HTML DSL are written without escaping text nodes.
   // Attribute quoting (`Strings.quote`) also does not escape `"`, so a title containing `"` can break attributes.
   // For untrusted or multi-author content this is XSS/HTML injection risk; even for trusted content it can corrupt markup.
