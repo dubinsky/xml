@@ -190,14 +190,12 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(el.scope.getURI(null) == docbook)
   }
 
-  test("Ast2Ast Xml through ScalaXml keeps prefixes, xmlns, and xml: attributes") {
-    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
-    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+  test("to Xml through ScalaXml keeps prefixes, xmlns, and xml: attributes") {
     val xml: Xml.Element = parse(s"""<tei:p xmlns:tei="$tei" xml:id="n1"><tei:hi>a</tei:hi></tei:p>""")
-    val scalaEl: ScalaXml.Element = XmlToScalaXml.convert(xml)
+    val scalaEl: ScalaXml.Element = xml.to[ScalaXml.Element]
     assert(ScalaXml.getName(scalaEl) == "tei:p")
     assert(scalaEl.scope.getURI("tei") == tei)
-    val round: Xml.Element = ScalaXmlToXml.convert(scalaEl)
+    val round: Xml.Element = ScalaXml.converted(scalaEl)
     assert(round.getName == "tei:p")
     assert(round.name.localName == "p")
     assert(round.name.prefix.contains("tei"))
@@ -212,13 +210,11 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(scalaChild.scope.getURI("tei") == tei)
   }
 
-  test("Ast2Ast keeps a prefixed attribute URI without xmlns on that element") {
-    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
-    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+  test("to keeps a prefixed attribute URI without xmlns on that element") {
     val xml: Xml.Element = parse(
       s"""<p xmlns:xlink="${XmlNamespace.xlink}"><ref xlink:href="a.xml"/></p>"""
     )
-    val round: Xml.Element = ScalaXmlToXml.convert(XmlToScalaXml.convert(xml))
+    val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     val href: XmlName = attrName(children(round).head, "xlink:href")
     assert(href.namespace.contains(XmlNamespace.xlink))
   }

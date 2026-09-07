@@ -22,36 +22,36 @@ final class XmlUtilSpec extends AnyFunSuite:
     assert(converted.flatMap(_.asElement).map(_.getName) == Seq("span", "aside"))
   }
 
-  test("xml2html keeps mixed text and elements") {
-    val dumped: String = HtmlXmlWriterConfig.render(XmlUtil.xml2html(parse("<p>a<x/>b</p>")))
+  test("to[Html.Element] keeps mixed text and elements") {
+    val dumped: String = HtmlXmlWriterConfig.render(parse("<p>a<x/>b</p>").to[Html.Element])
     assert(dumped.contains("a"), dumped)
     assert(dumped.contains("b"), dumped)
     assert(dumped.contains("<x"), dumped)
   }
 
-  test("xml2html keeps attributes and nesting") {
-    val html: Html.Element = XmlUtil.xml2html(parse("""<div xml:id="x" class="y"><p>a</p></div>"""))
+  test("to[Html.Element] keeps attributes and nesting") {
+    val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[Html.Element]
     assert(html.getName == "div")
     assert(html.get("xml:id").contains("x"))
     assert(html.get("class").contains("y"))
     assert(html.getChildren.flatMap(_.asElement).map(_.getName) == Seq("p"))
   }
 
-  test("xml2html keeps empty elements") {
-    val html: Html.Element = XmlUtil.xml2html(parse("<x/>"))
+  test("to[Html.Element] keeps empty elements") {
+    val html: Html.Element = parse("<x/>").to[Html.Element]
     assert(html.getName == "x")
     assert(html.getChildren.isEmpty)
   }
 
-  test("xml2html drops comments and processing instructions") {
-    val html: Html.Element = XmlUtil.xml2html(parse("<p>a<!--c--><?pi d?>b</p>"))
+  test("to[Html.Element] drops comments and processing instructions") {
+    val html: Html.Element = parse("<p>a<!--c--><?pi d?>b</p>").to[Html.Element]
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a", "b"))
     assert(html.getChildren.flatMap(_.asElement).isEmpty)
   }
 
-  test("xml2html turns CDATA into escaped HTML text") {
+  test("to[Html.Element] turns CDATA into escaped HTML text") {
     val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a<b")))
-    val html: Html.Element = XmlUtil.xml2html(xml)
+    val html: Html.Element = xml.to[Html.Element]
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a&lt;b"))
     val dumped: String = HtmlXmlWriterConfig.render(html)
     assert(dumped.contains("a&lt;b"), dumped)

@@ -1,10 +1,6 @@
 package org.podval.xml
 
 object XmlUtil:
-  private object XmlToHtml extends Ast2Ast(Xml, Html)
-
-  def xml2html(element: Xml.Element): Html.Element = XmlToHtml.convert(element)
-  
   def toId(text: String): String = text.trim.replace(' ', '-')
 
   // ZIO Blocks `Chunk.flatMap` / `++` (Scala `appendedAll`) take ClassTag from the first

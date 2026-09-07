@@ -59,32 +59,26 @@ final class ScalaXmlSpec extends AnyFunSuite:
     assert(ScalaXml.asText(node).isEmpty)
   }
 
-  test("Ast2Ast round-trips Xml through ScalaXml") {
-    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
-    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+  test("to round-trips Xml through ScalaXml") {
     val xml: Xml.Element = XmlParser.parseXml("""<p xml:id="x"><q>a</q>b</p>""").toOption.get
-    val round: Xml.Element = ScalaXmlToXml.convert(XmlToScalaXml.convert(xml))
+    val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.getName == "p")
     assert(round.get("xml:id").contains("x"))
     assert(round.getChildren.flatMap(_.asElement).map(_.getName) == Seq("q"))
     assert(round.getChildren.flatMap(_.asText) == Seq("b"))
   }
 
-  test("Ast2Ast round-trips CDATA through ScalaXml") {
-    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
-    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+  test("to round-trips CDATA through ScalaXml") {
     val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a<b")))
-    val scalaXml: ScalaXml.Element = XmlToScalaXml.convert(xml)
+    val scalaXml: ScalaXml.Element = xml.to[ScalaXml.Element]
     assert(ScalaXml.getChildren(scalaXml).flatMap(ScalaXml.asCData) == Seq("a<b"))
-    val round: Xml.Element = ScalaXmlToXml.convert(scalaXml)
+    val round: Xml.Element = ScalaXml.converted(scalaXml)
     assert(round.getChildren.flatMap(_.asCData) == Seq("a<b"))
   }
 
-  test("Ast2Ast round-trips comments and processing instructions through ScalaXml") {
-    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
-    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+  test("to round-trips comments and processing instructions through ScalaXml") {
     val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c--><?pi d?>b</p>").toOption.get
-    val round: Xml.Element = ScalaXmlToXml.convert(XmlToScalaXml.convert(xml))
+    val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.getChildren.flatMap(_.asText) == Seq("a", "b"))
     assert(round.getChildren.flatMap(_.asComment) == Seq("c"))
     assert(round.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")))

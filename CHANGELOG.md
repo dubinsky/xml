@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 - `XmlParser` / `XmlBuilder` / `XmlXInclude` are abstract over `XmlAst` (same as `XmlWriter` / `XmlCodec`). Catalog helpers still pin ZIO Blocks XML.
-- `XmlAst` can represent comments and processing instructions; HTML drops them. `Ast2Ast` copies them when both sides have them. `XmlWriter` emits `<!-- -->` and `<?target data?>`.
+- `XmlAst` can represent comments and processing instructions; HTML drops them. `element.to[TO]` copies them when both sides have them. `XmlWriter` emits `<!-- -->` and `<?target data?>`.
+- Replace `Ast2Ast` with `element.to[TO]` (`converted` on the source `XmlAst`); drop `XmlUtil.xml2html`.
 
 ## [0.0.2] - 2026-09-03
 - cleanup

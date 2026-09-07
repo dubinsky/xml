@@ -92,6 +92,26 @@ trait XmlAst[ELEMENT]:
   // puts a gap before punctuation after inline markup (`</persName>,` → "е ,").
   final def toString(nodes: Nodes): String = nodes.map(_.getText).mkString
 
+  /** Rebuild `element` in another `XmlAst`. Nodes the destination cannot represent are dropped.
+    * Prefer `element.to[TO]` except on Scala XML, whose `NodeSeq.to` shadows the extension. */
+  final def converted[TO](element: Element)(using dest: XmlAst[TO]): TO =
+    dest.element(
+      element.getExpandedName,
+      element.getExpandedAttributes,
+      toNodes(element.getChildren)
+    )
+
+  private def toNodes[TO](children: Nodes)(using dest: XmlAst[TO]): dest.Nodes =
+    val buf = List.newBuilder[dest.Node]
+    children.foreach: child =>
+      child.asElement.map(converted(_))
+        .orElse(child.asCData.map(dest.cdata))
+        .orElse(child.asText.map(dest.text))
+        .orElse(child.asComment.flatMap(dest.comment))
+        .orElse(child.asProcessingInstruction.flatMap((target, data) => dest.processingInstruction(target, data)))
+        .foreach(node => buf += node)
+    buf.result()
+
   // Conversions
   extension (node: Node)
     def asElement: Option[Element]
@@ -132,6 +152,8 @@ trait XmlAst[ELEMENT]:
     def isElement(elem: XmlElement): Boolean = element.getName == elem.name
     
     def isA: Boolean = isElement(XmlElement.A)
+
+    def to[TO: XmlAst]: TO = converted(element)
   
   // Children
   extension (element: Element)
