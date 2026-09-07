@@ -71,6 +71,9 @@ object XmlParser:
   def className(loader: Class[?]): String = loader.getSimpleName.replace("$", "")
 
   /** Parse a catalog resource: wrapper `name`, each child decoded with `codec`. */
+  // Returns `Seq[A]`, so `E` cannot be inferred. Pin ZIO Blocks XML (`Xml.Element`):
+  // in this package `Xml`, `Html`, and `ScalaXml` would otherwise be ambiguous.
+  // `loadCatalog` unwraps these methods; call sites never choose an AST.
   def parseCatalog[A](resource: String, name: String, codec: XmlCodec[A]): Either[Throwable, Seq[A]] =
     parseResource[Xml.Element](resource).flatMap: root =>
       codec.decodeCatalog(root, name).left.map(e => e: Throwable)
