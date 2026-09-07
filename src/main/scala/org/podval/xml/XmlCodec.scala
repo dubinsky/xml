@@ -33,6 +33,10 @@ object XmlCodec:
   final val NamespaceUri = "xml.namespace.uri"
   final val NamespacePrefix = "xml.namespace.prefix"
 
+  /** Opaque schema so records can hold identity `Xml.Element` fields. Import at `Schema.derived` sites. */
+  given xmlElementSchema: Schema[XML.Element] =
+    Schema[Unit].transform(_ => XML.Element.empty, _ => ())(using TypeId.of[XML.Element])
+
   /** Identity field: copy a named child as canonical ZIO XML. Same-AST decode keeps the node. */
   val elementCodec: XmlCodec[XML.Element] = new XmlCodec[XML.Element]:
     override def elementName: String = "element"

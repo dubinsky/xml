@@ -1,9 +1,7 @@
 package org.podval.xml
 
 import zio.blocks.chunk.Chunk
-import zio.blocks.schema.Schema
 import zio.blocks.schema.xml.{XmlName, Xml as XML}
-import zio.blocks.typeid.TypeId
 
 // XML AST for ZIO Blocks XML
 given Xml: XmlAst[XML.Element]:
@@ -95,16 +93,11 @@ given Xml: XmlAst[XML.Element]:
     isAttribute: Boolean
   ): XmlName =
     val pairs: Seq[(String, String)] = XmlExpandedName.asPairs(attributes)
-    val namespace: Option[String] =
-      name.namespace
-        .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute))
-        .orElse(XmlExpandedName.xmlnsUri(name.prefix, pairs, isAttribute))
+    val namespace: Option[String] = name.namespace
+      .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute))
+      .orElse(XmlExpandedName.xmlnsUri(name.prefix, pairs, isAttribute))
     XmlName(
       localName = name.localName,
       prefix = name.prefix,
       namespace = namespace
     )
-
-/** Opaque schema so records can hold identity `Xml.Element` fields. Codec is `XmlCodec.elementCodec`. */
-given xmlElementSchema: Schema[XML.Element] =
-  Schema[Unit].transform(_ => XML.Element.empty, _ => ())(using TypeId.of[XML.Element])

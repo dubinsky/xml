@@ -236,6 +236,7 @@ final case class Text(
   @Modifier.config(XmlCodec.Element, "body") body: Xml.Element
 ) derives CanEqual
 object Text:
+  import XmlCodec.xmlElementSchema
   given schema: Schema[Text] = Schema.derived
 
 sealed trait Part derives CanEqual
