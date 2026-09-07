@@ -27,12 +27,11 @@ trait XmlAst[ELEMENT]:
 
   final def element(name: String): Element = element(name, Seq.empty, Seq.empty)
 
-  final def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element =
-    element(
-      XmlExpandedName.parse(name, attributes, isAttribute = false),
-      XmlExpandedName.attributes(attributes),
-      children
-    )
+  final def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element = element(
+    XmlExpandedName.parse(name, attributes, isAttribute = false),
+    XmlExpandedName.attributes(attributes),
+    children
+  )
 
   def element(
     name: XmlExpandedName,
@@ -40,32 +39,30 @@ trait XmlAst[ELEMENT]:
     children: Nodes
   ): Element
 
-  final def renamed(element: Element, name: String): Element =
-    this.element(
-      XmlExpandedName.parse(
-        name,
-        element.getAttributes,
-        isAttribute = false,
-        existing = Some(element.getExpandedName)
-      ),
-      element.getExpandedAttributes,
-      element.getChildren
-    )
+  final def renamed(element: Element, name: String): Element = this.element(
+    XmlExpandedName.parse(
+      name,
+      element.getAttributes,
+      isAttribute = false,
+      existing = Some(element.getExpandedName)
+    ),
+    element.getExpandedAttributes,
+    element.getChildren
+  )
 
   final def withChildren(element: Element, children: Nodes): Element =
     this.element(element.getExpandedName, element.getExpandedAttributes, children)
 
-  final def withAttributes(element: Element, attributes: Seq[(String, String)]): Element =
-    this.element(
-      XmlExpandedName.parse(
-        element.getName,
-        attributes,
-        isAttribute = false,
-        existing = Some(element.getExpandedName)
-      ),
-      XmlExpandedName.attributes(attributes),
-      element.getChildren
-    )
+  final def withAttributes(element: Element, attributes: Seq[(String, String)]): Element = this.element(
+    XmlExpandedName.parse(
+      element.getName,
+      attributes,
+      isAttribute = false,
+      existing = Some(element.getExpandedName)
+    ),
+    XmlExpandedName.attributes(attributes),
+    element.getChildren
+  )
 
   final def withAttribute(element: Element, attribute: String, value: String): Element =
     val parsed: XmlExpandedName = XmlExpandedName.parse(
@@ -115,21 +112,21 @@ trait XmlAst[ELEMENT]:
   // Conversions
   extension (node: Node)
     def asElement: Option[Element]
-    
+
     def asAtom: Option[String]
 
     def asText: Option[String]
 
     def asCData: Option[String]
 
-    def asComment: Option[String] = None
+    def asComment: Option[String]
 
-    def asProcessingInstruction: Option[(String, String)] = None
+    def asProcessingInstruction: Option[(String, String)]
 
     def isWhitespace: Boolean = node.asText.exists(_.trim.isEmpty)
 
     def isCharacters: Boolean = node.asCData.isDefined || node.asText.exists(_.trim.nonEmpty)
-    
+
     def getText: String = node
       .asAtom
       .orElse(node.asElement.map(_.getChildren).map(toString))
@@ -150,11 +147,11 @@ trait XmlAst[ELEMENT]:
     def rename(name: String): Element = renamed(element, name)
 
     def isElement(elem: XmlElement): Boolean = element.getName == elem.name
-    
+
     def isA: Boolean = isElement(XmlElement.A)
 
     def to[TO: XmlAst]: TO = converted(element)
-  
+
   // Children
   extension (element: Element)
     def getChildren: Nodes
@@ -253,9 +250,9 @@ trait XmlAst[ELEMENT]:
       if element.getId.exists(_.nonEmpty)
       then element
       else element.setId(element.get(XmlAttribute.XmlId).filter(_.nonEmpty))
-    
+
     def getHref: Option[String] = get(XmlAttribute.Href)
-    
+
     def setHref(value: String): Element = set(XmlAttribute.Href, value)
 
   // HTML 'class' attribute
@@ -273,7 +270,7 @@ trait XmlAst[ELEMENT]:
       element.set(HtmlClass, values.mkString(" "))
 
     def has(htmlClass: HtmlClass): Boolean = hasClass(htmlClass.name)
-    
+
     def hasClass(htmlClass: String): Boolean = element.getClasses.contains(htmlClass)
 
     def add(htmlClass: Option[HtmlClass]): Element =

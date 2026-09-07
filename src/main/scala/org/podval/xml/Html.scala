@@ -34,19 +34,12 @@ given Html: XmlAst[XML.Element]:
 
     override def asAtom: Option[String] = node.asText
 
+    override def asComment: Option[String] = None
+
+    override def asProcessingInstruction: Option[(String, String)] = None
+
   extension (element: Element)
-    override def getExpandedName: XmlExpandedName =
-      XmlExpandedName.parseQualified(element.tag)
-
-    override def getName: String = element.getExpandedName.qualifiedName
-
-    override def localName: String = element.getExpandedName.localName
-
-    override def getPrefix: Option[String] = element.getExpandedName.prefix
-
-    override def getNamespace: Option[String] = element.getExpandedName.namespace
-
-    override def rename(name: String): Element = renamed(element, name)
+    override def getExpandedName: XmlExpandedName = XmlExpandedName.parseQualified(element.tag)
 
     /**
      * Merge ZIO Blocks multi-valued attrs (`className += …` is an AppendValue)
@@ -58,22 +51,7 @@ given Html: XmlAst[XML.Element]:
         .sortBy(_._1)
         .map((name, value) => (XmlExpandedName.parse(name, isAttribute = true), value))
 
-    override def getAttributes: Seq[(String, String)] =
-      XmlExpandedName.asPairs(element.getExpandedAttributes)
-
-    override def setAttributes(attributes: Seq[(String, String)]): Element =
-      withAttributes(element, attributes)
-
-    override def set(attribute: String, value: String): Element =
-      withAttribute(element, attribute, value)
-
-    override def set(attribute: XmlAttribute, value: String): Element =
-      withAttribute(element, attribute.name, value)
-
     override def getChildren: Nodes = element.children
-
-    override def setChildren(children: Nodes): Element =
-      withChildren(element, children)
 
   private def mkAttribute(name: String, value: String) = XML.Attribute.KeyValue(
     name,
