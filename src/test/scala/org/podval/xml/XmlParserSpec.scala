@@ -1,6 +1,7 @@
 package org.podval.xml
 
 import org.scalatest.funsuite.AnyFunSuite
+import javax.xml.parsers.SAXParserFactory
 import java.io.File
 
 final class XmlParserSpec extends AnyFunSuite:
@@ -100,3 +101,27 @@ final class XmlParserSpec extends AnyFunSuite:
       XmlParser.parseResource(classOf[XmlParserSpec], "includer-missing.xml", xinclude = true)
     assert(result.isLeft)
   }
+
+  // JDK StAX reports CDATA as CHARACTERS with isCData=false, so parseXml cannot
+  // preserve CDATA kind. SAX (below) can.
+
+  test("StAX keeps text on both sides of a comment") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
+    assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))
+    assert(xml.getChildren.flatMap(_.asElement).isEmpty)
+  }
+
+  test("SAX keeps text and CDATA as distinct children") {
+    val xml: Xml.Element = parseSax("<p>a<![CDATA[b]]>c</p>")
+    assert(xml.getChildren.flatMap(_.asText) == Seq("a", "c"))
+    assert(xml.getChildren.flatMap(_.asCData) == Seq("b"))
+  }
+
+  test("SAX keeps adjacent CDATA sections distinct") {
+    val xml: Xml.Element = parseSax("<p><![CDATA[a]]><![CDATA[b]]></p>")
+    assert(xml.getChildren.flatMap(_.asCData) == Seq("a", "b"))
+  }
+
+  private def parseSax(content: String): Xml.Element =
+    val reader = SAXParserFactory.newInstance.newSAXParser.getXMLReader
+    XmlParserSax.parse(reader, content).toOption.get

@@ -38,6 +38,13 @@ object XmlParserSax:
       case e: Throwable => Left(e)  
 
 private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler with LexicalHandler:
+  private var inCData: Boolean = false
+  private val cdata: StringBuilder = StringBuilder()
+
+  private def charactersToBuilder(characters: Array[Char], start: Int, length: Int): Unit =
+    val text: String = String(characters, start, length)
+    if inCData then cdata.addAll(text) else builder.text(text)
+
   override def startElement(
     uri: String,
     localName: String,
@@ -54,10 +61,10 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
     builder.endElement()
 
   override def characters(characters: Array[Char], start: Int, length: Int): Unit =
-    builder.addCharacters(String(characters, start, length))
+    charactersToBuilder(characters, start, length)
 
   override def ignorableWhitespace(characters: Array[Char], start: Int, length: Int): Unit =
-    builder.addCharacters(String(characters, start, length))
+    charactersToBuilder(characters, start, length)
 
   override def processingInstruction(target: String, data: String): Unit =
     builder.processingInstruction(target = target, data = data)
@@ -73,11 +80,12 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
   override def endEntity(name: String): Unit = ()
 
   override def startCDATA(): Unit =
-    builder.flushCharacters()
-    builder.setCData()
+    inCData = true
 
   override def endCDATA(): Unit =
-    builder.flushCharacters()
+    inCData = false
+    builder.cdata(cdata.toString)
+    cdata.clear()
 
   override def comment(characters: Array[Char], start: Int, length: Int): Unit =
     builder.comment(String(characters, start, length))

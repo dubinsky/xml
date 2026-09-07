@@ -55,16 +55,11 @@ object XmlParserStAX:
 
       case characters: Characters =>
         val text: String = characters.getData
-        if characters.isCData then
-          builder.flushCharacters()
-          builder.setCData()
-          builder.addCharacters(text)
-          builder.flushCharacters()
-        else
-          builder.addCharacters(text)
+        // JDK StAX reports CDATA as CHARACTERS with isCData=false; Woodstox sets the flag.
+        if characters.isCData then builder.cdata(text) else builder.text(text)
 
       case entityReference: EntityReference =>
-        builder.addCharacters(s"&${entityReference.getName};")
+        builder.text(s"&${entityReference.getName};")
 
       case comment: Comment =>
         builder.comment(comment.getText)
