@@ -2,11 +2,7 @@ package org.podval.store
 
 import org.podval.metadata.Named
 
-/*
-  Not all `Stores` are read from XML - some are constructed -
-  so `Store` does *not* extend `FromUrl.With`.*/
 trait Store extends Named:
-
   final def getPaths(
     path: Path = Seq.empty,
     include: Store => Boolean,
