@@ -17,6 +17,10 @@ import java.net.URL
   * String parse never expands (there is no base URL). HTML uses TagSoup
   * (`parseHtml`) from a string, URL, or file; it does not expand XInclude.
   *
+  * `parseXml` / `parseResource` return the document element. Prolog/epilog
+  * comments, PIs, and the doctype are on [[XmlDocument]] from
+  * `parseXmlDocument` / `parseResourceDocument`.
+  *
   * `E` is inferred from the expected type or a unique `XmlAst` given. Catalog
   * helpers pin ZIO Blocks XML internally.
   */
@@ -26,7 +30,7 @@ object XmlParser:
 
   /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
   def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
-    XmlParserSax.parseXml(content)
+    parseXmlDocument(content).map(_.root)
 
   def parseXml[E: XmlAst](file: File): Either[Throwable, E] =
     parseXml(file, xinclude = false)
@@ -38,13 +42,29 @@ object XmlParser:
     parseXml(url, xinclude = false)
 
   def parseXml[E: XmlAst](url: URL, xinclude: Boolean): Either[Throwable, E] =
-    val loaded: Either[Throwable, E] =
+    parseXmlDocument(url, xinclude).map(_.root)
+
+  def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
+    XmlParserSax.parseXmlDocument(content)
+
+  def parseXmlDocument[E: XmlAst](file: File): Either[Throwable, XmlDocument[E]] =
+    parseXmlDocument(file, xinclude = false)
+
+  def parseXmlDocument[E: XmlAst](file: File, xinclude: Boolean): Either[Throwable, XmlDocument[E]] =
+    parseXmlDocument(file.toURI.toURL, xinclude)
+
+  def parseXmlDocument[E: XmlAst](url: URL): Either[Throwable, XmlDocument[E]] =
+    parseXmlDocument(url, xinclude = false)
+
+  def parseXmlDocument[E: XmlAst](url: URL, xinclude: Boolean): Either[Throwable, XmlDocument[E]] =
+    val loaded: Either[Throwable, XmlDocument[E]] =
       Using(url.openStream()): stream =>
         val source: InputSource = InputSource(stream)
         source.setSystemId(url.toString)
-        XmlParserSax.parseXml(source)
+        XmlParserSax.parseXmlDocument(source)
       .fold(Left(_), identity)
-    if xinclude then loaded.flatMap(XmlXInclude.expand(_, url)) else loaded
+    if xinclude then loaded.flatMap(doc => XmlXInclude.expand(doc.root, url).map(root => doc.copy(root = root)))
+    else loaded
 
   /** Classpath resource; `name` is `Class.getResource` style (`/org/.../Foo.xml`
     * is from the classpath root). */
@@ -63,9 +83,26 @@ object XmlParser:
     name: String,
     xinclude: Boolean
   ): Either[Throwable, E] =
+    parseResourceDocument(loader, name, xinclude).map(_.root)
+
+  def parseResourceDocument[E: XmlAst](name: String): Either[Throwable, XmlDocument[E]] =
+    parseResourceDocument(name, xinclude = false)
+
+  def parseResourceDocument[E: XmlAst](name: String, xinclude: Boolean): Either[Throwable, XmlDocument[E]] =
+    val absolute: String = if name.startsWith("/") then name else s"/$name"
+    parseResourceDocument(XmlParser.getClass, absolute, xinclude)
+
+  def parseResourceDocument[E: XmlAst](loader: Class[?], name: String): Either[Throwable, XmlDocument[E]] =
+    parseResourceDocument(loader, name, xinclude = false)
+
+  def parseResourceDocument[E: XmlAst](
+    loader: Class[?],
+    name: String,
+    xinclude: Boolean
+  ): Either[Throwable, XmlDocument[E]] =
     Option(loader.getResource(name)) match
       case None => Left(XmlError(s"Resource not found: $name"))
-      case Some(url) => parseXml(url, xinclude)
+      case Some(url) => parseXmlDocument(url, xinclude)
 
   /** Class simple name without a trailing `$` (`Selector$` → `Selector`). */
   def className(loader: Class[?]): String = loader.getSimpleName.replace("$", "")

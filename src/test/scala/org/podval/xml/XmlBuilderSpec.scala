@@ -58,3 +58,25 @@ final class XmlBuilderSpec extends AnyFunSuite:
     assert(html.getChildren.flatMap(_.asAtom) == Seq("ab"))
     assert(html.getChildren.flatMap(_.asComment).isEmpty)
   }
+
+  test("comments before and after the root go on the document") {
+    val builder: XmlBuilder[Xml.Element] = XmlBuilder()
+    builder.comment("before")
+    builder.startElement(Xml.element("p"))
+    builder.comment("inside")
+    builder.endElement()
+    builder.comment("after")
+    val doc: XmlDocument[Xml.Element] = builder.document
+    assert(doc.prolog == Seq(XmlMisc.Comment("before")))
+    assert(doc.epilog == Seq(XmlMisc.Comment("after")))
+    assert(doc.root.getChildren.flatMap(_.asComment) == Seq("inside"))
+  }
+
+  test("HTML document keeps prologue comments that the tree drops") {
+    val builder: XmlBuilder[Html.Element] = XmlBuilder()
+    builder.comment("c")
+    builder.startElement(Html.element("p"))
+    builder.endElement()
+    assert(builder.document.prolog == Seq(XmlMisc.Comment("c")))
+    assert(builder.result.getChildren.flatMap(_.asComment).isEmpty)
+  }

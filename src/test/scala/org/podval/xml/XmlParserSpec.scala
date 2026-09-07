@@ -76,7 +76,7 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(result.swap.toOption.get.getMessage.contains("Resource not found"))
   }
 
-  test("comment before the root element is ignored") {
+  test("parseXml does not attach comments outside the root element") {
     val xml: Xml.Element = XmlParser.parseXml(
       """<?xml version="1.0"?>
         |<!-- prologue -->

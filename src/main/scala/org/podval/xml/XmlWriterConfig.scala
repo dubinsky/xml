@@ -32,7 +32,14 @@ open class XmlWriterConfig(
     encodeXmlSpecials = encodeXmlSpecials || other.encodeXmlSpecials
   )
 
-  def render[Element: XmlAst](
-    element: Element,
-    width: Int = XmlWriter.widthDefault
-  ): String = XmlWriter.render(this, element, width)
+  def render[Element: XmlAst](element: Element): String =
+    render(element, XmlWriter.widthDefault)
+
+  def render[Element: XmlAst](element: Element, width: Int): String =
+    XmlWriter.render(this, element, width)
+
+  def render[Element: XmlAst](document: XmlDocument[Element]): String =
+    render(document, XmlWriter.widthDefault)
+
+  def render[Element: XmlAst](document: XmlDocument[Element], width: Int): String =
+    XmlWriter.render(this, document, width)

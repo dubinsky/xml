@@ -2,16 +2,28 @@ package org.podval.xml
 
 import scala.collection.mutable
 
-// TODO make XML prologue and epilogue comments/processing instructions round-trippable
 final class XmlBuilder[E](using ast: XmlAst[E]):
   private val elements: mutable.Stack[E] = mutable.Stack.empty
 
   private var root: Option[E] = None
 
-  // TODO ignore events after done
+  private val prologBuf: mutable.ArrayBuffer[XmlMisc] = mutable.ArrayBuffer.empty
+
+  private val epilogBuf: mutable.ArrayBuffer[XmlMisc] = mutable.ArrayBuffer.empty
+
+  private var doctypeValue: Option[XmlDoctype] = None
+
   def done: Boolean = root.nonEmpty
 
   def result: E = root.get
+
+  def document: XmlDocument[E] = XmlDocument(
+    declaration = None,
+    doctype = doctypeValue,
+    prolog = prologBuf.toSeq,
+    root = result,
+    epilog = epilogBuf.toSeq
+  )
 
   def startElement(name: XmlExpandedName, attributes: Seq[(XmlExpandedName, String)]): Unit =
     startElement(ast.element(name, attributes, Seq.empty))
@@ -30,11 +42,20 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
       val parent: E = elements.pop()
       elements.push(parent.setChildren(appendChild(parent.getChildren, child)))
 
+  def doctype(name: String, publicId: Option[String], systemId: Option[String]): Unit =
+    if root.isEmpty then
+      doctypeValue = Some(XmlDoctype(name, publicId, systemId))
+
   def processingInstruction(target: String, data: String): Unit =
-    ast.processingInstruction(target, data).foreach(addChild)
+    if elements.nonEmpty then ast.processingInstruction(target, data).foreach(addChild)
+    else addMisc(XmlMisc.ProcessingInstruction(target, data))
 
   def comment(text: String): Unit =
-    ast.comment(text).foreach(addChild)
+    if elements.nonEmpty then ast.comment(text).foreach(addChild)
+    else addMisc(XmlMisc.Comment(text))
+
+  private def addMisc(misc: XmlMisc): Unit =
+    if root.isEmpty then prologBuf += misc else epilogBuf += misc
 
   /** Parser character chunks of one text run. Consecutive Text nodes merge;
     * CDATA stays a separate child (a CDATA section is delimited). */

@@ -19,16 +19,24 @@ object XmlParserSax:
     // So undeclared `&nbsp;` (FlexMark HTML-as-XML) can become skippedEntity, not a halt.
     try reader.setFeature("http://apache.org/xml/features/continue-after-fatal-error", true)
     catch case _: Exception => ()
+    try reader.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+    catch case _: Exception => ()
     reader
 
   def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
-    parse(xmlReader, content)
+    parseXmlDocument(content).map(_.root)
 
   def parseXml[E: XmlAst](stream: InputStream): Either[Throwable, E] =
-    parse(xmlReader, stream)
+    parseXmlDocument(InputSource(stream)).map(_.root)
 
   def parseXml[E: XmlAst](source: InputSource): Either[Throwable, E] =
-    parse(xmlReader, source)
+    parseXmlDocument(source).map(_.root)
+
+  def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
+    parseXmlDocument(InputSource(StringReader(content)))
+
+  def parseXmlDocument[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
+    parseDocument(xmlReader, source)
 
   def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, E] =
     parse(reader, InputSource(StringReader(content)))
@@ -40,6 +48,13 @@ object XmlParserSax:
     parse(reader, InputSource(characterReader))
 
   def parse[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, E] =
+    parseBuilder(reader, source).map(_.result)
+
+  private def parseDocument[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlDocument[E]] =
+    parseBuilder(reader, source).map: builder =>
+      builder.document.copy(declaration = Some(XmlDeclaration()))
+
+  private def parseBuilder[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlBuilder[E]] =
     try
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
       // Include xmlns:* in the attribute list so namespace declarations become attributes
@@ -57,12 +72,13 @@ object XmlParserSax:
       reader.setProperty("http://xml.org/sax/properties/lexical-handler", handler)
       reader.parse(source)
 
-      Right(builder.result)
+      Right(builder)
     catch
       case e: Throwable => Left(e)
 
 private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandler with LexicalHandler:
   private var inCData: Boolean = false
+  private var inDtd: Boolean = false
   private val cdata: StringBuilder = StringBuilder()
 
   private def charactersToBuilder(characters: Array[Char], start: Int, length: Int): Unit =
@@ -90,13 +106,20 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
     charactersToBuilder(characters, start, length)
 
   override def processingInstruction(target: String, data: String): Unit =
-    builder.processingInstruction(target = target, data = data)
+    if !inDtd then builder.processingInstruction(target = target, data = data)
 
   // LexicalHandler
 
-  override def startDTD(name: String, publicId: String, systemId: String): Unit = ()
+  override def startDTD(name: String, publicId: String, systemId: String): Unit =
+    inDtd = true
+    builder.doctype(
+      name,
+      Option(publicId).filter(_.nonEmpty),
+      Option(systemId).filter(_.nonEmpty)
+    )
 
-  override def endDTD(): Unit = ()
+  override def endDTD(): Unit =
+    inDtd = false
 
   override def startEntity(name: String): Unit = ()
 
@@ -120,7 +143,7 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
     cdata.clear()
 
   override def comment(characters: Array[Char], start: Int, length: Int): Unit =
-    builder.comment(String(characters, start, length))
+    if !inDtd then builder.comment(String(characters, start, length))
 
 private def fromName(uri: String, localName: String, qName: String, isAttribute: Boolean): XmlExpandedName =
   val (prefix: Option[String], local: String) =
