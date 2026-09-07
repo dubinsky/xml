@@ -37,9 +37,9 @@ trait XmlAst[ELEMENT]:
 
     def asCData: Option[String]
 
-    def isWhitespace: Boolean = node.asAtom.exists(_.trim.isEmpty)
+    def isWhitespace: Boolean = node.asText.exists(_.trim.isEmpty)
 
-    def isCharacters: Boolean = node.asAtom.exists(_.trim.nonEmpty)
+    def isCharacters: Boolean = node.asCData.isDefined || node.asText.exists(_.trim.nonEmpty)
     
     def getText: String = node
       .asAtom

@@ -106,12 +106,12 @@ object XmlWriter:
     result: ast.Nodes,
     nodes: ast.Nodes
   ): ast.Nodes = if nodes.isEmpty then result else
-    val (atoms: ast.Nodes, tail: ast.Nodes) = nodes.span(_.asAtom.isDefined)
+    val (texts: ast.Nodes, tail: ast.Nodes) = nodes.span(_.asText.isDefined)
 
     val resultNew: ast.Nodes =
-      if atoms.isEmpty
+      if texts.isEmpty
       then result
-      else result ++ processText(Seq.empty, squashBigWhitespace(atoms.map(_.asAtom.get).mkString("")))
+      else result ++ processText(Seq.empty, squashBigWhitespace(texts.map(_.asText.get).mkString("")))
 
     tail match 
       case Nil => resultNew
@@ -195,6 +195,7 @@ object XmlWriter:
         val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
         // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
         if canBreakRight && dialect.break.contains(name) then result + Doc.hardLine else result
+    .orElse(node.asCData.map(value => Doc.text(cdataMarkup(value))))
     .orElse(node.asAtom.map(text => Doc.text(encodeXmlSpecials(text))))
     .getOrElse(Doc.paragraph(node.getText))
 
@@ -215,8 +216,20 @@ object XmlWriter:
   private def preformat(using ast: XmlAst[?])(node: ast.Node): Seq[String] = node
     .asElement
     .map(preformatElement)
+    .orElse(node.asCData.map(value => Seq(cdataMarkup(value))))
     .orElse(node.asAtom.map(preformat))
     .getOrElse(preformat(node.getText))
+
+  /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
+  private def cdataMarkup(value: String): String =
+    def parts(rest: String): List[String] =
+      val i: Int = rest.indexOf("]]>")
+      if i < 0 then rest :: Nil
+      else rest.substring(0, i + 2) :: parts(rest.substring(i + 2))
+    parts(value)
+      .map(part => s"<![CDATA[$part]]>")
+      .mkString
+      .replace("\n", XmlWriter.hiddenNewline)
 
   private def preformat(string: String): Seq[String] =
     XmlEncode.encodeXmlSpecials(string).split("\n").toSeq
