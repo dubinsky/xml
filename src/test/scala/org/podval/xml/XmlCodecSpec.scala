@@ -103,6 +103,23 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.name == "Ada")
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get("xml:id").contains("x"))
+    assert(encoded.attributes.find(_._1.qualifiedName == "xml:id").get._1.namespace.contains(XmlNamespace.xml))
+  }
+
+  test("namespace modifiers encode xmlns and a prefixed name") {
+    val codec: XmlCodec[NsBox] = XmlCodec.derived(using NsBox.schema)
+    val encoded: Xml.Element = codec.encode(NsBox("1"))
+    assert(encoded.getName == "ex:NsBox")
+    assert(encoded.name.localName == "NsBox")
+    assert(encoded.name.prefix.contains("ex"))
+    assert(encoded.name.namespace.contains("http://example.com/ns"))
+    assert(encoded.get("xmlns:ex").contains("http://example.com/ns"))
+    assert(encoded.get("n").contains("1"))
+    val decoded: NsBox = codec.decode(parse("""<ex:NsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
+    assert(decoded.n == "1")
+    val scalaEl: ScalaXml.Element = codec.encode(NsBox("1"))
+    assert(ScalaXml.getName(scalaEl) == "ex:NsBox")
+    assert(scalaEl.scope.getURI("ex") == "http://example.com/ns")
   }
 
   test("optional child is absent when missing") {
@@ -246,6 +263,14 @@ final case class Named(
 ) derives CanEqual
 object Named:
   given schema: Schema[Named] = Schema.derived
+
+@Modifier.config(XmlCodec.NamespaceUri, "http://example.com/ns")
+@Modifier.config(XmlCodec.NamespacePrefix, "ex")
+final case class NsBox(
+  @Modifier.config(XmlCodec.Attribute, "") n: String
+) derives CanEqual
+object NsBox:
+  given schema: Schema[NsBox] = Schema.derived
 
 final case class Title(@Modifier.config(XmlCodec.Text, "") value: String) derives CanEqual
 object Title:

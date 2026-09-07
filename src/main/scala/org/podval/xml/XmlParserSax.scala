@@ -46,6 +46,8 @@ object XmlParserSax:
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
       // Include xmlns:* in the attribute list so namespace declarations become attributes
       reader.setFeature("http://xml.org/sax/features/namespace-prefixes", true)
+      // Put xmlns:* in the xmlns namespace (off by default for SAX1 compatibility).
+      reader.setFeature("http://xml.org/sax/features/xmlns-uris", true)
       reader.setFeature("http://xml.org/sax/features/external-general-entities", false)
       reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
 
@@ -76,7 +78,7 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
     attributes: Attributes
   ): Unit =
     builder.startElement(Xml.Element(
-      name = fromName(uri, localName, qName),
+      name = fromName(uri, localName, qName, isAttribute = false),
       children = Chunk.empty,
       attributes = fromAttributes(attributes)
     ))
@@ -123,7 +125,7 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
   override def comment(characters: Array[Char], start: Int, length: Int): Unit =
     builder.comment(String(characters, start, length))
 
-private def fromName(uri: String, localName: String, qName: String): XmlName =
+private def fromName(uri: String, localName: String, qName: String, isAttribute: Boolean): XmlName =
   val (prefix: Option[String], local: String) =
     if localName.nonEmpty then
       val colon: Int = qName.indexOf(':')
@@ -137,9 +139,19 @@ private def fromName(uri: String, localName: String, qName: String): XmlName =
   XmlName(
     localName = local,
     prefix = prefix,
-    // TagSoup puts the XHTML namespace on every HTML element; drop it.
-    namespace = noneIfEmpty(uri).filterNot(_ == XmlNamespace.xhtml)
+    namespace = namespaceOf(uri, prefix, local, isAttribute)
   )
+
+private def namespaceOf(
+  uri: String,
+  prefix: Option[String],
+  local: String,
+  isAttribute: Boolean
+): Option[String] =
+  XmlNamespace.wellKnown(prefix, local, isAttribute)
+    // TagSoup puts the XHTML namespace on every HTML element; drop it.
+    // TODIO is this the best place to drop it?
+    .orElse(noneIfEmpty(uri).filterNot(_ == XmlNamespace.xhtml))
 
 private def fromAttributes(attributes: Attributes): Chunk[(XmlName, String)] =
   Chunk.from((0 until attributes.getLength).map: i =>
@@ -147,7 +159,8 @@ private def fromAttributes(attributes: Attributes): Chunk[(XmlName, String)] =
       fromName(
         uri = attributes.getURI(i),
         localName = attributes.getLocalName(i),
-        qName = attributes.getQName(i)
+        qName = attributes.getQName(i),
+        isAttribute = true
       ),
       attributes.getValue(i)
     )

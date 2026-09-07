@@ -14,7 +14,7 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
       prefix = prefix,
       label = label,
       attributes = toMetaData(attributes),
-      scope = scala.xml.TopScope,
+      scope = toScope(attributes),
       minimizeEmpty = false,
       child = children*
     )
@@ -54,7 +54,7 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
       .toSeq
 
     override def setAttributes(attributes: Seq[(String, String)]): Element =
-      element.copy(attributes = toMetaData(attributes))
+      element.copy(attributes = toMetaData(attributes), scope = toScope(attributes))
 
   // scala.xml rejects prefix ""; unprefixed names use null.
   private def splitQualified(name: String): (String, String) =
@@ -70,3 +70,16 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
       case ((key, value), next) =>
         val (prefix, local) = splitQualified(key)
         scala.xml.Attribute(prefix, local, value, next)
+
+  // scala.xml stores namespace URIs on `scope`, not on the name. `xmlns*` stay
+  // attributes so `XmlAst.getAttributes` / the writer still emit them.
+  private def toScope(attributes: Seq[(String, String)]): scala.xml.NamespaceBinding =
+    attributes.foldLeft(xmlScope):
+      case (scope, ("xmlns", uri)) =>
+        scala.xml.NamespaceBinding(null, uri, scope)
+      case (scope, (key, uri)) if key.startsWith("xmlns:") =>
+        scala.xml.NamespaceBinding(key.substring(6), uri, scope)
+      case (scope, _) => scope
+
+  private val xmlScope: scala.xml.NamespaceBinding =
+    scala.xml.NamespaceBinding("xml", XmlNamespace.xml, scala.xml.TopScope)

@@ -75,11 +75,24 @@ object XmlParserStAX:
 
     builder.result
 
-  private def fromQName(qName: QName): XmlName = XmlName(
-    localName = qName.getLocalPart,
-    prefix = noneIfEmpty(qName.getPrefix),
-    namespace = noneIfEmpty(qName.getNamespaceURI)
-  )
+  private def fromQName(qName: QName, isAttribute: Boolean): XmlName =
+    val prefix: Option[String] = noneIfEmpty(qName.getPrefix)
+    val local: String = qName.getLocalPart
+    XmlName(
+      localName = local,
+      prefix = prefix,
+      namespace = namespaceOf(qName.getNamespaceURI, prefix, local, isAttribute)
+    )
+
+  private def namespaceOf(
+    uri: String,
+    prefix: Option[String],
+    local: String,
+    isAttribute: Boolean
+  ): Option[String] =
+    XmlNamespace.wellKnown(prefix, local, isAttribute).orElse(noneIfEmpty(uri))
+
+  private def fromQName(qName: QName): XmlName = fromQName(qName, isAttribute = false)
 
   private def noneIfEmpty(string: String): Option[String] =
     Option.when(string.nonEmpty)(string)
@@ -87,6 +100,6 @@ object XmlParserStAX:
   // Note: this takes care of the namespaces too - `Namespace` is derived from `Attribute`,
   // and `NamespaceImpl` handles the `xmlns:` prefix.
   private def fromAttribute(attribute: Attribute): (XmlName, String) = (
-    fromQName(attribute.getName),
+    fromQName(attribute.getName, isAttribute = true),
     attribute.getValue
   )

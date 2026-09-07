@@ -19,12 +19,21 @@ package org.podval.xml
   The namespace name for an unprefixed attribute name always has no value.
 */
 object XmlNamespace:
-  //  val namespace: Namespace = Namespace(uri = "http://www.w3.org/XML/1998/namespace", prefix = "xml")
+  val xml: String = "http://www.w3.org/XML/1998/namespace"
+
+  val xmlns: String = "http://www.w3.org/2000/xmlns/"
 
   val xhtml: String = "http://www.w3.org/1999/xhtml"
 
-  val xinclude = "http://www.w3.org/2001/XInclude" // prefix = "xi")
+  val xinclude: String = "http://www.w3.org/2001/XInclude"
 
-  val xlink = "http://www.w3.org/1999/xlink" // prefix = "xlink")
+  val xlink: String = "http://www.w3.org/1999/xlink"
+
+  def wellKnown(prefix: Option[String], local: String, isAttribute: Boolean): Option[String] =
+    prefix match
+      case Some("xml") => Some(xml)
+      case Some("xmlns") => Some(xmlns)
+      case None if isAttribute && local == "xmlns" => Some(xmlns)
+      case _ => None
 
 

@@ -25,7 +25,7 @@ import java.net.URL
 // So, I need to process XIncludes myself instead of relying on the industry-standard Xerces!
 // What a nightmare...
 object XmlXInclude:
-  val NamespaceUri: String = "http://www.w3.org/2001/XInclude"
+  val NamespaceUri: String = XmlNamespace.xinclude
 
   def isInclude(element: Xml.Element): Boolean =
     element.localName == "include" &&
