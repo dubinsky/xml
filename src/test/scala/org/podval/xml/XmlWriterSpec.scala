@@ -52,3 +52,32 @@ final class XmlWriterSpec extends AnyFunSuite:
     val dumped: String = render(xml)
     assert(dumped.contains("<![CDATA[b<c]]>"), dumped)
   }
+
+  test("comment is written as a comment") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
+    val dumped: String = render(xml)
+    assert(dumped.contains("<!--c-->"), dumped)
+    assert(dumped.contains("a<!--c-->b") || dumped.contains("a<!--c--> b"), dumped)
+  }
+
+  test("processing instruction is written as a PI") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<?pi d?>b</p>").toOption.get
+    val dumped: String = render(xml)
+    assert(dumped.contains("<?pi d?>"), dumped)
+  }
+
+  test("parseXml round-trip keeps comments and processing instructions") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c--><?pi d?>b</p>").toOption.get
+    val dumped: String = render(xml)
+    val round: Xml.Element = XmlParser.parseXml(dumped).toOption.get
+    assert(round.getChildren.flatMap(_.asComment) == Seq("c"), dumped)
+    assert(round.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")), dumped)
+    assert(round.getChildren.flatMap(_.asText) == Seq("a", "b"), dumped)
+  }
+
+  test("comment and PI inside preformat") {
+    val xml: Xml.Element = XmlParser.parseXml("<pre>a<!--c--><?pi d?>b</pre>").toOption.get
+    val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(xml)
+    assert(dumped.contains("<!--c-->"), dumped)
+    assert(dumped.contains("<?pi d?>"), dumped)
+  }

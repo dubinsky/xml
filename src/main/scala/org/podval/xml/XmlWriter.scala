@@ -196,6 +196,10 @@ object XmlWriter:
         // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
         if canBreakRight && dialect.break.contains(name) then result + Doc.hardLine else result
     .orElse(node.asCData.map(value => Doc.text(cdataMarkup(value))))
+    .orElse(node.asComment.map(value => Doc.text(commentMarkup(value))))
+    .orElse(node.asProcessingInstruction.map((target, data) =>
+      Doc.text(processingInstructionMarkup(target, data))
+    ))
     .orElse(node.asAtom.map(text => Doc.text(encodeXmlSpecials(text))))
     .getOrElse(Doc.paragraph(node.getText))
 
@@ -217,8 +221,19 @@ object XmlWriter:
     .asElement
     .map(preformatElement)
     .orElse(node.asCData.map(value => Seq(cdataMarkup(value))))
+    .orElse(node.asComment.map(value => Seq(commentMarkup(value))))
+    .orElse(node.asProcessingInstruction.map((target, data) =>
+      Seq(processingInstructionMarkup(target, data))
+    ))
     .orElse(node.asAtom.map(preformat))
     .getOrElse(preformat(node.getText))
+
+  private def commentMarkup(value: String): String =
+    s"<!--$value-->".replace("\n", XmlWriter.hiddenNewline)
+
+  private def processingInstructionMarkup(target: String, data: String): String =
+    val body: String = if data.isEmpty then s"<?$target?>" else s"<?$target $data?>"
+    body.replace("\n", XmlWriter.hiddenNewline)
 
   /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
   private def cdataMarkup(value: String): String =
