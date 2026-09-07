@@ -98,7 +98,6 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(include.localName == "include")
     assert(include.name.prefix.contains("xi"))
     assert(include.name.namespace.contains(XmlNamespace.xinclude.uri))
-    assert(XmlXInclude.isInclude(include))
   }
 
   test("SAX: undeclared prefix is an error") {

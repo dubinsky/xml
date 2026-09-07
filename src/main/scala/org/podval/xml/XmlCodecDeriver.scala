@@ -535,9 +535,8 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
 
   private def isXmlns(name: String): Boolean = name == "xmlns" || name.startsWith("xmlns:")
 
-  /** `xmlns*` is not content. `xml:base` is written by XInclude on included roots. */
-  private def isIgnoredLeftoverAttribute(name: String): Boolean =
-    isXmlns(name) || name == XmlAttribute.XmlBase.name
+  /** `xmlns*` is not content. */
+  private def isIgnoredLeftoverAttribute(name: String): Boolean = isXmlns(name)
 
   private def configValue(modifiers: Seq[Modifier], key: String): Option[String] =
     modifiers.collectFirst { case Modifier.config(`key`, value) => value }
