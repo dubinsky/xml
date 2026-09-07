@@ -2,6 +2,7 @@ package org.podval.xml
 
 import zio.blocks.schema.Schema
 
+// TODO remove this; store XmlAst together with the extras
 /** AST-independent XML tree. Identity fields copy through any `XmlAst`. */
 enum XmlNode derives CanEqual:
   case Element(name: String, attributes: Seq[(String, String)], children: Seq[XmlNode])

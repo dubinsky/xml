@@ -15,9 +15,6 @@ abstract class Ast2Ast[FromElement, ToElement](from: XmlAst[FromElement], to: Xm
     children.foreach: child =>
       from.asElement(child).map(convert)
         .orElse(from.asCData(child).map(to.cdata))
-        .orElse(from.asAtom(child).map(to.text))
+        .orElse(from.asText(child).map(to.text))
         .foreach(node => buf += node)
     buf.result()
-
-object Ast2Ast:
-  object XmlToHtml extends Ast2Ast(Xml, Html)

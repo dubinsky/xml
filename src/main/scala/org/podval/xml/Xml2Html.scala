@@ -20,8 +20,8 @@ I tried to define CSS namespaces like this:
 and use them in CSS rules like this: tei|div, docbook|title.
 
 It seems that in browser DOM all elements are in the HTML5 xhtml namespace
-unless xmlns attribute is present on that element;
-why are the namespace declarations not inherited is not clear.
+unless `xmlns` attribute is present on that element;
+why aren't the namespace declarations inherited is not clear.
 
 So, I prefix names that clash with HTML (see Xml2Html.reservedHtmlElements).
 In particular HTML `p` cannot contain blocks; TEI `p` can, so it becomes `tei-p`.

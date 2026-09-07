@@ -24,11 +24,11 @@ given Html: XmlAst[XML.Element]:
 
     override def asCData: Option[String] = None
 
-    override def asText: Option[String] = node.asAtom
-
-    override def asAtom: Option[String] = node match
+    override def asText: Option[String] = node match
       case XML.Text(content) => Some(content)
       case _ => None
+
+    override def asAtom: Option[String] = node.asText
 
   extension (element: Element)
     override def getName: String = element.tag

@@ -6,6 +6,7 @@ import scala.collection.mutable
 // TODO abstract XmlBuilder, XmlParser, and catalog loading over XmlAst and make ZIO Blocks XML optional too.
 // TODO make XML prologue and epilogue comments/processing instructions
 // round-trippable
+// TODO do not coalesce whitespace
 final class XmlBuilder:
   private val elements: mutable.Stack[Xml.Element] = mutable.Stack.empty
 

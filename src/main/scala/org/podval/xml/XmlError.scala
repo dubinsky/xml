@@ -1,5 +1,6 @@
 package org.podval.xml
 
+// TODO fold into a Throwable?
 final class XmlError(
   val message: String,
   val path: List[String] = Nil

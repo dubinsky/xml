@@ -30,10 +30,7 @@ given Xml: XmlAst[XML.Element]:
       case XML.CData(value) => Some(value)
       case _ => None
 
-    override def asAtom: Option[String] = node match
-      case XML.Text(value) => Some(value)
-      case XML.CData(value) => Some(value)
-      case _ => None
+    override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
     override def getName: String =

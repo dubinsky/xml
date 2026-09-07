@@ -31,6 +31,13 @@ java {
 }
 
 tasks.named('jar', Jar) {
+  // `jar` packs both compileScala output (`build/classes/scala/main`) and
+  // processResources output (`build/resources/main`). Catalog XML belongs only
+  // in resources; compileScala does not emit it. IntelliJ's compiler copies
+  // those same files into the classes dir, and Gradle does not delete unknown
+  // files there, so both copies survive until `clean`. Gradle 7+ then fails
+  // the jar (`duplicatesStrategy` FAIL). Exclude the second copy; they are identical.
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   manifest {
     attributes(
       'Implementation-Title'  : project.name,
