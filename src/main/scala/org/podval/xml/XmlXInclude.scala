@@ -27,22 +27,23 @@ import java.net.URL
 object XmlXInclude:
   val NamespaceUri: String = XmlNamespace.xinclude
 
-  def isInclude(element: Xml.Element): Boolean =
-    element.localName == "include" &&
-      (element.name.namespace.contains(NamespaceUri) || element.name.prefix.contains("xi"))
+  def isInclude[E: XmlAst](element: E): Boolean =
+    val name: XmlExpandedName = element.getExpandedName
+    name.localName == "include" &&
+      (name.namespace.contains(NamespaceUri) || name.prefix.contains("xi"))
 
-  def expand(root: Xml.Element, documentUrl: URL): Either[Throwable, Xml.Element] =
+  def expand[E: XmlAst](root: E, documentUrl: URL): Either[Throwable, E] =
     expand(root, documentUrl, documentUrl, Nil)
 
-  private def expand(
-    element: Xml.Element,
+  private def expand[E](
+    element: E,
     documentUrl: URL,
     initialUrl: URL,
     stack: List[String]
-  ): Either[Throwable, Xml.Element] =
+  )(using ast: XmlAst[E]): Either[Throwable, E] =
     if isInclude(element) then include(element, documentUrl, initialUrl, stack)
     else
-      element.getChildren.foldLeft(Right(Seq.empty): Either[Throwable, Xml.Nodes]): (acc, node) =>
+      element.getChildren.foldLeft(Right(Seq.empty[ast.Node]): Either[Throwable, ast.Nodes]): (acc, node) =>
         for
           nodes <- acc
           more <- node.asElement match
@@ -54,12 +55,12 @@ object XmlXInclude:
         yield nodes ++ more
       .map(element.setChildren)
 
-  private def include(
-    element: Xml.Element,
+  private def include[E: XmlAst](
+    element: E,
     documentUrl: URL,
     initialUrl: URL,
     stack: List[String]
-  ): Either[Throwable, Xml.Element] =
+  ): Either[Throwable, E] =
     element.get(XmlAttribute.Href).map(_.trim).filter(_.nonEmpty) match
       case None => Left(XmlError("XInclude missing href"))
       case Some(href) =>

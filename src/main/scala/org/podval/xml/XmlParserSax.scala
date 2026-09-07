@@ -1,7 +1,5 @@
 package org.podval.xml
 
-import zio.blocks.chunk.Chunk
-import zio.blocks.schema.xml.{Xml, XmlName}
 import org.xml.sax.{Attributes, InputSource, XMLReader}
 import org.xml.sax.ext.LexicalHandler
 import org.xml.sax.helpers.DefaultHandler
@@ -23,25 +21,25 @@ object XmlParserSax:
     catch case _: Exception => ()
     reader
 
-  def parseXml(content: String): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
     parse(xmlReader, content)
 
-  def parseXml(stream: InputStream): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](stream: InputStream): Either[Throwable, E] =
     parse(xmlReader, stream)
 
-  def parseXml(source: InputSource): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](source: InputSource): Either[Throwable, E] =
     parse(xmlReader, source)
 
-  def parse(reader: XMLReader, content: String): Either[Throwable, Xml.Element] =
+  def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, E] =
     parse(reader, InputSource(StringReader(content)))
 
-  def parse(reader: XMLReader, stream: InputStream): Either[Throwable, Xml.Element] =
+  def parse[E: XmlAst](reader: XMLReader, stream: InputStream): Either[Throwable, E] =
     parse(reader, InputSource(stream))
 
-  def parse(reader: XMLReader, characterReader: Reader): Either[Throwable, Xml.Element] =
+  def parse[E: XmlAst](reader: XMLReader, characterReader: Reader): Either[Throwable, E] =
     parse(reader, InputSource(characterReader))
 
-  def parse(reader: XMLReader, source: InputSource): Either[Throwable, Xml.Element] =
+  def parse[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, E] =
     try
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
       // Include xmlns:* in the attribute list so namespace declarations become attributes
@@ -51,8 +49,8 @@ object XmlParserSax:
       reader.setFeature("http://xml.org/sax/features/external-general-entities", false)
       reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
 
-      val builder: XmlBuilder = XmlBuilder()
-      val handler: XmlParserSax = XmlParserSax(builder)
+      val builder: XmlBuilder[E] = XmlBuilder()
+      val handler: XmlParserSax[E] = XmlParserSax(builder)
 
       reader.setContentHandler(handler)
       reader.setErrorHandler(handler)
@@ -61,9 +59,9 @@ object XmlParserSax:
 
       Right(builder.result)
     catch
-      case e: Throwable => Left(e)  
+      case e: Throwable => Left(e)
 
-private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler with LexicalHandler:
+private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandler with LexicalHandler:
   private var inCData: Boolean = false
   private val cdata: StringBuilder = StringBuilder()
 
@@ -77,11 +75,10 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
     qName: String,
     attributes: Attributes
   ): Unit =
-    builder.startElement(Xml.Element(
-      name = fromName(uri, localName, qName, isAttribute = false),
-      children = Chunk.empty,
-      attributes = fromAttributes(attributes)
-    ))
+    builder.startElement(
+      fromName(uri, localName, qName, isAttribute = false),
+      fromAttributes(attributes)
+    )
 
   override def endElement(uri: String, localName: String, qName: String): Unit =
     builder.endElement()
@@ -125,7 +122,7 @@ private final class XmlParserSax(builder: XmlBuilder) extends DefaultHandler wit
   override def comment(characters: Array[Char], start: Int, length: Int): Unit =
     builder.comment(String(characters, start, length))
 
-private def fromName(uri: String, localName: String, qName: String, isAttribute: Boolean): XmlName =
+private def fromName(uri: String, localName: String, qName: String, isAttribute: Boolean): XmlExpandedName =
   val (prefix: Option[String], local: String) =
     if localName.nonEmpty then
       val colon: Int = qName.indexOf(':')
@@ -136,7 +133,7 @@ private def fromName(uri: String, localName: String, qName: String, isAttribute:
       if colon >= 0 then (Some(qName.substring(0, colon)), qName.substring(colon + 1))
       else (None, qName)
 
-  XmlName(
+  XmlExpandedName(
     localName = local,
     prefix = prefix,
     namespace = namespaceOf(uri, prefix, local, isAttribute)
@@ -153,8 +150,8 @@ private def namespaceOf(
     // TODIO is this the best place to drop it?
     .orElse(noneIfEmpty(uri).filterNot(_ == XmlNamespace.xhtml))
 
-private def fromAttributes(attributes: Attributes): Chunk[(XmlName, String)] =
-  Chunk.from((0 until attributes.getLength).map: i =>
+private def fromAttributes(attributes: Attributes): Seq[(XmlExpandedName, String)] =
+  (0 until attributes.getLength).map: i =>
     (
       fromName(
         uri = attributes.getURI(i),
@@ -164,8 +161,6 @@ private def fromAttributes(attributes: Attributes): Chunk[(XmlName, String)] =
       ),
       attributes.getValue(i)
     )
-  )
 
 private def noneIfEmpty(string: String): Option[String] =
   Option.when(string.nonEmpty)(string)
-

@@ -16,5 +16,7 @@ abstract class Ast2Ast[FromElement, ToElement](from: XmlAst[FromElement], to: Xm
       from.asElement(child).map(convert)
         .orElse(from.asCData(child).map(to.cdata))
         .orElse(from.asText(child).map(to.text))
+        .orElse(from.asComment(child).flatMap(to.comment))
+        .orElse(from.asProcessingInstruction(child).flatMap((target, data) => to.processingInstruction(target, data)))
         .foreach(node => buf += node)
     buf.result()

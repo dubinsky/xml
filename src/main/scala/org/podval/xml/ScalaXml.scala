@@ -8,6 +8,11 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
 
   override def cdata(text: String): Node = scala.xml.PCData(text)
 
+  override def comment(text: String): Option[Node] = Some(scala.xml.Comment(text))
+
+  override def processingInstruction(target: String, data: String): Option[Node] =
+    Some(scala.xml.ProcInstr(target, data))
+
   override def element(
     name: XmlExpandedName,
     attributes: Seq[(XmlExpandedName, String)],
@@ -33,6 +38,14 @@ given ScalaXml: XmlAst[scala.xml.Elem]:
 
     override def asCData: Option[String] = node match
       case cdata: scala.xml.PCData => Some(cdata.data)
+      case _ => None
+
+    override def asComment: Option[String] = node match
+      case comment: scala.xml.Comment => Some(comment.commentText)
+      case _ => None
+
+    override def asProcessingInstruction: Option[(String, String)] = node match
+      case pi: scala.xml.ProcInstr => Some((pi.target, pi.proctext))
       case _ => None
 
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)

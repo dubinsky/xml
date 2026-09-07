@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+- `XmlParser` / `XmlBuilder` / `XmlXInclude` are abstract over `XmlAst` (same as `XmlWriter` / `XmlCodec`). Catalog helpers still pin ZIO Blocks XML.
+- `XmlAst` can represent comments and processing instructions; HTML drops them. `Ast2Ast` copies them when both sides have them.
+
 ## [0.0.2] - 2026-09-03
 - cleanup
 - drop duplicate `day` selector in `Selector.xml`

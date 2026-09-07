@@ -20,13 +20,13 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 
 == Packages
 
-`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved); StAX parser (CDATA not preserved); writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
+`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved) and builder, both over any `XmlAst`; StAX parser (CDATA not preserved); writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `Language` catalogs.
 `org.podval.store`:: in-memory named tree and path `resolve`.
 
 == Parse and catalogs
 
-`XmlParser` loads from a string, URL, file, or classpath resource. XInclude is off unless `xinclude = true` (store `xi:include/@href` stays a page ref). Expansion is implemented here, not via Xerces; `xml:base` on included roots is relative to the initial document.
+`XmlParser` loads from a string, URL, file, or classpath resource into any `XmlAst` (`E` from the expected type, or a unique given). If `Html` and `Xml` are both in scope and the expected type does not flow (for example through `match`), write `parse[Xml.Element](...)`. XInclude is off unless `xinclude = true` (store `xi:include/@href` stays a page ref). Expansion is implemented here, not via Xerces; `xml:base` on included roots is relative to the initial document.
 
 A catalog is a named wrapper whose children are one record type: `codec.decodeCatalog(root, name)` or `XmlParser.parseCatalog(resource, name, codec)`.
 

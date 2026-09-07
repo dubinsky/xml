@@ -1,7 +1,5 @@
 package org.podval.xml
 
-import zio.blocks.chunk.Chunk
-import zio.blocks.schema.xml.{Xml, XmlName}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import java.io.{InputStream, Reader, StringReader}
 import javax.xml.namespace.QName
@@ -11,14 +9,14 @@ import javax.xml.stream.events.{Attribute, Characters, Comment, EndElement, Enti
 
 // Note: not used; kept for fun.
 object XmlParserStAX:
-  def parse(content: String): Either[XMLStreamException, Xml.Element] =
+  def parse[E: XmlAst](content: String): Either[XMLStreamException, E] =
     parse(StringReader(content))
 
-  def parse(reader: Reader): Either[XMLStreamException, Xml.Element] =
+  def parse[E: XmlAst](reader: Reader): Either[XMLStreamException, E] =
     try parseEventReader(factory.createXMLEventReader(reader))
     catch case e: XMLStreamException => Left(e)
 
-  def parse(stream: InputStream): Either[XMLStreamException, Xml.Element] =
+  def parse[E: XmlAst](stream: InputStream): Either[XMLStreamException, E] =
     try parseEventReader(factory.createXMLEventReader(stream))
     catch case e: XMLStreamException => Left(e)
 
@@ -32,24 +30,21 @@ object XmlParserStAX:
     result.setProperty(XMLInputFactory.SUPPORT_DTD, false)
     result
 
-  private def parseEventReader(reader: XMLEventReader): Either[XMLStreamException, Xml.Element] =
+  private def parseEventReader[E: XmlAst](reader: XMLEventReader): Either[XMLStreamException, E] =
     try Right(read(reader))
     catch case e: XMLStreamException => Left(e)
     finally reader.close()
 
-  private def read(reader: XMLEventReader): Xml.Element =
-    val builder: XmlBuilder = XmlBuilder()
+  private def read[E: XmlAst](reader: XMLEventReader): E =
+    val builder: XmlBuilder[E] = XmlBuilder()
 
     while reader.hasNext do reader.nextEvent match
       case startElement: StartElement =>
-        builder.startElement(Xml.Element(
-          name = fromQName(startElement.getName),
-          children = Chunk.empty,
-          attributes = Chunk.from(
-            startElement.getAttributes.asScala.map(fromAttribute) ++
-            startElement.getNamespaces.asScala.map(fromAttribute)
-          ),
-        ))
+        builder.startElement(
+          fromQName(startElement.getName),
+          startElement.getAttributes.asScala.map(fromAttribute).toSeq ++
+            startElement.getNamespaces.asScala.map(fromAttribute).toSeq
+        )
 
       case endElement: EndElement =>
         builder.endElement()
@@ -75,10 +70,10 @@ object XmlParserStAX:
 
     builder.result
 
-  private def fromQName(qName: QName, isAttribute: Boolean): XmlName =
+  private def fromQName(qName: QName, isAttribute: Boolean): XmlExpandedName =
     val prefix: Option[String] = noneIfEmpty(qName.getPrefix)
     val local: String = qName.getLocalPart
-    XmlName(
+    XmlExpandedName(
       localName = local,
       prefix = prefix,
       namespace = namespaceOf(qName.getNamespaceURI, prefix, local, isAttribute)
@@ -92,14 +87,14 @@ object XmlParserStAX:
   ): Option[String] =
     XmlNamespace.wellKnown(prefix, local, isAttribute).orElse(noneIfEmpty(uri))
 
-  private def fromQName(qName: QName): XmlName = fromQName(qName, isAttribute = false)
+  private def fromQName(qName: QName): XmlExpandedName = fromQName(qName, isAttribute = false)
 
   private def noneIfEmpty(string: String): Option[String] =
     Option.when(string.nonEmpty)(string)
 
   // Note: this takes care of the namespaces too - `Namespace` is derived from `Attribute`,
   // and `NamespaceImpl` handles the `xmlns:` prefix.
-  private def fromAttribute(attribute: Attribute): (XmlName, String) = (
+  private def fromAttribute(attribute: Attribute): (XmlExpandedName, String) = (
     fromQName(attribute.getName, isAttribute = true),
     attribute.getValue
   )

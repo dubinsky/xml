@@ -6,7 +6,7 @@ import scala.util.Using
 import java.io.File
 import java.net.URL
 
-/** Load XML (and HTML) into the ZIO Blocks XML AST.
+/** Load XML (and HTML) into any [[XmlAst]].
   *
   * XInclude is off by default: `xi:include/@href` stays in the tree. Publisher
   * `store`/`collection` indexes treat it as a child page, not an inlined
@@ -16,26 +16,29 @@ import java.net.URL
   * [[https://issues.apache.org/jira/browse/XERCESJ-1102 XERCESJ-1102]].
   * String parse never expands (there is no base URL). HTML uses TagSoup
   * (`parseHtml`) from a string, URL, or file; it does not expand XInclude.
+  *
+  * `E` is inferred from the expected type or a unique `XmlAst` given. Catalog
+  * helpers pin ZIO Blocks XML internally.
   */
 object XmlParser:
-  def parse(content: String, isXml: Boolean): Either[Throwable, Xml.Element] =
+  def parse[E: XmlAst](content: String, isXml: Boolean): Either[Throwable, E] =
     if isXml then parseXml(content) else parseHtml(content)
 
   /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
-  def parseXml(content: String): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
     XmlParserSax.parseXml(content)
 
-  def parseXml(file: File): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](file: File): Either[Throwable, E] =
     parseXml(file, xinclude = false)
 
-  def parseXml(file: File, xinclude: Boolean): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](file: File, xinclude: Boolean): Either[Throwable, E] =
     parseXml(file.toURI.toURL, xinclude)
 
-  def parseXml(url: URL): Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](url: URL): Either[Throwable, E] =
     parseXml(url, xinclude = false)
 
-  def parseXml(url: URL, xinclude: Boolean): Either[Throwable, Xml.Element] =
-    val loaded: Either[Throwable, Xml.Element] =
+  def parseXml[E: XmlAst](url: URL, xinclude: Boolean): Either[Throwable, E] =
+    val loaded: Either[Throwable, E] =
       Using(url.openStream()): stream =>
         val source: InputSource = InputSource(stream)
         source.setSystemId(url.toString)
@@ -45,21 +48,21 @@ object XmlParser:
 
   /** Classpath resource; `name` is `Class.getResource` style (`/org/.../Foo.xml`
     * is from the classpath root). */
-  def parseResource(name: String): Either[Throwable, Xml.Element] =
+  def parseResource[E: XmlAst](name: String): Either[Throwable, E] =
     parseResource(name, xinclude = false)
 
-  def parseResource(name: String, xinclude: Boolean): Either[Throwable, Xml.Element] =
+  def parseResource[E: XmlAst](name: String, xinclude: Boolean): Either[Throwable, E] =
     val absolute: String = if name.startsWith("/") then name else s"/$name"
     parseResource(XmlParser.getClass, absolute, xinclude)
 
-  def parseResource(loader: Class[?], name: String): Either[Throwable, Xml.Element] =
+  def parseResource[E: XmlAst](loader: Class[?], name: String): Either[Throwable, E] =
     parseResource(loader, name, xinclude = false)
 
-  def parseResource(
+  def parseResource[E: XmlAst](
     loader: Class[?],
     name: String,
     xinclude: Boolean
-  ): Either[Throwable, Xml.Element] =
+  ): Either[Throwable, E] =
     Option(loader.getResource(name)) match
       case None => Left(XmlError(s"Resource not found: $name"))
       case Some(url) => parseXml(url, xinclude)
@@ -69,7 +72,7 @@ object XmlParser:
 
   /** Parse a catalog resource: wrapper `name`, each child decoded with `codec`. */
   def parseCatalog[A](resource: String, name: String, codec: XmlCodec[A]): Either[Throwable, Seq[A]] =
-    parseResource(resource).flatMap: root =>
+    parseResource[Xml.Element](resource).flatMap: root =>
       codec.decodeCatalog(root, name).left.map(e => e: Throwable)
 
   def parseCatalog[A](loader: Class[?], codec: XmlCodec[A]): Either[Throwable, Seq[A]] =
@@ -97,7 +100,7 @@ object XmlParser:
     codec: XmlCodec[A],
     xinclude: Boolean
   ): Either[Throwable, Seq[A]] =
-    parseResource(loader, resource, xinclude).flatMap: root =>
+    parseResource[Xml.Element](loader, resource, xinclude).flatMap: root =>
       codec.decodeCatalog(root, name).left.map(e => e: Throwable)
 
   /** Like [[parseCatalog]] but throws. Catalog file and wrapper name come from
@@ -114,13 +117,13 @@ object XmlParser:
   private def unwrap[A](result: Either[Throwable, Seq[A]]): Seq[A] =
     result.fold(error => throw error, identity)
 
-  def parseHtml(content: String): Either[Throwable, Xml.Element] =
+  def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
     XmlParserSax.parse(reader = HtmlTagSoup.reader, content = content)
 
-  def parseHtml(file: File): Either[Throwable, Xml.Element] =
+  def parseHtml[E: XmlAst](file: File): Either[Throwable, E] =
     parseHtml(file.toURI.toURL)
 
-  def parseHtml(url: URL): Either[Throwable, Xml.Element] =
+  def parseHtml[E: XmlAst](url: URL): Either[Throwable, E] =
     Using(url.openStream()): stream =>
       val source: InputSource = InputSource(stream)
       source.setSystemId(url.toString)

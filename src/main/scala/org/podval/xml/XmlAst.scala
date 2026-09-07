@@ -17,6 +17,12 @@ trait XmlAst[ELEMENT]:
 
   def cdata(text: String): Node
 
+  /** `None` if this AST cannot represent comments (HTML). */
+  def comment(text: String): Option[Node] = None
+
+  /** `None` if this AST cannot represent processing instructions (HTML). */
+  def processingInstruction(target: String, data: String): Option[Node] = None
+
   final def element(elem: XmlElement): Element = element(elem.name)
 
   final def element(name: String): Element = element(name, Seq.empty, Seq.empty)
@@ -95,6 +101,10 @@ trait XmlAst[ELEMENT]:
     def asText: Option[String]
 
     def asCData: Option[String]
+
+    def asComment: Option[String] = None
+
+    def asProcessingInstruction: Option[(String, String)] = None
 
     def isWhitespace: Boolean = node.asText.exists(_.trim.isEmpty)
 

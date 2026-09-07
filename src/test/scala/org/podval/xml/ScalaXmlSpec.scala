@@ -79,3 +79,13 @@ final class ScalaXmlSpec extends AnyFunSuite:
     val round: Xml.Element = ScalaXmlToXml.convert(scalaXml)
     assert(round.getChildren.flatMap(_.asCData) == Seq("a<b"))
   }
+
+  test("Ast2Ast round-trips comments and processing instructions through ScalaXml") {
+    object XmlToScalaXml extends Ast2Ast(Xml, ScalaXml)
+    object ScalaXmlToXml extends Ast2Ast(ScalaXml, Xml)
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c--><?pi d?>b</p>").toOption.get
+    val round: Xml.Element = ScalaXmlToXml.convert(XmlToScalaXml.convert(xml))
+    assert(round.getChildren.flatMap(_.asText) == Seq("a", "b"))
+    assert(round.getChildren.flatMap(_.asComment) == Seq("c"))
+    assert(round.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")))
+  }

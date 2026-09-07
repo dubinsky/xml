@@ -70,7 +70,8 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("missing resource is Left") {
-    val result = XmlParser.parseResource("/org/podval/xml/no-such.xml")
+    val result: Either[Throwable, Xml.Element] =
+      XmlParser.parseResource("/org/podval/xml/no-such.xml")
     assert(result.isLeft)
     assert(result.swap.toOption.get.getMessage.contains("Resource not found"))
   }
@@ -104,7 +105,31 @@ final class XmlParserSpec extends AnyFunSuite:
   test("keeps text on both sides of a comment") {
     val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))
+    assert(xml.getChildren.flatMap(_.asComment) == Seq("c"))
     assert(xml.getChildren.flatMap(_.asElement).isEmpty)
+  }
+
+  test("keeps a processing instruction as a child") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<?pi d?>b</p>").toOption.get
+    assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))
+    assert(xml.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")))
+  }
+
+  test("parseXml into ScalaXml keeps names, text, CDATA, and comments") {
+    val xml: ScalaXml.Element = XmlParser.parseXml("""<p xml:id="x">a<![CDATA[b]]><!--c--></p>""").toOption.get
+    assert(ScalaXml.getName(xml) == "p")
+    assert(ScalaXml.get(xml)("xml:id").contains("x"))
+    assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("a"))
+    assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asCData) == Seq("b"))
+    assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asComment) == Seq("c"))
+  }
+
+  test("parseHtml into Html keeps tags and text and drops comments") {
+    val html: Html.Element = XmlParser.parseHtml("<p>a<!--c--><b>d</b></p>").toOption.get
+    assert(html.getName == "p")
+    assert(html.getChildren.flatMap(_.asComment).isEmpty)
+    assert(html.getChildren.flatMap(_.asElement).map(_.getName) == Seq("b"))
+    assert(html.getText == "ad")
   }
 
   test("parseXml keeps text and CDATA as distinct children") {

@@ -1,17 +1,11 @@
 package org.podval.xml
 
 import org.scalatest.funsuite.AnyFunSuite
-import zio.blocks.chunk.Chunk
-import zio.blocks.schema.xml.{Xml as ZXml, XmlName}
 
 final class XmlBuilderSpec extends AnyFunSuite:
-  private def parse(build: XmlBuilder => Unit): Xml.Element =
-    val builder: XmlBuilder = XmlBuilder()
-    builder.startElement(ZXml.Element(
-      name = XmlName("p"),
-      children = Chunk.empty,
-      attributes = Chunk.empty
-    ))
+  private def parse[E: XmlAst](build: XmlBuilder[E] => Unit): E =
+    val builder: XmlBuilder[E] = XmlBuilder()
+    builder.startElement(summon[XmlAst[E]].element("p"))
     build(builder)
     builder.endElement()
     builder.result
@@ -47,4 +41,20 @@ final class XmlBuilderSpec extends AnyFunSuite:
       b.text("a")
     assert(xml.getChildren.flatMap(_.asText) == Seq("a"))
     assert(xml.getChildren.flatMap(_.asCData).isEmpty)
+  }
+
+  test("ScalaXml consecutive text chunks merge") {
+    val xml: ScalaXml.Element = parse: b =>
+      b.text("a")
+      b.text("b")
+    assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("ab"))
+  }
+
+  test("HTML builder drops comments") {
+    val html: Html.Element = parse: b =>
+      b.text("a")
+      b.comment("c")
+      b.text("b")
+    assert(html.getChildren.flatMap(_.asAtom) == Seq("ab"))
+    assert(html.getChildren.flatMap(_.asComment).isEmpty)
   }

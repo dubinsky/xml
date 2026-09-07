@@ -11,6 +11,11 @@ given Xml: XmlAst[XML.Element]:
 
   override def cdata(text: String): Node = XML.CData(text)
 
+  override def comment(text: String): Option[Node] = Some(XML.Comment(text))
+
+  override def processingInstruction(target: String, data: String): Option[Node] =
+    Some(XML.ProcessingInstruction(target, data))
+
   override def element(
     name: XmlExpandedName,
     attributes: Seq[(XmlExpandedName, String)],
@@ -32,6 +37,14 @@ given Xml: XmlAst[XML.Element]:
 
     override def asCData: Option[String] = node match
       case XML.CData(value) => Some(value)
+      case _ => None
+
+    override def asComment: Option[String] = node match
+      case XML.Comment(value) => Some(value)
+      case _ => None
+
+    override def asProcessingInstruction: Option[(String, String)] = node match
+      case XML.ProcessingInstruction(target, data) => Some((target, data))
       case _ => None
 
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
