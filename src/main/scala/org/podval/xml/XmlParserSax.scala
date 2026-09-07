@@ -4,13 +4,12 @@ import org.xml.sax.{Attributes, InputSource, XMLReader}
 import org.xml.sax.ext.LexicalHandler
 import org.xml.sax.helpers.DefaultHandler
 import javax.xml.parsers.SAXParserFactory
-import java.io.{InputStream, Reader, StringReader}
+import java.io.StringReader
 
 // Note: written by Grok, re-written by me ;)
-object XmlParserSax:
-  /** JDK SAX. `LexicalHandler` reports CDATA; JDK StAX reports it as CHARACTERS
-    * (`isCData=false`), so XML is parsed here, not with StAX. */
-  def xmlReader: XMLReader =
+private[xml] object XmlParserSax:
+  /** JDK SAX. `LexicalHandler` reports CDATA as a distinct node kind. */
+  private def xmlReader: XMLReader =
     val factory: SAXParserFactory = SAXParserFactory.newInstance
     factory.setNamespaceAware(true)
     factory.setValidating(false)
@@ -23,15 +22,6 @@ object XmlParserSax:
     catch case _: Exception => ()
     reader
 
-  def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
-    parseXmlDocument(content).map(_.root)
-
-  def parseXml[E: XmlAst](stream: InputStream): Either[Throwable, E] =
-    parseXmlDocument(InputSource(stream)).map(_.root)
-
-  def parseXml[E: XmlAst](source: InputSource): Either[Throwable, E] =
-    parseXmlDocument(source).map(_.root)
-
   def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
     parseXmlDocument(InputSource(StringReader(content)))
 
@@ -40,12 +30,6 @@ object XmlParserSax:
 
   def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, E] =
     parse(reader, InputSource(StringReader(content)))
-
-  def parse[E: XmlAst](reader: XMLReader, stream: InputStream): Either[Throwable, E] =
-    parse(reader, InputSource(stream))
-
-  def parse[E: XmlAst](reader: XMLReader, characterReader: Reader): Either[Throwable, E] =
-    parse(reader, InputSource(characterReader))
 
   def parse[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, E] =
     parseBuilder(reader, source).map(_.result)
@@ -128,8 +112,8 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
   override def skippedEntity(name: String): Unit =
     builder.text(s"&$name;")
 
-  // Undeclared entities (`&nbsp;` in Markdown HTML-as-XML): JDK StAX reported
-  // EntityReference; SAX fatals. Skip that fatal so skippedEntity can emit `&name;`.
+  // Undeclared entities (`&nbsp;` in Markdown HTML-as-XML): skip the SAX fatal
+  // so skippedEntity can emit `&name;`.
   override def fatalError(e: org.xml.sax.SAXParseException): Unit =
     if Option(e.getMessage).exists(_.contains("was referenced, but not declared")) then ()
     else throw e

@@ -106,28 +106,6 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(result.isLeft)
   }
 
-  test("StAX: prefixed element and xmlns:prefix") {
-    val xml: Xml.Element = XmlParserStAX.parse(
-      s"""<tei:p xmlns:tei="$tei" xml:id="n1">a</tei:p>"""
-    ).toOption.get
-    assert(xml.getName == "tei:p")
-    assert(xml.name.localName == "p")
-    assert(xml.name.prefix.contains("tei"))
-    assert(xml.name.namespace.contains(tei))
-    assert(xml.get("xml:id").contains("n1"))
-    assert(xml.get("xmlns:tei").contains(tei))
-    assert(attrName(xml, "xml:id").namespace.contains(XmlNamespace.xml))
-    assert(attrName(xml, "xmlns:tei").namespace.contains(XmlNamespace.xmlns))
-  }
-
-  test("StAX: default namespace and unprefixed attribute") {
-    val xml: Xml.Element = XmlParserStAX.parse(
-      s"""<p xmlns="$tei" n="1"/>"""
-    ).toOption.get
-    assert(xml.name.namespace.contains(tei))
-    assert(attrName(xml, "n").namespace.isEmpty)
-  }
-
   test("HTML parse drops the XHTML namespace") {
     val xml: Xml.Element = XmlParser.parseHtml("<p id=\"x\">a</p>").toOption.get
     assert(xml.getName == "p")
