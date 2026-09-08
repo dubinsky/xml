@@ -110,7 +110,7 @@ private[xml] trait XmlCodecRecord:
                       case Some(dv) => store(regs, info.offset, info.typeTag, dv)
                       case None => throw XmlError(s"Missing required element: ${info.itemNames.mkString("|")}")
         catch
-          case e: XmlError => throw e.at(info.fieldName)
+          case e: XmlError => throw XmlError(s"${info.fieldName}: ${e.getMessage}")
 
       val leftoverAttrs: Seq[String] =
         attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qName).toSeq
