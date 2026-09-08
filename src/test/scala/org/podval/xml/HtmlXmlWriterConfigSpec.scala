@@ -35,6 +35,16 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
     assert(!script.contains("<script/>"))
   }
 
+  test("void elements self-close by local name") {
+    val xml: Xml.Element = XmlParser.parseXml(
+      """<tei:br xmlns:tei="http://www.tei-c.org/ns/1.0"/>"""
+    ).toOption.get
+    val dumped: String = render(xml)
+    assert(dumped.contains("<tei:br"), dumped)
+    assert(dumped.contains("/>"), dumped)
+    assert(!dumped.contains("</tei:br>"), dumped)
+  }
+
   test("span still preserves a real space before an inner element") {
     val span: Xml.Element = Xml
       .element("span")

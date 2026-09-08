@@ -62,22 +62,23 @@ object XmlWriter:
         chunks.tail.init.map(chunk => fromChunk(chunk, canBreakLeft = true, canBreakRight = true)) :+
         fromChunk(chunks.last, canBreakLeft = true, canBreakRight = canBreakRight1)
 
-    val name: String = element.getName
+    val qName: String = element.getName
+    val local: String = element.localName
 
     if children.isEmpty then
-      Doc.text(s"<$name") + attributes + Doc.lineOrEmpty + (
-        if config.selfClose.contains(name)
+      Doc.text(s"<$qName") + attributes + Doc.lineOrEmpty + (
+        if config.selfClose.contains(local)
         then Doc.text("/>")
-        else Doc.text(s"></$name>")
+        else Doc.text(s"></$qName>")
       )
     else
-      val start: Doc = Doc.text(s"<$name") + attributes + Doc.lineOrEmpty + Doc.text(">")
-      val end: Doc = Doc.text(s"</$name>")
+      val start: Doc = Doc.text(s"<$qName") + attributes + Doc.lineOrEmpty + Doc.text(">")
+      val end: Doc = Doc.text(s"</$qName>")
 
       val stack: Boolean =
         noText &&
-        !config.unStack.contains(name) &&
-        ((children.length >= 2) || ((children.length == 1) && config.stack.contains(name)))
+        !config.unStack.contains(local) &&
+        ((children.length >= 2) || ((children.length == 1) && config.stack.contains(local)))
 
       if stack then
         // If this is clearly a bunch of elements - stack 'em with an indent:
@@ -87,7 +88,7 @@ object XmlWriter:
           Doc.hardLine,
           end
         ))
-      else if config.nest.contains(name) then
+      else if config.nest.contains(local) then
         // If this is forced-nested element - nest it:
         Doc.intercalate(Doc.lineOrSpace, children).tightBracketBy(left = start, right = end, XmlWriter.indent)
       else
@@ -95,7 +96,7 @@ object XmlWriter:
         // character content should stick to the opening and closing tags.
         // unStack (phrasing): a break after the start tag or before the end tag is a visible
         // HTML space, e.g. "(<span>\n  <a>posuk</a>" → "( posuk".
-        val breakAtTags: Boolean = !config.unStack.contains(name)
+        val breakAtTags: Boolean = !config.unStack.contains(local)
         Doc.cat(Seq(
           start,
           if breakAtTags && canBreakLeft && !charactersLeft then Doc.lineOrEmpty else Doc.empty,
@@ -168,7 +169,7 @@ object XmlWriter:
               val cling: Boolean =
                 c.asElement.isEmpty ||
                 c.asElement.nonEmpty && node.asElement.isEmpty && !node.isWhitespace ||
-                node.asElement.isDefined && dialect.cling.contains(node.asElement.get.getName)
+                node.asElement.isDefined && dialect.cling.contains(node.asElement.get.localName)
               if cling
               then chunkify(result, node :: current, tail, flush = false)
               else chunkify(result, current, nodes, flush = true)
@@ -193,13 +194,13 @@ object XmlWriter:
     canBreakRight: Boolean
   ): Doc =
     node.asElement.map: (element: ast.Element) =>
-      val name: String = element.getName
-      if dialect.preformat.contains(name) then
+      val local: String = element.localName
+      if dialect.preformat.contains(local) then
         Doc.text(preformatElement(element).mkString(XmlWriter.hiddenNewline))
       else
         val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
         // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
-        if canBreakRight && dialect.break.contains(name) then result + Doc.hardLine else result
+        if canBreakRight && dialect.break.contains(local) then result + Doc.hardLine else result
     .orElse(node.asCData.map(value => Doc.text(cdataMarkup(value))))
     .orElse(node.asComment.map(value => Doc.text(commentMarkup(value))))
     .orElse(node.asProcessingInstruction.map((target, data) =>

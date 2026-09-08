@@ -3,7 +3,7 @@ package org.podval.xml
 object XmlWriterConfig:
   object Plain extends XmlWriterConfig()
 
-// Describes how to write an XML dialect.
+// Describes how to write an XML dialect. Element-name sets match local names.
 open class XmlWriterConfig(
   val preformat: Set[String] = Set.empty,
   val stack: Set[String] = Set.empty,

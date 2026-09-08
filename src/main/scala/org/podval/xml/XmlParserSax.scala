@@ -32,13 +32,17 @@ private[xml] object XmlParserSax:
     parse(reader, InputSource(StringReader(content)))
 
   def parse[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, E] =
-    parseBuilder(reader, source).map(_.result)
+    parseBuilder(reader, source, dropXhtmlNamespace = true).map(_.result)
 
   private def parseDocument[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlDocument[E]] =
-    parseBuilder(reader, source).map: builder =>
+    parseBuilder(reader, source, dropXhtmlNamespace = false).map: builder =>
       builder.document.copy(declaration = Some(XmlDeclaration()))
 
-  private def parseBuilder[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlBuilder[E]] =
+  private def parseBuilder[E: XmlAst](
+    reader: XMLReader,
+    source: InputSource,
+    dropXhtmlNamespace: Boolean
+  ): Either[Throwable, XmlBuilder[E]] =
     try
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
       // Include xmlns:* in the attribute list so namespace declarations become attributes
@@ -49,7 +53,7 @@ private[xml] object XmlParserSax:
       reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
 
       val builder: XmlBuilder[E] = XmlBuilder()
-      val handler: XmlParserSax[E] = XmlParserSax(builder)
+      val handler: XmlParserSax[E] = XmlParserSax(builder, dropXhtmlNamespace)
 
       reader.setContentHandler(handler)
       reader.setErrorHandler(handler)
@@ -60,7 +64,10 @@ private[xml] object XmlParserSax:
     catch
       case e: Throwable => Left(e)
 
-private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandler with LexicalHandler:
+private final class XmlParserSax[E](
+  builder: XmlBuilder[E],
+  dropXhtmlNamespace: Boolean
+) extends DefaultHandler with LexicalHandler:
   private var inCData: Boolean = false
   private var inDtd: Boolean = false
   private val cdata: StringBuilder = StringBuilder()
@@ -76,8 +83,8 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
     attributes: Attributes
   ): Unit =
     builder.startElement(
-      fromName(uri, localName, qName, isAttribute = false),
-      fromAttributes(attributes)
+      fromName(uri, localName, qName, isAttribute = false, dropXhtmlNamespace),
+      fromAttributes(attributes, dropXhtmlNamespace)
     )
 
   override def endElement(uri: String, localName: String, qName: String): Unit =
@@ -131,7 +138,13 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
   override def comment(characters: Array[Char], start: Int, length: Int): Unit =
     if !inDtd then builder.comment(String(characters, start, length))
 
-private def fromName(uri: String, localName: String, qName: String, isAttribute: Boolean): XmlExpandedName =
+private def fromName(
+  uri: String,
+  localName: String,
+  qName: String,
+  isAttribute: Boolean,
+  dropXhtmlNamespace: Boolean
+): XmlExpandedName =
   val (prefix: Option[String], local: String) =
     val (pre, rest) = qName.span(_ != ':')
     if localName.nonEmpty then
@@ -142,28 +155,34 @@ private def fromName(uri: String, localName: String, qName: String, isAttribute:
   XmlExpandedName(
     localName = local,
     prefix = prefix,
-    namespace = namespaceOf(uri, prefix, local, isAttribute)
+    namespace = namespaceOf(uri, prefix, local, isAttribute, dropXhtmlNamespace)
   )
 
 private def namespaceOf(
   uri: String,
   prefix: Option[String],
   local: String,
-  isAttribute: Boolean
+  isAttribute: Boolean,
+  dropXhtmlNamespace: Boolean
 ): Option[String] =
   XmlNamespace.wellKnown(prefix, local, isAttribute)
-    // TagSoup puts the XHTML namespace on every HTML element; drop it.
-    // TODO is this the best place to drop it?
-    .orElse(noneIfEmpty(uri).filterNot(_ == XmlNamespace.xhtml.uri))
+    .orElse:
+      val fromUri: Option[String] = noneIfEmpty(uri)
+      // TagSoup puts the XHTML namespace on every HTML element; drop it for parseHtml.
+      if dropXhtmlNamespace then fromUri.filterNot(_ == XmlNamespace.xhtml.uri) else fromUri
 
-private def fromAttributes(attributes: Attributes): Seq[(XmlExpandedName, String)] =
+private def fromAttributes(
+  attributes: Attributes,
+  dropXhtmlNamespace: Boolean
+): Seq[(XmlExpandedName, String)] =
   (0 until attributes.getLength).map: i =>
     (
       fromName(
         uri = attributes.getURI(i),
         localName = attributes.getLocalName(i),
         qName = attributes.getQName(i),
-        isAttribute = true
+        isAttribute = true,
+        dropXhtmlNamespace = dropXhtmlNamespace
       ),
       attributes.getValue(i)
     )

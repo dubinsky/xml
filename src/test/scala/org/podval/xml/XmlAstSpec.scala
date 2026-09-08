@@ -3,19 +3,18 @@ package org.podval.xml
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
 
-final class XmlUtilSpec extends AnyFunSuite:
+final class XmlAstSpec extends AnyFunSuite:
   private def parse(input: String): Xml.Element =
     XmlParser.parseXml(input).toOption.get
 
   test("convertElements keeps mixed text and elements") {
-    val converted: Xml.Nodes = XmlUtil.convertElements(parse("<p>a<x/>b</p>").getChildren, _ => None)
+    val converted: Xml.Nodes = parse("<p>a<x/>b</p>").getChildren.convertElements(_ => None)
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
     assert(converted.flatMap(_.asElement).map(_.getName) == Seq("x"))
   }
 
   test("convertElements can expand an element among text") {
-    val converted: Xml.Nodes = XmlUtil.convertElements(
-      parse("<p>a<note/>b</p>").getChildren,
+    val converted: Xml.Nodes = parse("<p>a<note/>b</p>").getChildren.convertElements(
       el => Option.when(el.getName == "note")(Chunk(Xml.element("span"), Xml.element("aside")))
     )
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
@@ -56,4 +55,30 @@ final class XmlUtilSpec extends AnyFunSuite:
     val dumped: String = HtmlXmlWriterConfig.render(html)
     assert(dumped.contains("a&lt;b"), dumped)
     assert(!dumped.contains("a<b"), dumped)
+  }
+
+  test("toId trims and replaces spaces") {
+    assert(XmlAst.toId("  a b  ") == "a-b")
+  }
+
+  test("elementById finds a descendant") {
+    val xml: Xml.Element = parse("""<div><p id="n1">a</p></div>""")
+    assert(xml.elementById("n1").getText == "a")
+  }
+
+  test("requireName and childrenNamed") {
+    val xml: Xml.Element = parse("""<torah><aliyah n="1"/><aliyah n="2"/></torah>""")
+    xml.requireName("torah")
+    xml.requireNoOther(Set("aliyah"))
+    assert(xml.childrenNamed("aliyah").map(_.requireAttr("n")) == Seq("1", "2"))
+    assert(xml.childrenNamed("aliyah").head.positiveInt("n") == 1)
+  }
+
+  test("transform stopAtCode matches local name") {
+    val xml: Xml.Element = parse(
+      """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""
+    )
+    val transformed: Xml.Element = xml.transform(_.rename("y"))
+    assert(transformed.getName == "tei:code")
+    assert(transformed.getChildren.flatMap(_.asElement).map(_.getName) == Seq("x"))
   }

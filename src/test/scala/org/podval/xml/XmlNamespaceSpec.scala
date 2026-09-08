@@ -112,6 +112,12 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.get("id").contains("x"))
   }
 
+  test("parseXml keeps the XHTML namespace") {
+    val xml: Xml.Element = parse(s"""<p xmlns="${XmlNamespace.xhtml.uri}">a</p>""")
+    assert(xml.getName == "p")
+    assert(xml.name.namespace.contains(XmlNamespace.xhtml.uri))
+  }
+
   test("Xml.element parses qualified names and xmlns") {
     val xml: Xml.Element = Xml.element(
       "tei:p",

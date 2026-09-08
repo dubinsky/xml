@@ -1,11 +1,13 @@
 package org.podval.xml
 
+object XmlAst:
+  def toId(text: String): String = text.trim.replace(' ', '-')
+
 // AST that represents XML and provides operations on it;
 // abstracts over the underlying representation:
 // - ZIO Blocks XML
 // - ZIO Blocks HTML
 // - Scala XML
-// - potentially DOM
 trait XmlAst[ELEMENT]:
   final type Element = ELEMENT
 
@@ -173,7 +175,7 @@ trait XmlAst[ELEMENT]:
       stopAtCode: Boolean = true
     ): Element =
       def loop(element: Element): Element =
-        if stopAtCode && element.getName == "code" then element
+        if stopAtCode && element.localName == "code" then element
         else
           val result: Element = transformElement(element)
           result.setChildren(result.getChildren.map(xml => xml.asElement.fold(xml)(loop)))
@@ -186,7 +188,7 @@ trait XmlAst[ELEMENT]:
       def loop(element: Element): Seq[A] =
         val fromElement: Option[A] = gatherElement(element)
         val fromChildren: Seq[A] =
-          if stopAtCode && element.getName == "code" then Seq.empty
+          if stopAtCode && element.localName == "code" then Seq.empty
           else element.flatMapElements(loop)
         fromElement.toSeq ++ fromChildren
       loop(element)
@@ -199,7 +201,7 @@ trait XmlAst[ELEMENT]:
       def loop(element: Element, context: Option[Element]): Seq[A] =
         val fromElement: Option[A] = gatherElement(element, context)
         val fromChildren: Seq[A] =
-          if stopAtCode && element.getName == "code" then Seq.empty
+          if stopAtCode && element.localName == "code" then Seq.empty
           else
             val contextNew: Option[Element] = if isContext(element) then Some(element) else context
             element.flatMapElements(loop(_, contextNew))
@@ -211,6 +213,73 @@ trait XmlAst[ELEMENT]:
       stopAtCode: Boolean = true
     ): Seq[A] =
       element.gatherWithContext(gatherElement, _ => true, stopAtCode)
+
+    def convertText(converter: String => Nodes): Element =
+      element.setChildren(element.getChildren.flatMapNodes(xml =>
+        xml.asText.fold(Seq(xml))(converter)
+      ))
+
+    def copyAttribute(from: String, to: String): Element =
+      element.get(from).fold(element)(element.set(to, _))
+
+    def elementById(id: String): Element = element
+      .gather(el => Option.when(el.getId.contains(id))(el))
+      .head
+
+    def isInclude: Boolean =
+      element.localName == "include" && element.get("href").exists(_.trim.nonEmpty)
+
+    def childrenNamed(name: String): Seq[Element] =
+      element.getChildren.flatMap(_.asElement).filter(_.localName == name)
+
+    def requireName(name: String): Unit =
+      if element.localName != name then throw XmlError(s"Expected '$name', found '${element.getName}'")
+
+    def requireAttr(name: String): String =
+      element.get(name).map(_.trim).filter(_.nonEmpty).getOrElse:
+        throw XmlError(s"Missing attribute '$name'")
+
+    def intOpt(name: String): Option[Int] =
+      element.get(name).map(_.trim).filter(_.nonEmpty).map: raw =>
+        raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
+
+    def requireNoOther(allowed: Set[String]): Unit =
+      val extra: Seq[String] = element.getChildren.flatMap(_.asElement).map(_.localName).filterNot(allowed.contains)
+      if extra.nonEmpty then throw XmlError(s"Unparsed elements: $extra")
+
+    def intAttr(name: String): Int =
+      val raw: String = element.requireAttr(name)
+      raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
+
+    def positiveInt(name: String): Int =
+      val n: Int = element.intAttr(name)
+      if n <= 0 then throw XmlError(s"Non-positive integer: $n")
+      n
+
+    def positiveIntOpt(name: String): Option[Int] =
+      element.intOpt(name).map: n =>
+        if n <= 0 then throw XmlError(s"Non-positive integer: $n")
+        n
+
+    def booleanOpt(name: String): Option[Boolean] =
+      element.get(name).map(_.trim).filter(_.nonEmpty).map:
+        case "true" | "yes" | "1" => true
+        case "false" | "no" | "0" => false
+        case other => throw XmlError(s"Invalid boolean for $name: $other")
+
+  // Node lists
+  // ZIO Blocks `Chunk.flatMap` / `++` take ClassTag from the first inner chunk, so a leading
+  // text node then an element (or the reverse) throws ArrayStoreException. `:+` uses an AnyRef
+  // buffer, as the SAX builder does.
+  extension (nodes: Nodes)
+    def flatMapNodes(f: Node => Nodes): Nodes =
+      nodes.foldLeft(Seq.empty[Node]): (acc, node) =>
+        f(node).foldLeft(acc)(_ :+ _)
+
+    def convertElements(converter: Element => Option[Nodes]): Nodes =
+      nodes.flatMapNodes(child =>
+        child.asElement.flatMap(converter).getOrElse(Seq(child))
+      )
 
   // Attributes
   extension (element: Element)
