@@ -32,16 +32,15 @@ private[xml] object XmlParserSax:
     parse(reader, InputSource(StringReader(content)))
 
   def parse[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, E] =
-    parseBuilder(reader, source, dropXhtmlNamespace = true).map(_.result)
+    parseBuilder(reader, source).map(_.result)
 
   private def parseDocument[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlDocument[E]] =
-    parseBuilder(reader, source, dropXhtmlNamespace = false).map: builder =>
+    parseBuilder(reader, source).map: builder =>
       builder.document.copy(declaration = Some(XmlDeclaration()))
 
   private def parseBuilder[E: XmlAst](
     reader: XMLReader,
-    source: InputSource,
-    dropXhtmlNamespace: Boolean
+    source: InputSource
   ): Either[Throwable, XmlBuilder[E]] =
     try
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
@@ -53,7 +52,7 @@ private[xml] object XmlParserSax:
       reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
 
       val builder: XmlBuilder[E] = XmlBuilder()
-      val handler: XmlParserSax[E] = XmlParserSax(builder, dropXhtmlNamespace)
+      val handler: XmlParserSax[E] = XmlParserSax(builder)
 
       reader.setContentHandler(handler)
       reader.setErrorHandler(handler)
@@ -65,8 +64,7 @@ private[xml] object XmlParserSax:
       case e: Throwable => Left(e)
 
 private final class XmlParserSax[E](
-  builder: XmlBuilder[E],
-  dropXhtmlNamespace: Boolean
+  builder: XmlBuilder[E]
 ) extends DefaultHandler with LexicalHandler:
   private var inCData: Boolean = false
   private var inDtd: Boolean = false
@@ -83,8 +81,8 @@ private final class XmlParserSax[E](
     attributes: Attributes
   ): Unit =
     builder.startElement(
-      fromName(uri, localName, qName, isAttribute = false, dropXhtmlNamespace),
-      fromAttributes(attributes, dropXhtmlNamespace)
+      fromName(uri, localName, qName, isAttribute = false),
+      fromAttributes(attributes)
     )
 
   override def endElement(uri: String, localName: String, qName: String): Unit =
@@ -142,8 +140,7 @@ private def fromName(
   uri: String,
   localName: String,
   qName: String,
-  isAttribute: Boolean,
-  dropXhtmlNamespace: Boolean
+  isAttribute: Boolean
 ): XmlExpandedName =
   val (prefix: Option[String], local: String) =
     val (pre, rest) = qName.span(_ != ':')
@@ -155,26 +152,21 @@ private def fromName(
   XmlExpandedName(
     localName = local,
     prefix = prefix,
-    namespace = namespaceOf(uri, prefix, local, isAttribute, dropXhtmlNamespace)
+    namespace = namespaceOf(uri, prefix, local, isAttribute)
   )
 
 private def namespaceOf(
   uri: String,
   prefix: Option[String],
   local: String,
-  isAttribute: Boolean,
-  dropXhtmlNamespace: Boolean
+  isAttribute: Boolean
 ): Option[String] = XmlNamespace
   .wellKnown(prefix, local, isAttribute)
   .map(_.uri)
-  .orElse:
-    val fromUri: Option[String] = noneIfEmpty(uri)
-    // TagSoup puts the XHTML namespace on every HTML element; drop it for parseHtml.
-    if dropXhtmlNamespace then fromUri.filterNot(_ == XmlNamespace.xhtml.uri) else fromUri
+  .orElse(noneIfEmpty(uri))
 
 private def fromAttributes(
-  attributes: Attributes,
-  dropXhtmlNamespace: Boolean
+  attributes: Attributes
 ): Seq[(XmlExpandedName, String)] =
   (0 until attributes.getLength).map: i =>
     (
@@ -182,8 +174,7 @@ private def fromAttributes(
         uri = attributes.getURI(i),
         localName = attributes.getLocalName(i),
         qName = attributes.getQName(i),
-        isAttribute = true,
-        dropXhtmlNamespace = dropXhtmlNamespace
+        isAttribute = true
       ),
       attributes.getValue(i)
     )
