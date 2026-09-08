@@ -9,8 +9,6 @@ import scala.collection.mutable
 // - does not support namespaces at all;
 // - lower-cases element and attribute names.
 object HtmlTagSoup:
-  private val wrappers: Set[String] = Set(XmlElement.Html, XmlElement.Body).map(_.localName)
-
   def reader: XMLReader =
     val tagSoup: XMLReader = TagSoupParser()
     tagSoup.setFeature(TagSoupParser.rootBogonsFeature, true)
@@ -20,6 +18,8 @@ object HtmlTagSoup:
     val filter: XMLFilter = TagSoupFilter()
     filter.setParent(tagSoup)
     filter
+
+  private val wrappers: Set[String] = Set(XmlElement.Html, XmlElement.Body).map(_.localName)
 
   // TagSoup wraps fragments in <html><body>...</body></html> and puts the XHTML
   // namespace on every element. This filter undoes both.

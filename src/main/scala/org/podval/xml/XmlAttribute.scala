@@ -1,6 +1,5 @@
 package org.podval.xml
 
-// TODO remove aux constructors?
 open class XmlAttribute(val name: XmlName):
   def this(qName: String) = this(XmlName.parse(qName, isAttribute = true))
 
@@ -8,7 +7,8 @@ open class XmlAttribute(val name: XmlName):
   def this(localName: String, namespace: XmlNamespace) = this(XmlName(
     localName = localName,
     namespace = Some(
-      if namespace == XmlNamespace.xmlns && namespace.prefix.contains(localName) then namespace.unprefixed
+      if namespace == XmlNamespace.xmlns && namespace.prefix.contains(localName)
+      then namespace.unprefixed
       else namespace
     )
   ))
@@ -20,38 +20,37 @@ open class XmlAttribute(val name: XmlName):
   def matches(other: XmlName): Boolean = other.is(this)
 
 object XmlAttribute:
-  object Id extends XmlAttribute("id")
-
-  object XmlId extends XmlAttribute("id", XmlNamespace.xml)
-
-  object XmlLang extends XmlAttribute("lang", XmlNamespace.xml)
+  object Alt extends XmlAttribute("alt")
 
   object XmlBase extends XmlAttribute("base", XmlNamespace.xml)
 
-  object Xmlns extends XmlAttribute("xmlns", XmlNamespace.xmlns):
-    def apply(prefix: String): XmlAttribute = XmlAttribute(prefix, XmlNamespace.xmlns)
-
-  object Href extends XmlAttribute("href")
-
-  object Src extends XmlAttribute("src")
-
-  /** The HTML `lang` attribute. */
-  object Lang extends XmlAttribute("lang")
-
-  /** The HTML `class` attribute. */
   object CssClass extends XmlAttribute("class")
 
-  object Title extends XmlAttribute("title")
-
-  object Alt extends XmlAttribute("alt")
-
-  object Target extends XmlAttribute("target")
+  object Id extends XmlAttribute("id")
 
   /** HTML `table@frame` / frameset `frame`; TEI tables use the same local name. */
   object Frame extends XmlAttribute("frame")
 
+  object XmlId extends XmlAttribute("id", XmlNamespace.xml)
+
+  object Href extends XmlAttribute("href")
+
+  object XmlLang extends XmlAttribute("lang", XmlNamespace.xml)
+
+  /** The HTML `lang` attribute. */
+  object Lang extends XmlAttribute("lang")
+
   object Rel extends XmlAttribute("rel")
 
   object Role extends XmlAttribute("role")
+  
+  object Src extends XmlAttribute("src")
+
+  object Target extends XmlAttribute("target")
+
+  object Title extends XmlAttribute("title")
 
   object Type extends XmlAttribute("type")
+  
+  object Xmlns extends XmlAttribute("xmlns", XmlNamespace.xmlns):
+    def apply(prefix: String): XmlAttribute = XmlAttribute(prefix, XmlNamespace.xmlns)

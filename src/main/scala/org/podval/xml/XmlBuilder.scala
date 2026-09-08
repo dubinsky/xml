@@ -15,11 +15,11 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
 
   private val prologBuf: mutable.ArrayBuffer[XmlMisc] = mutable.ArrayBuffer.empty
 
-  private val epilogBuf: mutable.ArrayBuffer[XmlMisc] = mutable.ArrayBuffer.empty
+  private val epilogueBuf: mutable.ArrayBuffer[XmlMisc] = mutable.ArrayBuffer.empty
 
   private var doctypeValue: Option[XmlDoctype] = None
 
-  def done: Boolean = root.nonEmpty
+  private def done: Boolean = root.nonEmpty
 
   def result: E =
     require(done, "XmlBuilder has no document element")
@@ -30,7 +30,7 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
     doctype = doctypeValue,
     prolog = prologBuf.toSeq,
     root = result,
-    epilog = epilogBuf.toSeq
+    epilogue = epilogueBuf.toSeq
   )
 
   def startElement(name: XmlName, attributes: Seq[(XmlName, String)]): Unit =
@@ -63,7 +63,7 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
     else addMisc(XmlMisc.Comment(text))
 
   private def addMisc(misc: XmlMisc): Unit =
-    if root.isEmpty then prologBuf += misc else epilogBuf += misc
+    if root.isEmpty then prologBuf += misc else epilogueBuf += misc
 
   /** Parser character chunks of one text run. Consecutive Text nodes merge;
     * CDATA stays a separate child (a CDATA section is delimited). */
@@ -73,12 +73,10 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
   def cdata(value: String): Unit =
     if value.nonEmpty then addChild(ast.cdata(value))
 
-  private def appendChild(children: mutable.ArrayBuffer[ast.Node], child: ast.Node): Unit =
-    child.asText match
-      case Some(more) =>
-        children.lastOption.flatMap(_.asText) match
-          case Some(prev) =>
-            children.dropRightInPlace(1)
-            children += ast.text(prev + more)
-          case None => children += child
+  private def appendChild(children: mutable.ArrayBuffer[ast.Node], child: ast.Node): Unit = child.asText match
+    case None => children += child
+    case Some(more) => children.lastOption.flatMap(_.asText) match
       case None => children += child
+      case Some(prev) =>
+        children.dropRightInPlace(1)
+        children += ast.text(prev + more)

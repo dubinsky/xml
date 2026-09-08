@@ -23,7 +23,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(xml.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("names"))
   }
 
-  test("parseXmlDocument keeps prolog and epilog comments") {
+  test("parseXmlDocument keeps prolog and epilogue comments") {
     val doc: XmlDocument[Xml.Element] = parseDoc(
       """<?xml version="1.0"?>
         |<!-- prologue -->
@@ -34,17 +34,17 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(doc.declaration.contains(XmlDeclaration()))
     assert(doc.doctype.isEmpty)
     assert(doc.prolog == Seq(XmlMisc.Comment(" prologue ")))
-    assert(doc.epilog == Seq(XmlMisc.Comment(" epilogue ")))
+    assert(doc.epilogue == Seq(XmlMisc.Comment(" epilogue ")))
   }
 
-  test("parseXmlDocument keeps prolog and epilog processing instructions") {
+  test("parseXmlDocument keeps prolog and epilogue processing instructions") {
     val doc: XmlDocument[Xml.Element] = parseDoc(
       """<?xml-stylesheet href="a.css"?>
         |<p/>
         |<?pi d?>""".stripMargin
     )
     assert(doc.prolog == Seq(XmlMisc.ProcessingInstruction("xml-stylesheet", "href=\"a.css\"")))
-    assert(doc.epilog == Seq(XmlMisc.ProcessingInstruction("pi", "d")))
+    assert(doc.epilogue == Seq(XmlMisc.ProcessingInstruction("pi", "d")))
   }
 
   test("parseXmlDocument keeps a doctype") {
@@ -74,7 +74,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(dumped.startsWith("""<?xml version="1.0" encoding="UTF-8"?>"""), dumped)
   }
 
-  test("document round-trip keeps prolog comment, PI, doctype, and epilog") {
+  test("document round-trip keeps prolog comment, PI, doctype, and epilogue") {
     val input: String =
       """<?xml version="1.0" encoding="UTF-8"?>
         |<!DOCTYPE Day>
@@ -91,13 +91,13 @@ final class XmlDocumentSpec extends AnyFunSuite:
       XmlMisc.Comment("\n  file comment\n"),
       XmlMisc.ProcessingInstruction("keep", "me")
     ))
-    assert(doc.epilog == Seq(XmlMisc.Comment(" after ")))
+    assert(doc.epilogue == Seq(XmlMisc.Comment(" after ")))
     val dumped: String = render(doc)
     val round: XmlDocument[Xml.Element] = parseDoc(dumped)
     assert(round.declaration.contains(XmlDeclaration()), dumped)
     assert(round.doctype == doc.doctype, dumped)
     assert(round.prolog == doc.prolog, dumped)
-    assert(round.epilog == doc.epilog, dumped)
+    assert(round.epilogue == doc.epilogue, dumped)
     assert(round.root.isNamed("Day"), dumped)
   }
 

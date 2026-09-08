@@ -54,6 +54,8 @@ object ScalaXml extends XmlAst[Elem]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
+    override def getChildren: Nodes = element.child
+
     override def getName: XmlName = fromScope(
       element.scope, 
       element.prefix, 
@@ -61,23 +63,17 @@ object ScalaXml extends XmlAst[Elem]:
       isAttribute = false
     )
 
-    override def getAttributes: Seq[(XmlName, String)] =
-      element.attributes.iterator.map: attribute =>
-        (
-          fromScope(
-            element.scope,
-            attribute match
-              case prefixed: PrefixedAttribute => prefixed.pre
-              case _ => null,
-            attribute.key,
-            isAttribute = true
-          ),
-          NodeSeq.fromSeq(attribute.value).text
-        )
-      .toSeq
-
-    override def getChildren: Nodes =
-      element.child
+    override def getAttributes: Seq[(XmlName, String)] = element.attributes.toSeq.map(attribute => (
+      fromScope(
+        element.scope,
+        attribute match
+          case prefixed: PrefixedAttribute => prefixed.pre
+          case _ => null,
+        attribute.key,
+        isAttribute = true
+      ),
+      NodeSeq.fromSeq(attribute.value).text
+    ))
 
   private def fromScope(
     scope: NamespaceBinding,
@@ -86,19 +82,16 @@ object ScalaXml extends XmlAst[Elem]:
     isAttribute: Boolean
   ): XmlName =
     val p: Option[String] = Option(prefix).filter(_.nonEmpty)
-    val namespace: Option[String] =
-      XmlNamespace.wellKnown(p, local, isAttribute).map(_.uri).orElse:
-        if isAttribute && p.isEmpty then None
-        else
-          val key: String = p.orNull
-          Option(scope.getURI(key)).filter(uri => uri != null && uri.nonEmpty)
+    val namespace: Option[String] = XmlNamespace.wellKnown(p, local, isAttribute).map(_.uri).orElse:
+      if isAttribute && p.isEmpty
+      then None
+      else Option(scope.getURI(p.orNull)).filter(uri => uri != null && uri.nonEmpty)
     XmlName(local, XmlNamespace.of(p, namespace))
 
   // scala.xml rejects prefix ""; unprefixed names use null.
-  private def toMetaData(attributes: Seq[(XmlName, String)]): MetaData =
-    attributes.foldRight(scala.xml.Null: MetaData):
-      case ((name, value), next) =>
-        Attribute(name.prefix.filter(_.nonEmpty).orNull, name.localName, value, next)
+  private def toMetaData(attributes: Seq[(XmlName, String)]): MetaData = attributes.foldRight(scala.xml.Null: MetaData):
+    case ((name, value), next) =>
+      Attribute(name.prefix.filter(_.nonEmpty).orNull, name.localName, value, next)
 
   // `xmlns*` stay attributes so the writer still emits them. Bindings also come
   // from expanded names so a child without its own xmlns keeps the URI.
@@ -106,14 +99,19 @@ object ScalaXml extends XmlAst[Elem]:
     name: XmlName,
     attributes: Seq[(XmlName, String)]
   ): NamespaceBinding =
-    val declared: NamespaceBinding =
-      attributes.foldLeft(xmlScope):
-        case (scope, (n, uri)) if n.isDefaultXmlns =>
-          NamespaceBinding(null, uri, scope)
-        case (scope, (n, uri)) if n.isXmlnsDeclaration =>
-          NamespaceBinding(n.localName, uri, scope)
-        case (scope, _) => scope
+    val declared: NamespaceBinding = attributes.foldLeft(xmlScope):
+      case (scope, (n, uri)) if n.isDefaultXmlns =>
+        NamespaceBinding(null, uri, scope)
+      case (scope, (n, uri)) if n.isXmlnsDeclaration =>
+        NamespaceBinding(n.localName, uri, scope)
+      case (scope, _) => scope
     (name +: attributes.map(_._1)).foldLeft(declared)(bind)
+
+  private val xmlScope: NamespaceBinding = NamespaceBinding(
+    XmlNamespace.xml.prefix.orNull,
+    XmlNamespace.xml.uri,
+    TopScope
+  )
 
   private def bind(
     scope: NamespaceBinding,
@@ -125,9 +123,3 @@ object ScalaXml extends XmlAst[Elem]:
       val prefix: String = name.prefix.filter(_.nonEmpty).orNull
       if Option(scope.getURI(prefix)).contains(uri) then scope
       else NamespaceBinding(prefix, uri, scope)
-
-  private val xmlScope: NamespaceBinding = NamespaceBinding(
-    XmlNamespace.xml.prefix.orNull,
-    XmlNamespace.xml.uri,
-    TopScope
-  )

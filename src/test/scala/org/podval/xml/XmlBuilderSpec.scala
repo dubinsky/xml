@@ -70,7 +70,7 @@ final class XmlBuilderSpec extends AnyFunSuite:
     builder.comment("after")
     val doc: XmlDocument[Xml.Element] = builder.document
     assert(doc.prolog == Seq(XmlMisc.Comment("before")))
-    assert(doc.epilog == Seq(XmlMisc.Comment("after")))
+    assert(doc.epilogue == Seq(XmlMisc.Comment("after")))
     assert(doc.root.getChildren.flatMap(_.asComment) == Seq("inside"))
   }
 

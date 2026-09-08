@@ -144,8 +144,7 @@ private def fromName(
 ): XmlName =
   val (prefix: Option[String], local: String) =
     val (pre, rest) = qName.span(_ != ':')
-    if localName.nonEmpty then
-      (Option.when(rest.nonEmpty)(pre).filter(_.nonEmpty), localName)
+    if localName.nonEmpty then (Option.when(rest.nonEmpty)(pre).filter(_.nonEmpty), localName)
     else if rest.nonEmpty then (Some(pre), rest.drop(1))
     else (None, qName)
 

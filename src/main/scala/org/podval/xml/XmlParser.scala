@@ -12,7 +12,7 @@ import java.net.URL
   * indexes treat it as a child page, not an inlined document. HTML uses
   * TagSoup (`parseHtml`) from a string, URL, or file.
   *
-  * `parseXml` / `parseResource` return the document element. Prolog/epilog
+  * `parseXml` / `parseResource` return the document element. Prolog/epilogue
   * comments, PIs, and the doctype are on [[XmlDocument]] from
   * `parseXmlDocument` / `parseResourceDocument`.
   *

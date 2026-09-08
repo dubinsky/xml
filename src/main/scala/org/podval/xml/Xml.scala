@@ -51,8 +51,8 @@ given Xml: XmlAst[XML.Element]:
   extension (element: Element)
     override def getName: XmlName = XmlName.fromZio(element.name)
 
-    override def getAttributes: Seq[(XmlName, String)] =
-      element.attributes.map((name, value) => (XmlName.fromZio(name), value))
-
     override def getChildren: Nodes =
       element.children
+
+    override def getAttributes: Seq[(XmlName, String)] =
+      element.attributes.map((name, value) => (XmlName.fromZio(name), value))
