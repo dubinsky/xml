@@ -74,6 +74,29 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(xml.childrenNamed("aliyah").head.positiveInt("n") == 1)
   }
 
+  test("isInclude requires XInclude namespace or xi prefix") {
+    val withNs: Xml.Element = parse(
+      s"""<xi:include xmlns:xi="${XmlNamespace.xinclude.uri}" href="a.xml"/>"""
+    )
+    assert(withNs.isInclude)
+    val prefixed: Xml.Element = Xml.element("xi:include", Seq("href" -> "a.xml"), Seq.empty)
+    assert(prefixed.isInclude)
+    val bare: Xml.Element = parse("""<include href="a.xml"/>""")
+    assert(!bare.isInclude)
+    val noHref: Xml.Element = parse(
+      s"""<xi:include xmlns:xi="${XmlNamespace.xinclude.uri}"/>"""
+    )
+    assert(!noHref.isInclude)
+  }
+
+  test("withAttribute matches xml:id by URI and local name") {
+    val xml: Xml.Element = parse("""<p xml:id="old" n="1"/>""")
+    val updated: Xml.Element = xml.set("xml:id", "new")
+    assert(updated.get("xml:id").contains("new"))
+    assert(updated.get("n").contains("1"))
+    assert(updated.getExpandedAttributes.count((name, _) => name.localName == "id") == 1)
+  }
+
   test("transform stopAtCode matches local name") {
     val xml: Xml.Element = parse(
       """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""

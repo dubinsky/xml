@@ -5,6 +5,12 @@ import org.typelevel.paiges.Doc
 object XmlWriter:
   private val indent: Int = 2
 
+  private def writeAttributes[Element: XmlAst](element: Element): Seq[(String, String)] =
+    val existing: Seq[(XmlExpandedName, String)] = element.getExpandedAttributes
+    XmlExpandedName.asPairs(
+      XmlExpandedName.xmlnsDeclarations(element.getExpandedName, existing) ++ existing
+    )
+
   val widthDefault: Int = 120
 
   // The only way I found to not let Paiges screw up indentation in the <pre><code>..</code></pre> blocks
@@ -33,17 +39,14 @@ object XmlWriter:
     canBreakLeft: Boolean,
     canBreakRight: Boolean
   )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
-    val attributeValues: Seq[(String, String)] = element.getAttributes
+    val attributeValues: Seq[(String, String)] = writeAttributes(element)
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
       else Doc.lineOrSpace + Doc.intercalate(Doc.lineOrSpace, attributeValues.map((name, value) =>
         Doc.text(s"$name=") + Doc.lineOrEmpty + Doc.text(XmlEncode.quote(value))
       ))
 
-    val nodes: ast.Nodes =
-      atomize(List.empty, element.getChildren.toList)
-//      xml.children(element).toList
-
+    val nodes: ast.Nodes = atomize(List.empty, element.getChildren.toList)
     val chunks: Seq[Seq[ast.Node]] = chunkify(Seq.empty, List.empty, nodes.toList, flush = false)
     val noText: Boolean = chunks.forall(_.forall(_.asAtom.isEmpty))
     val whitespaceLeft: Boolean = nodes.headOption.exists(_.isWhitespace)
@@ -210,7 +213,7 @@ object XmlWriter:
     .getOrElse(Doc.paragraph(node.getText))
 
   private def preformatElement[Element: XmlAst](element: Element): Seq[String] =
-    val attributeValues: Seq[(String, String)] = element.getAttributes
+    val attributeValues: Seq[(String, String)] = writeAttributes(element)
     val attributes: String = if attributeValues.isEmpty then "" else attributeValues
       .map((name, value) => s"$name=${XmlEncode.quote(value)}")
       .mkString(" ", ", ", "")

@@ -34,9 +34,12 @@ object XmlNamespace:
 
   val xlink: XmlNamespace = XmlNamespace("http://www.w3.org/1999/xlink", Some("xlink"))
 
-  // TODO return Option[XmlNamespace]?
-  def wellKnown(prefix: Option[String], local: String, isAttribute: Boolean): Option[String] = prefix match
-    case p if p == xml.prefix => Some(xml.uri)
-    case p if p == xmlns.prefix => Some(xmlns.uri)
-    case None if isAttribute && xmlns.prefix.contains(local) => Some(xmlns.uri)
+  def wellKnown(prefix: Option[String], local: String, isAttribute: Boolean): Option[XmlNamespace] = prefix match
+    case p if p == xml.prefix => Some(xml)
+    case p if p == xmlns.prefix => Some(xmlns)
+    case None if isAttribute && xmlns.prefix.contains(local) => Some(xmlns)
     case _ => None
+
+  def isInclude[E: XmlAst](element: E): Boolean =
+    element.localName == "include" &&
+      (element.getNamespace.contains(xinclude.uri) || element.getPrefix.contains("xi"))

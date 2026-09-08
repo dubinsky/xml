@@ -49,28 +49,20 @@ given Xml: XmlAst[XML.Element]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getExpandedName: XmlExpandedName = fromZio(element.name)
+    override def getExpandedName: XmlExpandedName = XmlExpandedName.fromZio(element.name)
 
     override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
-      element.attributes.map((name, value) => (fromZio(name), value))
+      element.attributes.map((name, value) => (XmlExpandedName.fromZio(name), value))
 
     override def getChildren: Nodes =
       element.children
-
-  private def fromZio(name: XmlName): XmlExpandedName = XmlExpandedName(
-    name.localName,
-    name.prefix,
-    name.namespace
-  )
 
   private def toZio(
     name: XmlExpandedName,
     attributes: Seq[(XmlExpandedName, String)],
     isAttribute: Boolean
-  ): XmlName = XmlName(
-    localName = name.localName,
-    prefix = name.prefix,
+  ): XmlName = name.copy(
     namespace = name.namespace
-      .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute))
-      .orElse(XmlExpandedName.xmlnsUri(name.prefix, XmlExpandedName.asPairs(attributes), isAttribute))
-  )
+      .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute).map(_.uri))
+      .orElse(XmlExpandedName.declaredUri(name.prefix, attributes, isAttribute))
+  ).toZio

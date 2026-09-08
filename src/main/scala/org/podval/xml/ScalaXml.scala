@@ -85,7 +85,7 @@ given ScalaXml: XmlAst[Elem]:
   ): XmlExpandedName =
     val p: Option[String] = Option(prefix).filter(_.nonEmpty)
     val namespace: Option[String] =
-      XmlNamespace.wellKnown(p, local, isAttribute).orElse:
+      XmlNamespace.wellKnown(p, local, isAttribute).map(_.uri).orElse:
         if isAttribute && p.isEmpty then None
         else
           val key: String = p.orNull
@@ -106,9 +106,9 @@ given ScalaXml: XmlAst[Elem]:
   ): NamespaceBinding =
     val declared: NamespaceBinding =
       attributes.foldLeft(xmlScope):
-        case (scope, (n, uri)) if n.prefix.isEmpty && XmlNamespace.xmlns.prefix.contains(n.localName) =>
+        case (scope, (n, uri)) if n.isDefaultXmlns =>
           NamespaceBinding(null, uri, scope)
-        case (scope, (n, uri)) if n.prefix == XmlNamespace.xmlns.prefix =>
+        case (scope, (n, uri)) if n.isXmlnsDeclaration =>
           NamespaceBinding(n.localName, uri, scope)
         case (scope, _) => scope
     (name +: attributes.map(_._1)).foldLeft(declared)(bind)
@@ -118,8 +118,7 @@ given ScalaXml: XmlAst[Elem]:
     name: XmlExpandedName
   ): NamespaceBinding = name.namespace match
     case None => scope
-    case Some(_) if name.prefix == XmlNamespace.xmlns.prefix => scope
-    case Some(_) if name.prefix.isEmpty && XmlNamespace.xmlns.prefix.contains(name.localName) => scope
+    case Some(_) if name.isXmlnsDeclaration => scope
     case Some(uri) =>
       val prefix: String = name.prefix.filter(_.nonEmpty).orNull
       if Option(scope.getURI(prefix)).contains(uri) then scope

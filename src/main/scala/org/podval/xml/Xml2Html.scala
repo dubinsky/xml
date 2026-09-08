@@ -11,6 +11,7 @@ object Xml2Html:
 
   private val reservedAttributes: Set[String] = Set("class", "target", "lang", "frame")
 
+  // TODO move into XmlAst
   def renameElement[E: XmlAst](name: String, element: E): E = element
     .addClass(element.localName)
     .rename(name)

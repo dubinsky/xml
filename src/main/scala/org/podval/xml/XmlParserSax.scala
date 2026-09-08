@@ -164,12 +164,13 @@ private def namespaceOf(
   local: String,
   isAttribute: Boolean,
   dropXhtmlNamespace: Boolean
-): Option[String] =
-  XmlNamespace.wellKnown(prefix, local, isAttribute)
-    .orElse:
-      val fromUri: Option[String] = noneIfEmpty(uri)
-      // TagSoup puts the XHTML namespace on every HTML element; drop it for parseHtml.
-      if dropXhtmlNamespace then fromUri.filterNot(_ == XmlNamespace.xhtml.uri) else fromUri
+): Option[String] = XmlNamespace
+  .wellKnown(prefix, local, isAttribute)
+  .map(_.uri)
+  .orElse:
+    val fromUri: Option[String] = noneIfEmpty(uri)
+    // TagSoup puts the XHTML namespace on every HTML element; drop it for parseHtml.
+    if dropXhtmlNamespace then fromUri.filterNot(_ == XmlNamespace.xhtml.uri) else fromUri
 
 private def fromAttributes(
   attributes: Attributes,

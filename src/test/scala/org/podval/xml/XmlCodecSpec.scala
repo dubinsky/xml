@@ -106,6 +106,12 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(encoded.attributes.find(_._1.qualifiedName == "xml:id").get._1.namespace.contains(XmlNamespace.xml.uri))
   }
 
+  test("leftover xmlns is not an error") {
+    val codec: XmlCodec[Box] = XmlCodec.derived(using Box.schema)
+    val decoded: Box = codec.decode(parse("""<Box xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
+    assert(decoded.n == "1")
+  }
+
   test("namespace modifiers encode xmlns and a prefixed name") {
     val codec: XmlCodec[NsBox] = XmlCodec.derived(using NsBox.schema)
     val encoded: Xml.Element = codec.encode(NsBox("1"))

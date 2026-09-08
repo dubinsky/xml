@@ -217,6 +217,29 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(attrName(updated, "n").namespace.isEmpty)
   }
 
+  test("XmlExpandedName xmlns and xml tests") {
+    val xmlnsTei: XmlExpandedName = XmlExpandedName.parse("xmlns:tei", isAttribute = true)
+    assert(xmlnsTei.isXmlnsDeclaration)
+    assert(!xmlnsTei.isDefaultXmlns)
+    val xmlnsDefault: XmlExpandedName = XmlExpandedName.parse("xmlns", isAttribute = true)
+    assert(xmlnsDefault.isDefaultXmlns)
+    assert(xmlnsDefault.isXmlnsDeclaration)
+    val xmlId: XmlExpandedName = XmlExpandedName.parse("xml:id", isAttribute = true)
+    assert(xmlId.isXml)
+    assert(!xmlId.isXmlnsDeclaration)
+    assert(xmlId.sameAs(XmlExpandedName("id", Some("xml"), Some(XmlNamespace.xml.uri))))
+  }
+
+  test("writer emits xmlns for an inherited namespace on a child written alone") {
+    val child: Xml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
+    assert(child.name.namespace.contains(tei))
+    assert(child.get("xmlns").isEmpty)
+    val dumped: String = XmlWriterConfig.Plain.render(child)
+    assert(dumped.contains("xmlns="), dumped)
+    assert(dumped.contains(tei), dumped)
+    assert(dumped.contains("<inner"), dumped)
+  }
+
   test("writer emits xmlns and prefixed names") {
     val xml: Xml.Element = parse(s"""<tei:p xmlns:tei="$tei" xml:id="n1">a</tei:p>""")
     val dumped: String = XmlWriterConfig.Plain.render(xml)

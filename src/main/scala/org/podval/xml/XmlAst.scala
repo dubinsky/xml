@@ -3,6 +3,11 @@ package org.podval.xml
 object XmlAst:
   def toId(text: String): String = text.trim.replace(' ', '-')
 
+  def parseBoolean(raw: String): Boolean = raw.trim.toLowerCase match
+    case "true" | "yes" | "1" => true
+    case "false" | "no" | "0" => false
+    case other => throw XmlError(s"Invalid boolean: $other")
+
 // AST that represents XML and provides operations on it;
 // abstracts over the underlying representation:
 // - ZIO Blocks XML
@@ -44,7 +49,7 @@ trait XmlAst[ELEMENT]:
   final def renamed(element: Element, name: String): Element = this.element(
     XmlExpandedName.parse(
       name,
-      element.getAttributes,
+      XmlExpandedName.asPairs(element.getExpandedAttributes),
       isAttribute = false,
       existing = Some(element.getExpandedName)
     ),
@@ -55,16 +60,22 @@ trait XmlAst[ELEMENT]:
   final def withChildren(element: Element, children: Nodes): Element =
     this.element(element.getExpandedName, element.getExpandedAttributes, children)
 
-  final def withAttributes(element: Element, attributes: Seq[(String, String)]): Element = this.element(
+  final def withExpandedAttributes(
+    element: Element,
+    attributes: Seq[(XmlExpandedName, String)]
+  ): Element = this.element(
     XmlExpandedName.parse(
       element.getName,
-      attributes,
+      XmlExpandedName.asPairs(attributes),
       isAttribute = false,
       existing = Some(element.getExpandedName)
     ),
-    XmlExpandedName.attributes(attributes),
+    attributes,
     element.getChildren
   )
+
+  final def withAttributes(element: Element, attributes: Seq[(String, String)]): Element =
+    withExpandedAttributes(element, XmlExpandedName.attributes(attributes))
 
   final def withAttribute(element: Element, attribute: String, value: String): Element =
     val parsed: XmlExpandedName = XmlExpandedName.parse(
@@ -73,19 +84,10 @@ trait XmlAst[ELEMENT]:
       isAttribute = true
     )
     val other: Seq[(XmlExpandedName, String)] =
-      element.getExpandedAttributes.filterNot((name, _) => name.qualifiedName == parsed.qualifiedName)
+      element.getExpandedAttributes.filterNot((name, _) => name.sameAs(parsed))
     val attrs: Seq[(XmlExpandedName, String)] =
       if value.nonEmpty then other.appended(parsed -> value) else other
-    this.element(
-      XmlExpandedName.parse(
-        element.getName,
-        XmlExpandedName.asPairs(attrs),
-        isAttribute = false,
-        existing = Some(element.getExpandedName)
-      ),
-      attrs,
-      element.getChildren
-    )
+    withExpandedAttributes(element, attrs)
 
   // Concatenate only: text nodes already carry author whitespace. Joining with a space
   // puts a gap before punctuation after inline markup (`</persName>,` → "е ,").
@@ -227,7 +229,7 @@ trait XmlAst[ELEMENT]:
       .head
 
     def isInclude: Boolean =
-      element.localName == "include" && element.get("href").exists(_.trim.nonEmpty)
+      XmlNamespace.isInclude(element)(using this) && element.get("href").exists(_.trim.nonEmpty)
 
     def childrenNamed(name: String): Seq[Element] =
       element.getChildren.flatMap(_.asElement).filter(_.localName == name)
@@ -262,10 +264,7 @@ trait XmlAst[ELEMENT]:
         n
 
     def booleanOpt(name: String): Option[Boolean] =
-      element.get(name).map(_.trim).filter(_.nonEmpty).map:
-        case "true" | "yes" | "1" => true
-        case "false" | "no" | "0" => false
-        case other => throw XmlError(s"Invalid boolean for $name: $other")
+      element.get(name).map(_.trim).filter(_.nonEmpty).map(XmlAst.parseBoolean)
 
   // Node lists
   // ZIO Blocks `Chunk.flatMap` / `++` take ClassTag from the first inner chunk, so a leading

@@ -106,21 +106,21 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
         (name, codec, empty)
       val enumeration: Boolean = caseCodecs.forall(_._3.isDefined)
       val discriminator: Discriminator[A] = binding.discriminator
-      def caseByName(name: String): Option[(String, XmlCodec[A], Option[A])] =
-        caseCodecs.find((caseName, _, _) => namesMatch(name, caseName))
+      def caseByName(name: XmlExpandedName): Option[(String, XmlCodec[A], Option[A])] =
+        caseCodecs.find((caseName, _, _) => name.matches(caseName))
       new XmlCodec[A]:
         override def elementName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
         override def isRecordLike: Boolean = true
         override def isEnumeration: Boolean = enumeration
         override def caseNames: Seq[String] = caseCodecs.map(_._1)
         override def unsafeDecode[E: XmlAst](element: E): A =
-          val name: String = summon[XmlAst[E]].getName(element)
+          val name: XmlExpandedName = element.getExpandedName
           caseByName(name) match
             case Some((_, codec, empty)) =>
               empty.getOrElse(codec.unsafeDecode(element))
             case None if enumeration =>
               unsafeDecodeText(characterData(element))
-            case None => throw XmlError(s"Unknown variant case: $name")
+            case None => throw XmlError(s"Unknown variant case: ${name.qualifiedName}")
         override def encodeNamed[E: XmlAst](name: String, value: A): E =
           val idx: Int = discriminator.discriminate(value)
           val (caseName, codec, _) = caseCodecs(idx)
@@ -165,7 +165,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
             val names: Seq[String] =
               if itemCodec.caseNames.nonEmpty then itemCodec.caseNames else Seq(itemCodec.elementName)
             val matched: Seq[E] =
-              if itemCodec.isRecordLike then children.filter(child => names.exists(namesMatch(ast.getName(child), _)))
+              if itemCodec.isRecordLike then children.filter(child => names.exists(child.getExpandedName.matches))
               else children
             val builder = seqBinding.constructor.newBuilder[A](matched.size)(using itemClassTag)
             matched.foreach: child =>
@@ -266,7 +266,8 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
 
     override def unsafeDecode[E: XmlAst](element: E): A =
       val ast: XmlAst[E] = summon[XmlAst[E]]
-      val attrs: mutable.LinkedHashMap[String, String] = mutable.LinkedHashMap.from(ast.getAttributes(element))
+      val attrs: mutable.LinkedHashMap[XmlExpandedName, String] =
+        mutable.LinkedHashMap.from(element.getExpandedAttributes)
       val nodes: ast.Nodes = ast.getChildren(element)
       val available: mutable.BitSet = mutable.BitSet.empty
       nodes.zipWithIndex.foreach: (node, idx) =>
@@ -276,10 +277,10 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
         try
           info.kind match
             case FieldKind.Tag =>
-              val name: String = ast.getName(element)
-              xmlTag.flatMap(tag => tag.fromName(localName(name)).orElse(tag.fromName(name))) match
+              val name: XmlExpandedName = element.getExpandedName
+              xmlTag.flatMap(tag => tag.fromName(name.localName).orElse(tag.fromName(name.qualifiedName))) match
                 case Some(k) => store(regs, info.offset, info.typeTag, k)
-                case None => throw XmlError(s"Unknown element: $name")
+                case None => throw XmlError(s"Unknown element: ${name.qualifiedName}")
             case FieldKind.Text =>
               val text: String = characterData(element)
               val value: Any =
@@ -289,12 +290,12 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
                 else info.codec.unsafeDecodeText(text)
               store(regs, info.offset, info.typeTag, value)
             case FieldKind.Attribute(attrName) =>
-              attrs.get(attrName).orElse(attrs.collectFirst:
-                case (key, value) if namesMatch(key, attrName) => value
-              ) match
-                case Some(raw) =>
-                  attrs.remove(attrName)
-                  attrs.keys.filter(key => namesMatch(key, attrName)).toSeq.foreach(attrs.remove)
+              val wanted: XmlExpandedName = XmlExpandedName.parse(attrName, isAttribute = true)
+              attrs.collectFirst:
+                case (key, value) if key.sameAs(wanted) || key.matches(attrName) => (key, value)
+              match
+                case Some((_, raw)) =>
+                  attrs.filterInPlace((n, _) => !(n.sameAs(wanted) || n.matches(attrName)))
                   val decoded: Any = info.codec.unsafeDecodeText(raw)
                   store(regs, info.offset, info.typeTag, if info.optional then Some(decoded) else decoded)
                 case None =>
@@ -305,7 +306,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
             case FieldKind.Child =>
               val matched: Seq[(E, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
                 if !available.contains(nodeIdx) then None
-                else node.asElement.filter(el => info.itemNames.exists(namesMatch(ast.getName(el), _))).map(_ -> nodeIdx)
+                else node.asElement.filter(el => info.itemNames.exists(el.getExpandedName.matches)).map(_ -> nodeIdx)
               if info.sequence then
                 val decodedItems: Seq[Any] = matched.map: (el, nodeIdx) =>
                   available -= nodeIdx
@@ -334,10 +335,11 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
         catch
           case e: XmlError => throw e.at(info.fieldName)
 
-      val leftoverAttrs: Seq[String] = attrs.keys.iterator.filterNot(isIgnoredLeftoverAttribute).toSeq
+      val leftoverAttrs: Seq[String] =
+        attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qualifiedName).toSeq
       if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
       val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
-        if available.contains(nodeIdx) then node.asElement.map(ast.getName) else None
+        if available.contains(nodeIdx) then node.asElement.map(_.localName) else None
       if leftoverElements.nonEmpty then throw XmlError(s"Unparsed elements: ${leftoverElements.mkString(", ")}")
       val leftoverText: Boolean = nodes.zipWithIndex.exists: (node, nodeIdx) =>
         !available.contains(nodeIdx) &&
@@ -351,7 +353,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
       val ast: XmlAst[E] = summon[XmlAst[E]]
       val regs: Registers = Registers(deconstructor.usedRegisters)
       deconstructor.deconstruct(regs, 0, value)
-      val attributes: mutable.ArrayBuffer[(String, String)] = mutable.ArrayBuffer.empty
+      val attributes: mutable.ArrayBuffer[(XmlExpandedName, String)] = mutable.ArrayBuffer.empty
       val children: mutable.ArrayBuffer[ast.Node] = mutable.ArrayBuffer.empty
       fieldInfos.foreach: info =>
         info.kind match
@@ -367,7 +369,8 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
             val raw: Option[String] =
               if info.optional then loaded.asInstanceOf[Option[Any]].map(info.codec.encodeText)
               else Some(info.codec.encodeText(loaded))
-            raw.foreach(value => attributes += attrName -> value)
+            raw.foreach: value =>
+              attributes += XmlExpandedName.parse(attrName, isAttribute = true) -> value
           case FieldKind.Child =>
             val loaded: Any = load(regs, info.offset, info.typeTag)
             def appendItem(item: Any): Unit =
@@ -386,14 +389,24 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
             else if info.optional then
               loaded.asInstanceOf[Option[Any]].foreach(appendItem)
             else appendItem(loaded)
-      val nsAttrs: Seq[(String, String)] = namespace match
-        case Some((uri, prefix)) if prefix.nonEmpty => Seq(s"xmlns:$prefix" -> uri)
-        case Some((uri, _)) => Seq("xmlns" -> uri)
+      val nsAttrs: Seq[(XmlExpandedName, String)] = namespace match
+        case Some((uri, prefix)) if prefix.nonEmpty => Seq(XmlExpandedName.xmlnsAttribute(Some(prefix), uri))
+        case Some((uri, _)) => Seq(XmlExpandedName.xmlnsAttribute(None, uri))
         case None => Seq.empty
-      val qualified: String = namespace match
-        case Some((_, prefix)) if prefix.nonEmpty && !name.contains(':') => s"$prefix:$name"
-        case _ => name
-      ast.element(qualified, nsAttrs ++ attributes.toSeq, children.toSeq)
+      val parsedName: XmlExpandedName = XmlExpandedName.parseQualified(name)
+      val expandedName: XmlExpandedName = namespace match
+        case Some((uri, prefix)) if prefix.nonEmpty && parsedName.prefix.isEmpty =>
+          XmlExpandedName(parsedName.localName, Some(prefix), Some(uri))
+        case Some((uri, _)) if parsedName.prefix.isEmpty =>
+          XmlExpandedName(parsedName.localName, None, Some(uri))
+        case Some((uri, _)) => parsedName.copy(namespace = Some(uri))
+        case None =>
+          XmlExpandedName.parse(
+            name,
+            XmlExpandedName.asPairs(nsAttrs ++ attributes.toSeq),
+            isAttribute = false
+          )
+      ast.element(expandedName, nsAttrs ++ attributes.toSeq, children.toSeq)
 
   private def fieldInfo[F[_, _], A](recordTypeId: TypeId[A], field: Term[F, A, ?], offset: RegisterOffset)(using
     F: HasBinding[F],
@@ -462,7 +475,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
       case _: PrimitiveType.Boolean =>
         textCodec[Boolean](
           "boolean",
-          parseBoolean,
+          XmlAst.parseBoolean,
           value => if value then "true" else "false"
         ).asInstanceOf[XmlCodec[A]]
       case _: PrimitiveType.Byte => textCodec("byte", _.toByte, _.toString)
@@ -509,25 +522,9 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
     override def unsafeDecode[E: XmlAst](element: E): A = throw XmlError(s"$what is not supported")
     override def encodeNamed[E: XmlAst](name: String, value: A): E = throw XmlError(s"$what is not supported")
 
-  private def parseBoolean(text: String): Boolean = text.trim.toLowerCase match
-    case "true" | "yes" | "1" => true
-    case "false" | "no" | "0" => false
-    case other => throw XmlError(s"Invalid boolean: $other")
-
   private def characterData[E: XmlAst](element: E): String =
     val ast: XmlAst[E] = summon[XmlAst[E]]
     ast.getChildren(element).flatMap(node => ast.asAtom(node)).mkString.trim
-
-  private def namesMatch(actual: String, expected: String): Boolean =
-    actual == expected || localName(actual) == expected || localName(actual) == localName(expected)
-
-  private def localName(name: String): String =
-    name.drop(name.lastIndexOf(':') + 1)
-
-  private def isXmlns(name: String): Boolean = name == "xmlns" || name.startsWith("xmlns:")
-
-  /** `xmlns*` is not content. */
-  private def isIgnoredLeftoverAttribute(name: String): Boolean = isXmlns(name)
 
   private def configValue(modifiers: Seq[Modifier], key: String): Option[String] =
     modifiers.collectFirst { case Modifier.config(`key`, value) => value }
