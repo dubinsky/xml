@@ -81,7 +81,7 @@ final class XmlParserSpec extends AnyFunSuite:
   test("parseXml into ScalaXml keeps names, text, CDATA, and comments") {
     val xml: ScalaXml.Element = XmlParser.parseXml("""<p xml:id="x">a<![CDATA[b]]><!--c--></p>""").toOption.get
     assert(ScalaXml.getName(xml) == "p")
-    assert(ScalaXml.get(xml)("xml:id").contains("x"))
+    assert(ScalaXml.get(xml)(XmlAttribute.XmlId).contains("x"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("a"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asCData) == Seq("b"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asComment) == Seq("c"))

@@ -28,7 +28,7 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
 
   test("void elements self-close; empty non-void elements do not") {
     assert(render(Xml.element("br")).contains("<br/>"))
-    assert(render(Xml.element("img").set("src", "x")).contains("/>"))
+    assert(render(Xml.element("img").set(XmlAttribute.Src, "x")).contains("/>"))
     val script: String = render(Xml.element("script"))
     assert(script.contains("<script>"))
     assert(script.contains("</script>"))

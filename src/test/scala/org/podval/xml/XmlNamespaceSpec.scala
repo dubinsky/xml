@@ -26,8 +26,8 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
-    assert(xml.get("xml:id").contains("n1"))
-    assert(xml.get("xmlns:tei").contains(tei))
+    assert(xml.get(XmlAttribute.XmlId).contains("n1"))
+    assert(xml.get(XmlAttribute.Xmlns("tei")).contains(tei))
     val xmlId: XmlName = attrName(xml, "xml:id")
     assert(xmlId.localName == "id")
     assert(xmlId.prefix.contains("xml"))
@@ -45,7 +45,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.getName == "article")
     assert(xml.name.prefix.isEmpty)
     assert(xml.name.namespace.contains(docbook))
-    assert(xml.get("xmlns").contains(docbook))
+    assert(xml.get(XmlAttribute.Xmlns).contains(docbook))
     val title: Xml.Element = children(xml).head
     assert(title.getName == "title")
     assert(title.name.namespace.contains(docbook))
@@ -110,7 +110,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: Xml.Element = XmlParser.parseHtml("<p id=\"x\">a</p>").toOption.get
     assert(xml.getName == "p")
     assert(xml.name.namespace.isEmpty)
-    assert(xml.get("id").contains("x"))
+    assert(xml.get(XmlAttribute.Id).contains("x"))
   }
 
   test("parseXml keeps the XHTML namespace") {
@@ -147,7 +147,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val renamed: Xml.Element = child.rename("p")
     assert(renamed.getName == "p")
     assert(renamed.name.namespace.contains(tei))
-    val withId: Xml.Element = child.set("xml:id", "n1")
+    val withId: Xml.Element = child.set(XmlAttribute.XmlId, "n1")
     assert(withId.name.namespace.contains(tei))
     assert(withId.get("n").contains("1"))
     assert(attrName(withId, "xml:id").namespace.contains(XmlNamespace.xml.uri))
@@ -184,8 +184,8 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(round.name.localName == "p")
     assert(round.name.prefix.contains("tei"))
     assert(round.name.namespace.contains(tei))
-    assert(round.get("xml:id").contains("n1"))
-    assert(round.get("xmlns:tei").contains(tei))
+    assert(round.get(XmlAttribute.XmlId).contains("n1"))
+    assert(round.get(XmlAttribute.Xmlns("tei")).contains(tei))
     assert(children(round).map(_.getName) == Seq("tei:hi"))
     assert(children(round).head.name.prefix.contains("tei"))
     assert(children(round).head.name.namespace.contains(tei))
@@ -212,7 +212,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("set keeps inherited namespace") {
     val child: Xml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
-    val updated: Xml.Element = child.set("xml:id", "n1")
+    val updated: Xml.Element = child.set(XmlAttribute.XmlId, "n1")
     assert(updated.name.namespace.contains(tei))
     assert(updated.get("n").contains("1"))
     assert(attrName(updated, "n").namespace.isEmpty)
@@ -234,7 +234,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   test("writer emits xmlns for an inherited namespace on a child written alone") {
     val child: Xml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
     assert(child.name.namespace.contains(tei))
-    assert(child.get("xmlns").isEmpty)
+    assert(child.get(XmlAttribute.Xmlns).isEmpty)
     val dumped: String = XmlWriterConfig.Plain.render(child)
     assert(dumped.contains("xmlns="), dumped)
     assert(dumped.contains(tei), dumped)
@@ -257,6 +257,6 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     )
     val round: Xml.Element = parse(XmlWriterConfig.Plain.render(xml).trim)
     assert(round.name.namespace.contains(tei))
-    assert(round.get("xml:id").contains("n1"))
+    assert(round.get(XmlAttribute.XmlId).contains("n1"))
     assert(children(round).head.name.namespace.contains(tei))
   }

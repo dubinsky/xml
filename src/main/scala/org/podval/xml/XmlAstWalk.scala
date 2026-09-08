@@ -63,7 +63,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
 
     def isInclude: Boolean =
       XmlNamespace.isInclude(element.localName, element.getNamespace, element.getPrefix) &&
-        element.get("href").exists(_.trim.nonEmpty)
+        element.get(XmlAttribute.Href).exists(_.trim.nonEmpty)
 
     def childrenNamed(name: String): Seq[Element] =
       element.getChildren.flatMap(_.asElement).filter(_.localName == name)

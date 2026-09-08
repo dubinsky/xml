@@ -14,7 +14,11 @@ object XmlAttribute:
     Some(XmlNamespace.xml.uri)
   ))
 
-  // TODO lang?
+  object XmlLang extends XmlAttribute(XmlExpandedName(
+    "lang",
+    XmlNamespace.xml.prefix,
+    Some(XmlNamespace.xml.uri)
+  ))
 
   object XmlBase extends XmlAttribute(XmlExpandedName(
     "base",
@@ -36,5 +40,22 @@ object XmlAttribute:
 
   object Href extends XmlAttribute("href")
 
+  object Src extends XmlAttribute("src")
+
+  /** The HTML `lang` attribute. */
+  object Lang extends XmlAttribute("lang")
+
   /** The HTML `class` attribute. */
   object HtmlClass extends XmlAttribute("class")
+
+  object Title extends XmlAttribute("title")
+
+  object Alt extends XmlAttribute("alt")
+
+  object Target extends XmlAttribute("target")
+
+  object Rel extends XmlAttribute("rel")
+
+  object Role extends XmlAttribute("role")
+
+  object Type extends XmlAttribute("type")

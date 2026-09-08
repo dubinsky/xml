@@ -113,7 +113,7 @@ final class XmlWriterSpec extends AnyFunSuite:
   }
 
   test("attribute encodes &, <, and \"") {
-    val dumped: String = render(Xml.element("p").set("title", "a & b < \"c\""))
+    val dumped: String = render(Xml.element("p").set(XmlAttribute.Title, "a & b < \"c\""))
     assert(dumped.contains("a &amp; b &lt; &quot;c&quot;"), dumped)
   }
 

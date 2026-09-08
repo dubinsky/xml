@@ -24,10 +24,10 @@ final class Xml2HtmlSpec extends AnyFunSuite:
     val html: Xml.Element = Xml2Html("tei").convert(
       parse("""<p xml:id="n1" xml:lang="en" lang="fr" class="x"/>""")
     )
-    assert(html.get("xml:id").contains("n1"))
-    assert(html.get("xml:lang").contains("en"))
+    assert(html.get(XmlAttribute.XmlId).contains("n1"))
+    assert(html.get(XmlAttribute.XmlLang).contains("en"))
     assert(html.get("tei-lang").contains("fr"))
-    assert(html.get("lang").isEmpty)
+    assert(html.get(XmlAttribute.Lang).isEmpty)
     assert(html.get("tei-class").contains("x"))
     assert(html.getClasses.contains("p"))
   }

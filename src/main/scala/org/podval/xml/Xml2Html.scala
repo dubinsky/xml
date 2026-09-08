@@ -9,7 +9,12 @@ object Xml2Html:
   //   too, so it is renamed (`tei-p`). TEI `div` stays `div`.
   private val reservedHtmlElements: Set[String] = Set("head", "body", "title", "p")
 
-  private val reservedAttributes: Set[String] = Set("class", "target", "lang", "frame")
+  private val reservedAttributes: Set[String] = Set(
+    XmlAttribute.HtmlClass.name,
+    XmlAttribute.Target.name,
+    XmlAttribute.Lang.name,
+    "frame"
+  )
 
   // TODO move into XmlAst
   def renameElement[E: XmlAst](name: String, element: E): E = element

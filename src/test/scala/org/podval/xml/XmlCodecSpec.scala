@@ -33,7 +33,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.ref.isEmpty)
     assert(decoded.name == "Moses")
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.get("id").contains("n1"))
+    assert(encoded.get(XmlAttribute.Id).contains("n1"))
     assert(encoded.getText.trim == "Moses")
   }
 
@@ -71,7 +71,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.body.getName == "body")
     assert(decoded.body.getChildren.exists(_.asComment.contains("n")))
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.get("lang").contains("ru"))
+    assert(encoded.get(XmlAttribute.Lang).contains("ru"))
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName) == Seq("body"))
     assert(encoded.getChildren.flatMap(_.asElement).head.getChildren.exists(_.asComment.contains("n")))
     val scalaEl: ScalaXml.Element = codec.encode(decoded)
@@ -104,7 +104,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.id.contains("x"))
     assert(decoded.name == "Ada")
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.get("xml:id").contains("x"))
+    assert(encoded.get(XmlAttribute.XmlId).contains("x"))
     assert(encoded.attributes.find(_._1.qualifiedName == "xml:id").get._1.namespace.contains(XmlNamespace.xml.uri))
   }
 
@@ -121,7 +121,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(encoded.name.localName == "NsBox")
     assert(encoded.name.prefix.contains("ex"))
     assert(encoded.name.namespace.contains("http://example.com/ns"))
-    assert(encoded.get("xmlns:ex").contains("http://example.com/ns"))
+    assert(encoded.get(XmlAttribute.Xmlns("ex")).contains("http://example.com/ns"))
     assert(encoded.get("n").contains("1"))
     val decoded: NsBox = codec.decode(parse("""<ex:NsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
     assert(decoded.n == "1")

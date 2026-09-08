@@ -64,7 +64,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
     val xml: Xml.Element = XmlParser.parseXml("""<p xml:id="x"><q>a</q>b</p>""").toOption.get
     val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.getName == "p")
-    assert(round.get("xml:id").contains("x"))
+    assert(round.get(XmlAttribute.XmlId).contains("x"))
     assert(round.getChildren.flatMap(_.asElement).map(_.getName) == Seq("q"))
     assert(round.getChildren.flatMap(_.asText) == Seq("b"))
   }

@@ -1,6 +1,6 @@
 package org.podval.metadata
 
-import org.podval.xml.{XmlParser, Xml as ZioXml}
+import org.podval.xml.{XmlAttribute, XmlParser, Xml as ZioXml}
 import org.scalatest.funsuite.AnyFunSuite
 
 final class MetadataSpec extends AnyFunSuite:
@@ -28,7 +28,7 @@ final class MetadataSpec extends AnyFunSuite:
 
     val encoded = Name.codec.encode(fromN)(using ZioXml)
     assert(encoded.get("n").contains("English"))
-    assert(encoded.get("lang").contains("en"))
+    assert(encoded.get(XmlAttribute.Lang).contains("en"))
   }
 
   test("Hebrew.numberToString") {

@@ -32,8 +32,8 @@ final class XmlAstSpec extends AnyFunSuite:
   test("to[Html.Element] keeps attributes and nesting") {
     val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[Html.Element]
     assert(html.getName == "div")
-    assert(html.get("xml:id").contains("x"))
-    assert(html.get("class").contains("y"))
+    assert(html.get(XmlAttribute.XmlId).contains("x"))
+    assert(html.get(XmlAttribute.HtmlClass).contains("y"))
     assert(html.getChildren.flatMap(_.asElement).map(_.getName) == Seq("p"))
   }
 
@@ -80,7 +80,7 @@ final class XmlAstSpec extends AnyFunSuite:
       s"""<xi:include xmlns:xi="${XmlNamespace.xinclude.uri}" href="a.xml"/>"""
     )
     assert(withNs.isInclude)
-    val prefixed: Xml.Element = Xml.element("xi:include", Seq("href" -> "a.xml"), Seq.empty)
+    val prefixed: Xml.Element = Xml.element("xi:include", Seq(XmlAttribute.Href.name -> "a.xml"), Seq.empty)
     assert(prefixed.isInclude)
     val bare: Xml.Element = parse("""<include href="a.xml"/>""")
     assert(!bare.isInclude)
@@ -92,8 +92,8 @@ final class XmlAstSpec extends AnyFunSuite:
 
   test("withAttribute matches xml:id by URI and local name") {
     val xml: Xml.Element = parse("""<p xml:id="old" n="1"/>""")
-    val updated: Xml.Element = xml.set("xml:id", "new")
-    assert(updated.get("xml:id").contains("new"))
+    val updated: Xml.Element = xml.set(XmlAttribute.XmlId, "new")
+    assert(updated.get(XmlAttribute.XmlId).contains("new"))
     assert(updated.get("n").contains("1"))
     assert(updated.getExpandedAttributes.count((name, _) => name.localName == "id") == 1)
   }
@@ -113,9 +113,11 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("get(XmlAttribute) matches expanded names") {
-    val xml: Xml.Element = parse("""<p xml:id="n1" id="n2"/>""")
+    val xml: Xml.Element = parse("""<p xml:id="n1" id="n2" xml:lang="en" lang="fr"/>""")
     assert(xml.get(XmlAttribute.XmlId).contains("n1"))
     assert(xml.get(XmlAttribute.Id).contains("n2"))
+    assert(xml.get(XmlAttribute.XmlLang).contains("en"))
+    assert(xml.get(XmlAttribute.Lang).contains("fr"))
     assert(!xml.isElement(XmlElement.A))
     assert(parse("<a/>").isA)
     assert(parse("""<a xmlns="http://docbook.org/ns/docbook"/>""").isA)
