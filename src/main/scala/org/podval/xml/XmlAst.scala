@@ -288,4 +288,4 @@ trait XmlAst[ELEMENT]:
     def getPrefixedClasses(prefix: String): Seq[String] = element
       .getClasses
       .filter(_.startsWith(s"$prefix-"))
-      .map(_.substring(prefix.length + 1))
+      .map(_.drop(prefix.length + 1))

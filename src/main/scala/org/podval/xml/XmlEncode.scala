@@ -1,5 +1,7 @@
 package org.podval.xml
 
+import scala.annotation.tailrec
+
 object XmlEncode:
   /** Encode `&` and `<` in text (and, via [[quote]], `"` in attributes).
     *
@@ -21,46 +23,35 @@ object XmlEncode:
     "\"" + encodeXmlSpecials(value).replace("\"", "&quot;") + "\""
 
   private def encodeAmpersands(string: String): String =
-    val out: StringBuilder = StringBuilder()
-    var i: Int = 0
-    while i < string.length do
-      if string.charAt(i) != '&' then
-        out.append(string.charAt(i))
-        i += 1
+    @tailrec
+    def loop(rest: String, out: StringBuilder): String =
+      val (plain, fromAmp) = rest.span(_ != '&')
+      out.append(plain)
+      if fromAmp.isEmpty then out.toString
       else
-        entityEnd(string, i) match
-          case Some(end) =>
-            out.append(string.substring(i, end))
-            i = end
-          case None =>
-            out.append("&amp;")
-            i += 1
-    out.toString
+        entity(fromAmp) match
+          case Some(ent) => loop(fromAmp.drop(ent.length), out.append(ent))
+          case None => loop(fromAmp.drop(1), out.append("&amp;"))
+    loop(string, StringBuilder())
 
-  /** Index after a well-formed entity that starts at `amp` (`string(amp) == '&'`). */
-  private def entityEnd(string: String, amp: Int): Option[Int] =
-    val start: Int = amp + 1
-    if start >= string.length then None
-    else
-      val afterName: Option[Int] =
-        val c: Char = string.charAt(start)
-        if c == '#' then
-          val i: Int = start + 1
-          if i < string.length && (string.charAt(i) == 'x' || string.charAt(i) == 'X') then
-            val digits: Int = run(string, i + 1, isHex)
-            Option.when(digits > i + 1)(digits)
-          else
-            val digits: Int = run(string, i, _.isDigit)
-            Option.when(digits > i)(digits)
-        else if isNameStart(c) then
-          Some(run(string, start + 1, isNameChar))
-        else None
-      afterName.filter(end => end < string.length && string.charAt(end) == ';').map(_ + 1)
-
-  private def run(string: String, from: Int, pred: Char => Boolean): Int =
-    var i: Int = from
-    while i < string.length && pred(string.charAt(i)) do i += 1
-    i
+  /** Well-formed entity at the start of `fromAmp` (`fromAmp` starts with `&`). */
+  private def entity(fromAmp: String): Option[String] =
+    val afterAmp: String = fromAmp.drop(1)
+    val name: Option[String] =
+      afterAmp.headOption match
+        case Some('#') =>
+          val afterHash: String = afterAmp.drop(1)
+          afterHash.headOption match
+            case Some(x) if x == 'x' || x == 'X' =>
+              val digits: String = afterHash.drop(1).takeWhile(isHex)
+              Option.when(digits.nonEmpty)(s"#$x$digits")
+            case _ =>
+              val digits: String = afterHash.takeWhile(_.isDigit)
+              Option.when(digits.nonEmpty)(s"#$digits")
+        case Some(c) if isNameStart(c) =>
+          Some(afterAmp.takeWhile(isNameChar))
+        case _ => None
+    name.filter(n => afterAmp.drop(n.length).startsWith(";")).map(n => s"&$n;")
 
   private def isNameStart(c: Char): Boolean =
     c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'

@@ -19,7 +19,7 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
       .element("p")
       .setChildren(Chunk(Xml.text("("), ref, Xml.text(" 1)")))
     val rendered: String = render(paragraph)
-    val inner: String = rendered.substring(rendered.indexOf("glossary-ref"))
+    val inner: String = rendered.drop(rendered.indexOf("glossary-ref"))
     assert(rendered.contains("(<span"))
     assert(!rendered.contains("( <"))
     assert(inner.contains("</a><span"))

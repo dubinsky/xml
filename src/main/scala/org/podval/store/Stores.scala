@@ -49,9 +49,8 @@ object Stores:
 
   private def splitUrl(urlRaw: String): Seq[String] =
     val url: String = if urlRaw.isEmpty then "/" else urlRaw
-    val startsWithSlash: Boolean = url.startsWith("/")
-    // TODO? require(startsWithSlash)
-    (if startsWithSlash then url.substring(1) else url).split("/").toIndexedSeq.filterNot(_.isBlank)
+    // TODO? require(url.startsWith("/"))
+    url.stripPrefix("/").split("/").toIndexedSeq.filterNot(_.isBlank)
 
   private def splitAndDecodeUrl(url: String): Seq[String] =
     splitUrl(url).map(segment => URLDecoder.decode(segment, StandardCharsets.UTF_8))

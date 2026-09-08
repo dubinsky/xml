@@ -133,14 +133,11 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
 
 private def fromName(uri: String, localName: String, qName: String, isAttribute: Boolean): XmlExpandedName =
   val (prefix: Option[String], local: String) =
+    val (pre, rest) = qName.span(_ != ':')
     if localName.nonEmpty then
-      val colon: Int = qName.indexOf(':')
-      val p: Option[String] = Option.when(colon >= 0)(qName.substring(0, colon)).filter(_.nonEmpty)
-      (p, localName)
-    else
-      val colon: Int = qName.indexOf(':')
-      if colon >= 0 then (Some(qName.substring(0, colon)), qName.substring(colon + 1))
-      else (None, qName)
+      (Option.when(rest.nonEmpty)(pre).filter(_.nonEmpty), localName)
+    else if rest.nonEmpty then (Some(pre), rest.drop(1))
+    else (None, qName)
 
   XmlExpandedName(
     localName = local,

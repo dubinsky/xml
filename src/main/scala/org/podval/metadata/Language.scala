@@ -96,7 +96,7 @@ object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Lang
         val n: Int = digits.indexOf(remainder.head)
         if n >= 0 then addAndDrop(multiplier*(n+1), 1)
 
-      if remainder.length > 1 && remainder.charAt(1) == '׳' then
+      if remainder.drop(1).headOption.contains('׳') then
         val n: Int = units.indexOf(remainder.head)
         if n < 0 then failed = true
         addAndDrop(1000*(n+1), 2)

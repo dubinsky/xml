@@ -19,12 +19,10 @@ object XmlExpandedName:
   given schema: Schema[XmlExpandedName] = Schema.derived
 
   def parseQualified(name: String): XmlExpandedName =
-    val colon: Int = name.indexOf(':')
-    if colon <= 0 then XmlExpandedName(name)
-    else XmlExpandedName(
-      localName = name.substring(colon + 1),
-      prefix = Some(name.substring(0, colon))
-    )
+    name.span(_ != ':') match
+      case (prefix, rest) if prefix.nonEmpty && rest.nonEmpty =>
+        XmlExpandedName(localName = rest.drop(1), prefix = Some(prefix))
+      case _ => XmlExpandedName(name)
 
   def parse(
     name: String,

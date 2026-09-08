@@ -170,6 +170,15 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.map(_.ident) == Seq("ru", "he"))
   }
 
+  test("nested recursive children round-trip") {
+    val codec: XmlCodec[Node] = XmlCodec.derived(using Node.schema)
+    val xml: String = """<node n="root"><node n="a"/><node n="b"><node n="c"/></node></node>"""
+    val decoded: Node = codec.decode(parse(xml)).toOption.get
+    assert(decoded == Node("root", Seq(Node("a"), Node("b", Seq(Node("c"))))))
+    val encoded: Xml.Element = codec.encode(decoded)
+    assert(codec.decode(encoded).toOption.get == decoded)
+  }
+
 final case class Language(
   @Modifier.config(XmlCodec.Attribute, "") ident: String
 ) derives CanEqual
@@ -244,3 +253,11 @@ object Title:
 final case class Book(title: Option[Title]) derives CanEqual
 object Book:
   given schema: Schema[Book] = Schema.derived
+
+@Modifier.config(XmlCodec.Element, "node")
+final case class Node(
+  @Modifier.config(XmlCodec.Attribute, "") n: String,
+  @Modifier.config(XmlCodec.Element, "node") children: Seq[Node] = Seq.empty
+) derives CanEqual
+object Node:
+  given schema: Schema[Node] = Schema.derived

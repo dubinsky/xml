@@ -80,13 +80,16 @@ object Names:
     require(duplicates.isEmpty, s"Duplicate $what: $duplicates")
 
   abstract class Loader[Key <: HasName](resourceNameOverride: Option[String] = None) extends HasValues[Key]:
+    /** Catalog of `Names` for `valuesSeq`. Override to load names from a richer document. */
+    protected def loadNames: Seq[Names] =
+      resourceNameOverride.fold(XmlParser.loadCatalog(this, Names.codec)):
+        XmlParser.loadCatalog(this, _, Names.codec)
+
     // This is lazy to allow correct initialization:
     // Language metadata file references Language instances by name :)
     final lazy val toNames: Map[Key, Names] =
-      val nameses: Seq[Names] = resourceNameOverride.fold(XmlParser.loadCatalog(this, Names.codec)):
-        XmlParser.loadCatalog(this, _, Names.codec)
       HasName.mapByName(
         keys = valuesSeq,
-        metadatas = nameses,
+        metadatas = loadNames,
         hasName = (metadata: Names, name: String) => metadata.hasName(name)
       )

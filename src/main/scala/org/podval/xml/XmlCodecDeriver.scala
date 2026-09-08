@@ -54,12 +54,9 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
         fieldInfos = new Array[FieldInfo](fields.length)
         if isRecursive then recursiveRecordCache.get.put(typeId, fieldInfos)
         var offset: RegisterOffset = 0L
-        var idx: Int = 0
-        while idx < fields.length do
-          val field: Term[F, A, ?] = fields(idx)
+        fields.zipWithIndex.foreach: (field, idx) =>
           fieldInfos(idx) = fieldInfo(typeId, field, offset)
           offset = RegisterOffset.add(registerOffset(field.value), offset)
-          idx += 1
       new RecordCodec[A](
         typeId = typeId,
         modifiers = modifiers,
@@ -252,7 +249,8 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
   ) extends XmlCodec[A]:
     private val recordName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
     private val namespace: Option[(String, String)] = namespaceOf(modifiers)
-    private val tagField: Option[FieldInfo] = fieldInfos.find(_.kind == FieldKind.Tag)
+    // Recursive records cache this array before every slot is filled; look up after derivation.
+    private lazy val tagField: Option[FieldInfo] = fieldInfos.find(_.kind == FieldKind.Tag)
 
     override def elementName: String = xmlTag.flatMap(_.names.headOption).getOrElse(recordName)
     override def caseNames: Seq[String] = xmlTag.fold(Seq.empty)(_.names)
@@ -274,9 +272,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
       nodes.zipWithIndex.foreach: (node, idx) =>
         if node.asElement.isDefined then available += idx
       val regs: Registers = Registers(constructor.usedRegisters)
-      var idx: Int = 0
-      while idx < fieldInfos.length do
-        val info: FieldInfo = fieldInfos(idx)
+      fieldInfos.foreach: info =>
         try
           info.kind match
             case FieldKind.Tag =>
@@ -337,7 +333,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
                       case None => throw XmlError(s"Missing required element: ${info.itemNames.mkString("|")}")
         catch
           case e: XmlError => throw e.at(info.fieldName)
-        idx += 1
 
       val leftoverAttrs: Seq[String] = attrs.keys.iterator.filterNot(isIgnoredLeftoverAttribute).toSeq
       if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
@@ -358,9 +353,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
       deconstructor.deconstruct(regs, 0, value)
       val attributes: mutable.ArrayBuffer[(String, String)] = mutable.ArrayBuffer.empty
       val children: mutable.ArrayBuffer[ast.Node] = mutable.ArrayBuffer.empty
-      var idx: Int = 0
-      while idx < fieldInfos.length do
-        val info: FieldInfo = fieldInfos(idx)
+      fieldInfos.foreach: info =>
         info.kind match
           case FieldKind.Tag => ()
           case FieldKind.Text =>
@@ -393,7 +386,6 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
             else if info.optional then
               loaded.asInstanceOf[Option[Any]].foreach(appendItem)
             else appendItem(loaded)
-        idx += 1
       val nsAttrs: Seq[(String, String)] = namespace match
         case Some((uri, prefix)) if prefix.nonEmpty => Seq(s"xmlns:$prefix" -> uri)
         case Some((uri, _)) => Seq("xmlns" -> uri)
@@ -483,7 +475,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
         textCodec[Char](
           "char",
           text =>
-            if text.length == 1 then text.charAt(0)
+            if text.length == 1 then text.head
             else throw XmlError(s"Expected a single character: $text"),
           _.toString
         ).asInstanceOf[XmlCodec[A]]
@@ -530,8 +522,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec]:
     actual == expected || localName(actual) == expected || localName(actual) == localName(expected)
 
   private def localName(name: String): String =
-    val colon: Int = name.lastIndexOf(':')
-    if colon < 0 then name else name.substring(colon + 1)
+    name.drop(name.lastIndexOf(':') + 1)
 
   private def isXmlns(name: String): Boolean = name == "xmlns" || name.startsWith("xmlns:")
 
