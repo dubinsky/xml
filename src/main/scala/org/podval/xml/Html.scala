@@ -20,8 +20,11 @@ object Html extends XmlAst[XML.Element]:
     children: Nodes
   ): Element = XML.Element.Generic(
     tag = name.qName,
-    attributes = Chunk.from(attributes).map((name, value) => mkAttribute(name.qName, value)),
-    children = Chunk.from(children)
+    children = Chunk.from(children),
+    attributes = Chunk.from(attributes).map((name, value) => XML.Attribute.KeyValue(
+      name.qName,
+      XML.AttributeValue.StringValue(value)
+    ))
   )
 
   extension (node: Node)
@@ -44,6 +47,8 @@ object Html extends XmlAst[XML.Element]:
   extension (element: Element)
     override def getExpandedName: XmlExpandedName = XmlExpandedName.parseQName(element.tag)
 
+    override def getChildren: Nodes = element.children
+
     /**
      * Merge ZIO Blocks multi-valued attrs (`className += …` is an AppendValue)
      * as Dom.render does: last `:=` is the base, then every `+=` in order.
@@ -53,14 +58,7 @@ object Html extends XmlAst[XML.Element]:
       Chunk.from(element.attributes.groupBy(attributeName).view.mapValues(mergeAttribute))
         .sortBy(_._1)
         .map((name, value) => (XmlExpandedName.parse(name, isAttribute = true), value))
-
-    override def getChildren: Nodes = element.children
-
-  private def mkAttribute(name: String, value: String) = XML.Attribute.KeyValue(
-    name,
-    XML.AttributeValue.StringValue(value)
-  )
-
+  
   private def mergeAttribute(attributes: Chunk[XML.Attribute]): String =
     val base: Option[String] = attributes.collect {
       case XML.Attribute.KeyValue(_, value) => attributeValue(value)
