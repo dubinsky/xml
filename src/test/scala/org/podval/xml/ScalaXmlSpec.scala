@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import org.podval.xml.scalaxml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class ScalaXmlSpec extends AnyFunSuite:

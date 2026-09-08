@@ -11,7 +11,8 @@ implementation 'org.podval:org.podval.xml:0.0.2'
 ----
 
 `zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
-`given Html` and `given ScalaXml` need an extra dependency, not pulled in by default:
+HTML and Scala XML ASTs need an extra dependency, not pulled in by default.
+Bring their givens in with `import org.podval.xml.html.given` / `import org.podval.xml.scalaxml.given`:
 
 ----
 implementation "dev.zio:zio-blocks-html_3:0.0.51"
@@ -26,7 +27,7 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 
 == Parse and catalogs
 
-`XmlParser` loads from a string, URL, file, or classpath resource into any `XmlAst` (`E` from the expected type, or a unique given). If `Html` and `Xml` are both in scope and the expected type does not flow (for example through `match`), write `parse[Xml.Element](...)`. `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a file can round-trip through the writer.
+`XmlParser` loads from a string, URL, file, or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `org.podval.xml.html.given` / `org.podval.xml.scalaxml.given`. `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a file can round-trip through the writer.
 
 A catalog is a named wrapper whose children are one record type: `codec.decodeCatalog(root, name)` or `XmlParser.parseCatalog(resource, name, codec)`.
 

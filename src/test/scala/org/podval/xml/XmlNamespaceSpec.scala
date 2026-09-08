@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import org.podval.xml.scalaxml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.schema.xml.XmlName
 

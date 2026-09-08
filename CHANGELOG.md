@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `given Html` and `given ScalaXml` are no longer in `org.podval.xml`. `given Xml` stays the default. Import `org.podval.xml.html.given` / `org.podval.xml.scalaxml.given`. `Html` / `ScalaXml` objects stay in `org.podval.xml`.
 - `XmlExpandedName` owns xmlns/xml tests, ZIO `XmlName` conversion, and writer xmlns fill-in from URIs. `withAttribute` matches URI+local. Codec encode/decode uses expanded names. `isInclude` requires the XInclude namespace or `xi` prefix.
 - `Xml2Html`, `XmlWriterConfig` name sets, and `transform`/`gather` `stopAtCode` match local names. `xml:lang` / `xml:id` are not rewritten.
 - `parseHtml` drops the XHTML namespace; `parseXml` keeps it. `parseXml` still keeps undeclared entities (`&nbsp;`).

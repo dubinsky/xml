@@ -1,5 +1,7 @@
 package org.podval.xml
 
+import org.podval.xml.html.given
+import org.podval.xml.scalaxml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlBuilderSpec extends AnyFunSuite:
