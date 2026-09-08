@@ -151,19 +151,14 @@ private def fromName(
 
   XmlExpandedName(
     localName = local,
-    namespace = XmlNamespace.of(prefix, namespaceOf(uri, prefix, local, isAttribute))
+    namespace = XmlNamespace.of(
+      prefix,
+      XmlNamespace
+        .wellKnown(prefix, local, isAttribute)
+        .map(_.uri)
+        .orElse(noneIfEmpty(uri))
+    )
   )
-
-// TODO unfold
-private def namespaceOf(
-  uri: String,
-  prefix: Option[String],
-  local: String,
-  isAttribute: Boolean
-): Option[String] = XmlNamespace
-  .wellKnown(prefix, local, isAttribute)
-  .map(_.uri)
-  .orElse(noneIfEmpty(uri))
 
 private def fromAttributes(
   attributes: Attributes

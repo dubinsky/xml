@@ -26,7 +26,6 @@ object Xml2Html:
 // Namespace-based styling didn't work: browser DOM elements seem to be
 // in the HTML5 xhtml namespace unless `xmlns` attribute is present
 // on that very element (no inheritance).
-// TODO maybe this should be a method?
 final class Xml2Html(prefix: String):
   private def withPrefix(name: String): String = s"$prefix-$name"
 

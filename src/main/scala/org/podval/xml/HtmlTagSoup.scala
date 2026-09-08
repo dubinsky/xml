@@ -38,16 +38,14 @@ object HtmlTagSoup:
       if !suppressedPrefixes.remove(prefix) then super.endPrefixMapping(prefix)
 
     override def startElement(uri: String, localName: String, qName: String, attributes: Attributes): Unit =
-      if !suppress(localName) then
-        super.startElement(dropXhtml(uri), localName, qName, dropXhtml(attributes))
+      if !suppress(localName) then super.startElement(dropXhtml(uri), localName, qName, dropXhtml(attributes))
 
     override def endElement(uri: String, localName: String, qName: String): Unit =
       if !suppress(localName) then super.endElement(dropXhtml(uri), localName, qName)
 
     private def dropXhtml(attributes: Attributes): Attributes =
       val n: Int = attributes.getLength
-      if (0 until n).forall(i => attributes.getURI(i) != XmlNamespace.xhtml.uri) then attributes
-      else
+      if (0 until n).forall(i => attributes.getURI(i) != XmlNamespace.xhtml.uri) then attributes else
         val copy: AttributesImpl = AttributesImpl()
         (0 until n).foreach: i =>
           copy.addAttribute(
