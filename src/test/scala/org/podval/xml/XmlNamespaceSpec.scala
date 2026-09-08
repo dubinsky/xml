@@ -22,7 +22,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
       s"""<tei:p xmlns:tei="$tei" xml:id="n1">a</tei:p>"""
     )
     assert(xml.qName == "tei:p")
-    assert(xml.localName == "p")
+    assert(xml.localName == XmlElement.P.localName)
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
@@ -47,7 +47,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.name.namespace.contains(docbook))
     assert(xml.get(XmlAttribute.Xmlns).contains(docbook))
     val title: Xml.Element = children(xml).head
-    assert(title.qName == "title")
+    assert(title.isElement(XmlElement.Title))
     assert(title.name.namespace.contains(docbook))
   }
 
@@ -108,14 +108,14 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("HTML parse drops the XHTML namespace") {
     val xml: Xml.Element = XmlParser.parseHtml("<p id=\"x\">a</p>").toOption.get
-    assert(xml.qName == "p")
+    assert(xml.isElement(XmlElement.P))
     assert(xml.name.namespace.isEmpty)
     assert(xml.get(XmlAttribute.Id).contains("x"))
   }
 
   test("parseXml keeps the XHTML namespace") {
     val xml: Xml.Element = parse(s"""<p xmlns="${XmlNamespace.xhtml.uri}">a</p>""")
-    assert(xml.qName == "p")
+    assert(xml.isElement(XmlElement.P))
     assert(xml.name.namespace.contains(XmlNamespace.xhtml.uri))
   }
 
@@ -135,7 +135,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   }
 
   test("Xml.element default xmlns does not apply to unprefixed attributes") {
-    val xml: Xml.Element = Xml.element("p", Seq("xmlns" -> tei, "n" -> "1"), Seq.empty)
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq("xmlns" -> tei, "n" -> "1"), Seq.empty)
     assert(xml.name.namespace.contains(tei))
     assert(attrName(xml, "n").namespace.isEmpty)
     assert(attrName(xml, "xmlns").namespace.contains(XmlNamespace.xmlns.uri))
@@ -145,7 +145,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val child: Xml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
     assert(child.name.namespace.contains(tei))
     val renamed: Xml.Element = child.rename("p")
-    assert(renamed.qName == "p")
+    assert(renamed.isElement(XmlElement.P))
     assert(renamed.name.namespace.contains(tei))
     val withId: Xml.Element = child.set(XmlAttribute.XmlId, "n1")
     assert(withId.name.namespace.contains(tei))

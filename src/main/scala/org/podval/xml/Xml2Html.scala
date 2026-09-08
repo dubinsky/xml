@@ -7,7 +7,12 @@ object Xml2Html:
   //   (`p`, `div`, `ul`/`ol`/`dl`, `table`, `blockquote`, `figure`, headings, …).
   //   TEI `p` may contain those, and footnote/glossary tips copy body nodes that may
   //   too, so it is renamed (`tei-p`). TEI `div` stays `div`.
-  private val reservedHtmlElements: Set[String] = Set("head", "body", "title", "p")
+  private val reservedHtmlElements: Set[String] = Set(
+    XmlElement.Head,
+    XmlElement.Body,
+    XmlElement.Title,
+    XmlElement.P
+  ).map(_.localName)
 
   private val reservedAttributes: Set[String] = Set(
     XmlAttribute.CssClass.qName,

@@ -9,14 +9,14 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
 
   test("span with two element children is not indented (no HTML space inside)") {
     val ref: Xml.Element = Xml
-      .element("span")
+      .element(XmlElement.Span)
       .addClass("glossary-ref")
       .setChildren(Chunk(
-        Xml.element("a").setHref("#posuk").setText("posuk"),
-        Xml.element("span").addClass("glossary-tip").setText("verse")
+        Xml.element(XmlElement.A).setHref("#posuk").setText("posuk"),
+        Xml.element(XmlElement.Span).addClass("glossary-tip").setText("verse")
       ))
     val paragraph: Xml.Element = Xml
-      .element("p")
+      .element(XmlElement.P)
       .setChildren(Chunk(Xml.text("("), ref, Xml.text(" 1)")))
     val rendered: String = render(paragraph)
     val inner: String = rendered.drop(rendered.indexOf("glossary-ref"))
@@ -27,8 +27,8 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
   }
 
   test("void elements self-close; empty non-void elements do not") {
-    assert(render(Xml.element("br")).contains("<br/>"))
-    assert(render(Xml.element("img").set(XmlAttribute.Src, "x")).contains("/>"))
+    assert(render(Xml.element(XmlElement.Br)).contains("<br/>"))
+    assert(render(Xml.element(XmlElement.Img).set(XmlAttribute.Src, "x")).contains("/>"))
     val script: String = render(Xml.element("script"))
     assert(script.contains("<script>"))
     assert(script.contains("</script>"))
@@ -47,8 +47,8 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
 
   test("span still preserves a real space before an inner element") {
     val span: Xml.Element = Xml
-      .element("span")
-      .setChildren(Chunk(Xml.text("foo "), Xml.element("em").setText("bar")))
+      .element(XmlElement.Span)
+      .setChildren(Chunk(Xml.text("foo "), Xml.element(XmlElement.Em).setText("bar")))
     val rendered: String = render(span)
     assert(rendered.contains("foo <em>bar</em>"))
   }

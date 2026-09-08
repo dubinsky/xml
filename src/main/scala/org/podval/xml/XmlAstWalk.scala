@@ -10,7 +10,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       stopAtCode: Boolean = true
     ): Element =
       def loop(element: Element): Element =
-        if stopAtCode && element.localName == "code" then element
+        if stopAtCode && element.localName == XmlElement.Code.localName then element
         else
           val result: Element = transformElement(element)
           result.setChildren(result.getChildren.map(xml => xml.asElement.fold(xml)(loop)))
@@ -23,7 +23,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       def loop(element: Element): Seq[A] =
         val fromElement: Option[A] = gatherElement(element)
         val fromChildren: Seq[A] =
-          if stopAtCode && element.localName == "code" then Seq.empty
+          if stopAtCode && element.localName == XmlElement.Code.localName then Seq.empty
           else element.flatMapElements(loop)
         fromElement.toSeq ++ fromChildren
       loop(element)
@@ -36,7 +36,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       def loop(element: Element, context: Option[Element]): Seq[A] =
         val fromElement: Option[A] = gatherElement(element, context)
         val fromChildren: Seq[A] =
-          if stopAtCode && element.localName == "code" then Seq.empty
+          if stopAtCode && element.localName == XmlElement.Code.localName then Seq.empty
           else
             val contextNew: Option[Element] = if isContext(element) then Some(element) else context
             element.flatMapElements(loop(_, contextNew))

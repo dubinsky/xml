@@ -7,7 +7,7 @@ import org.scalatest.funsuite.AnyFunSuite
 final class XmlBuilderSpec extends AnyFunSuite:
   private def parse[E: XmlAst](build: XmlBuilder[E] => Unit): E =
     val builder: XmlBuilder[E] = XmlBuilder()
-    builder.startElement(summon[XmlAst[E]].element("p"))
+    builder.startElement(summon[XmlAst[E]].element(XmlElement.P))
     build(builder)
     builder.endElement()
     builder.result
@@ -64,7 +64,7 @@ final class XmlBuilderSpec extends AnyFunSuite:
   test("comments before and after the root go on the document") {
     val builder: XmlBuilder[Xml.Element] = XmlBuilder()
     builder.comment("before")
-    builder.startElement(Xml.element("p"))
+    builder.startElement(Xml.element(XmlElement.P))
     builder.comment("inside")
     builder.endElement()
     builder.comment("after")
@@ -94,7 +94,7 @@ final class XmlBuilderSpec extends AnyFunSuite:
   test("HTML document keeps prologue comments that the tree drops") {
     val builder: XmlBuilder[Html.Element] = XmlBuilder()
     builder.comment("c")
-    builder.startElement(Html.element("p"))
+    builder.startElement(Html.element(XmlElement.P))
     builder.endElement()
     assert(builder.document.prolog == Seq(XmlMisc.Comment("c")))
     assert(builder.result.getChildren.flatMap(_.asComment).isEmpty)

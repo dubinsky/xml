@@ -7,7 +7,7 @@ final class XmlWriterSpec extends AnyFunSuite:
     XmlWriterConfig.Plain.render(element)
 
   test("CDATA is written as a CDATA section") {
-    val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a<b")))
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
     val dumped: String = render(xml)
     assert(dumped.contains("<![CDATA[a<b]]>"), dumped)
     assert(!dumped.contains("a&lt;b"), dumped)
@@ -36,13 +36,13 @@ final class XmlWriterSpec extends AnyFunSuite:
   }
 
   test("]]> inside CDATA is split into legal sections") {
-    val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a]]>b")))
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a]]>b")))
     val dumped: String = render(xml)
     assert(dumped.contains("<![CDATA[a]]]]><![CDATA[>b]]>"), dumped)
   }
 
   test("whitespace-only CDATA is not dropped") {
-    val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("  ")))
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("  ")))
     val dumped: String = render(xml)
     assert(dumped.contains("<![CDATA[  ]]>"), dumped)
   }
@@ -83,12 +83,12 @@ final class XmlWriterSpec extends AnyFunSuite:
   }
 
   test("text encodes & and <") {
-    val dumped: String = render(Xml.element("p").setText("a & b < c"))
+    val dumped: String = render(Xml.element(XmlElement.P).setText("a & b < c"))
     assert(dumped.contains("a &amp; b &lt; c"), dumped)
   }
 
   test("text does not encode an existing entity") {
-    val dumped: String = render(Xml.element("p").setText("a&nbsp;b"))
+    val dumped: String = render(Xml.element(XmlElement.P).setText("a&nbsp;b"))
     assert(dumped.contains("a&nbsp;b"), dumped)
     assert(!dumped.contains("&amp;nbsp;"), dumped)
   }
@@ -108,18 +108,18 @@ final class XmlWriterSpec extends AnyFunSuite:
   }
 
   test("CDATA is not entity-encoded") {
-    val dumped: String = render(Xml.element("p", Seq.empty, Seq(Xml.cdata("a&b<c"))))
+    val dumped: String = render(Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a&b<c"))))
     assert(dumped.contains("<![CDATA[a&b<c]]>"), dumped)
   }
 
   test("attribute encodes &, <, and \"") {
-    val dumped: String = render(Xml.element("p").set(XmlAttribute.Title, "a & b < \"c\""))
+    val dumped: String = render(Xml.element(XmlElement.P).set(XmlAttribute.Title, "a & b < \"c\""))
     assert(dumped.contains("a &amp; b &lt; &quot;c&quot;"), dumped)
   }
 
   test("preformat encodes & and < but not &nbsp;") {
     val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(
-      Xml.element("pre").setText("a & b < c &nbsp; d")
+      Xml.element(XmlElement.Pre).setText("a & b < c &nbsp; d")
     )
     assert(dumped.contains("a &amp; b &lt; c &nbsp; d"), dumped)
   }

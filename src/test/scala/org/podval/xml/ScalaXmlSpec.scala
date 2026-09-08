@@ -5,7 +5,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 final class ScalaXmlSpec extends AnyFunSuite:
   test("element uses the given name") {
-    val el: ScalaXml.Element = ScalaXml.element("p")
+    val el: ScalaXml.Element = ScalaXml.element(XmlElement.P)
     assert(ScalaXml.qName(el) == "p")
     assert(el.label == "p")
     assert(el.prefix == null)
@@ -45,7 +45,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
   }
 
   test("attributes preserve order and prefixes") {
-    val el: ScalaXml.Element = ScalaXml.setAttributes(ScalaXml.element("p"))(Seq(
+    val el: ScalaXml.Element = ScalaXml.setAttributes(ScalaXml.element(XmlElement.P))(Seq(
       "id" -> "a",
       "xml:id" -> "b",
       "class" -> "c"
@@ -63,14 +63,14 @@ final class ScalaXmlSpec extends AnyFunSuite:
   test("to round-trips Xml through ScalaXml") {
     val xml: Xml.Element = XmlParser.parseXml("""<p xml:id="x"><q>a</q>b</p>""").toOption.get
     val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
-    assert(round.qName == "p")
+    assert(round.isElement(XmlElement.P))
     assert(round.get(XmlAttribute.XmlId).contains("x"))
     assert(round.getChildren.flatMap(_.asElement).map(_.qName) == Seq("q"))
     assert(round.getChildren.flatMap(_.asText) == Seq("b"))
   }
 
   test("to round-trips CDATA through ScalaXml") {
-    val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a<b")))
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
     val scalaXml: ScalaXml.Element = xml.to[ScalaXml.Element]
     assert(ScalaXml.getChildren(scalaXml).flatMap(ScalaXml.asCData) == Seq("a<b"))
     val round: Xml.Element = ScalaXml.converted(scalaXml)

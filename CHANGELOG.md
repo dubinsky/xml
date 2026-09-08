@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `XmlElement` adds `P`, `Head`, `Body`, `Title`, `Div`, `Span`, `Ul`, `Ol`, `Li`, `Img`, `Pre`, `Table`, `Tr`, `Td`, `Th`, `Dl`, `Dt`, `Dd`, `Blockquote`, `Figure`, `Figcaption`, `Br`, `Em`. `localName` is on the catalog object.
 - Breaking: drop `Xml2Html.renameElement`. Stamp-old-name-as-class is `XmlAst` `renameKeepingClass` (plain `rename` does not add a class).
 - Breaking: `XmlAttribute.qName` / `XmlElement.qName` / `XmlAst` element `qName` (were `name` / `getName`); `XmlExpandedName.qName` (was `qualifiedName`); `parseQName` (was `parseQualified`).
 - Breaking: `XmlExpandedName(localName, namespace: Option[XmlNamespace])`. Prefix and URI are `prefix` / `uri`. Prefix without a URI is `XmlNamespace.of`.

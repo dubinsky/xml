@@ -16,7 +16,7 @@ final class XmlAstSpec extends AnyFunSuite:
 
   test("convertElements can expand an element among text") {
     val converted: Xml.Nodes = parse("<p>a<note/>b</p>").getChildren.convertElements(
-      el => Option.when(el.qName == "note")(Chunk(Xml.element("span"), Xml.element("aside")))
+      el => Option.when(el.qName == "note")(Chunk(Xml.element(XmlElement.Span), Xml.element("aside")))
     )
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
     assert(converted.flatMap(_.asElement).map(_.qName) == Seq("span", "aside"))
@@ -31,7 +31,7 @@ final class XmlAstSpec extends AnyFunSuite:
 
   test("to[Html.Element] keeps attributes and nesting") {
     val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[Html.Element]
-    assert(html.qName == "div")
+    assert(html.isElement(XmlElement.Div))
     assert(html.get(XmlAttribute.XmlId).contains("x"))
     assert(html.get(XmlAttribute.CssClass).contains("y"))
     assert(html.getChildren.flatMap(_.asElement).map(_.qName) == Seq("p"))
@@ -50,7 +50,7 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("to[Html.Element] turns CDATA into HTML text encoded on write") {
-    val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a<b")))
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
     val html: Html.Element = xml.to[Html.Element]
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a<b"))
     val dumped: String = HtmlXmlWriterConfig.render(html)
@@ -134,7 +134,7 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("CssClass is a token; HtmlClass is the class attribute") {
-    val xml: Xml.Element = Xml.element("p").add(CssClass("x")).add(CssClass("x"))
+    val xml: Xml.Element = Xml.element(XmlElement.P).add(CssClass("x")).add(CssClass("x"))
     assert(xml.has(CssClass("x")))
     assert(!xml.has(CssClass("y")))
     assert(xml.get(XmlAttribute.CssClass).contains("x"))

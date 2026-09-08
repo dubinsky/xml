@@ -68,7 +68,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val xml: String = """<Text lang="ru"><body><!--n--><p>a<hi>b</hi></p></body></Text>"""
     val decoded: Text = codec.decode(parse(xml)).toOption.get
     assert(decoded.lang.contains("ru"))
-    assert(decoded.body.qName == "body")
+    assert(decoded.body.isElement(XmlElement.Body))
     assert(decoded.body.getChildren.exists(_.asComment.contains("n")))
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get(XmlAttribute.Lang).contains("ru"))

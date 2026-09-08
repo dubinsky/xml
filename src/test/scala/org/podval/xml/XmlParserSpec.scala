@@ -60,7 +60,7 @@ final class XmlParserSpec extends AnyFunSuite:
     val url = classOf[XmlParserSpec].getResource("fragment.html")
     val fromUrl: Xml.Element = XmlParser.parseHtml(url).toOption.get
     assert(fromUrl.qName == fromString.qName)
-    assert(fromUrl.qName == "p")
+    assert(fromUrl.isElement(XmlElement.P))
     assert(children(fromUrl).map(_.qName) == Seq("b"))
     assert(fromUrl.getText == fromString.getText)
   }
@@ -89,7 +89,7 @@ final class XmlParserSpec extends AnyFunSuite:
 
   test("parseHtml into Html keeps tags and text and drops comments") {
     val html: Html.Element = XmlParser.parseHtml("<p>a<!--c--><b>d</b></p>").toOption.get
-    assert(html.qName == "p")
+    assert(html.isElement(XmlElement.P))
     assert(html.getChildren.flatMap(_.asComment).isEmpty)
     assert(html.getChildren.flatMap(_.asElement).map(_.qName) == Seq("b"))
     assert(html.getText == "ad")

@@ -136,7 +136,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("XmlDocument.xml helper sets the canonical declaration") {
-    val xml: Xml.Element = Xml.element("p")
+    val xml: Xml.Element = Xml.element(XmlElement.P)
     val doc: XmlDocument[Xml.Element] = XmlDocument.xml(
       root = xml,
       prolog = Seq(XmlMisc.Comment(" c "))
