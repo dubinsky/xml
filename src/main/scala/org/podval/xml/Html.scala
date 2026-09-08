@@ -19,8 +19,8 @@ object Html extends XmlAst[XML.Element]:
     attributes: Seq[(XmlExpandedName, String)],
     children: Nodes
   ): Element = XML.Element.Generic(
-    tag = name.qualifiedName,
-    attributes = Chunk.from(attributes).map((name, value) => mkAttribute(name.qualifiedName, value)),
+    tag = name.qName,
+    attributes = Chunk.from(attributes).map((name, value) => mkAttribute(name.qName, value)),
     children = Chunk.from(children)
   )
 
@@ -42,7 +42,7 @@ object Html extends XmlAst[XML.Element]:
     override def asProcessingInstruction: Option[(String, String)] = None
 
   extension (element: Element)
-    override def getExpandedName: XmlExpandedName = XmlExpandedName.parseQualified(element.tag)
+    override def getExpandedName: XmlExpandedName = XmlExpandedName.parseQName(element.tag)
 
     /**
      * Merge ZIO Blocks multi-valued attrs (`className += …` is an AppendValue)

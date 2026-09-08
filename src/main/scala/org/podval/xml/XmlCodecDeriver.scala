@@ -118,7 +118,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
               empty.getOrElse(codec.unsafeDecode(element))
             case None if enumeration =>
               unsafeDecodeText(characterData(element))
-            case None => throw XmlError(s"Unknown variant case: ${name.qualifiedName}")
+            case None => throw XmlError(s"Unknown variant case: ${name.qName}")
         override def encodeNamed[E: XmlAst](name: String, value: A): E =
           val idx: Int = discriminator.discriminate(value)
           val (caseName, codec, _) = caseCodecs(idx)

@@ -1,9 +1,9 @@
 package org.podval.xml
 
 open class XmlElement(val expanded: XmlExpandedName):
-  def this(name: String) = this(XmlExpandedName.parse(name))
+  def this(qName: String) = this(XmlExpandedName.parse(qName))
 
-  def name: String = expanded.qualifiedName
+  def qName: String = expanded.qName
 
 object XmlElement:
   object A extends XmlElement("a")

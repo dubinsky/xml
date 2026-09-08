@@ -1,42 +1,28 @@
 package org.podval.xml
 
 open class XmlAttribute(val expanded: XmlExpandedName):
-  def this(name: String) = this(XmlExpandedName.parse(name, isAttribute = true))
+  def this(qName: String) = this(XmlExpandedName.parse(qName, isAttribute = true))
 
-  def name: String = expanded.qualifiedName
+  /** Default `xmlns` is unprefixed; `xmlns:foo` is `XmlAttribute("foo", xmlns)`. */
+  def this(name: String, namespace: XmlNamespace) = this(XmlExpandedName(
+    localName = name,
+    prefix = if namespace == XmlNamespace.xmlns && namespace.prefix.contains(name) then None else namespace.prefix,
+    namespace = Some(namespace.uri)
+  ))
+
+  def qName: String = expanded.qName
 
 object XmlAttribute:
   object Id extends XmlAttribute("id")
 
-  object XmlId extends XmlAttribute(XmlExpandedName(
-    "id",
-    XmlNamespace.xml.prefix,
-    Some(XmlNamespace.xml.uri)
-  ))
+  object XmlId extends XmlAttribute("id", XmlNamespace.xml)
 
-  object XmlLang extends XmlAttribute(XmlExpandedName(
-    "lang",
-    XmlNamespace.xml.prefix,
-    Some(XmlNamespace.xml.uri)
-  ))
+  object XmlLang extends XmlAttribute("lang", XmlNamespace.xml)
 
-  object XmlBase extends XmlAttribute(XmlExpandedName(
-    "base",
-    XmlNamespace.xml.prefix,
-    Some(XmlNamespace.xml.uri)
-  ))
+  object XmlBase extends XmlAttribute("base", XmlNamespace.xml)
 
-  object Xmlns extends XmlAttribute(XmlExpandedName(
-    "xmlns",
-    None,
-    Some(XmlNamespace.xmlns.uri)
-  )):
-    def apply(prefix: String): XmlAttribute =
-      XmlAttribute(XmlExpandedName(
-        prefix,
-        XmlNamespace.xmlns.prefix,
-        Some(XmlNamespace.xmlns.uri)
-      ))
+  object Xmlns extends XmlAttribute("xmlns", XmlNamespace.xmlns):
+    def apply(prefix: String): XmlAttribute = XmlAttribute(prefix, XmlNamespace.xmlns)
 
   object Href extends XmlAttribute("href")
 

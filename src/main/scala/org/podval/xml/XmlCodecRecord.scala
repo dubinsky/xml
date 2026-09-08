@@ -55,9 +55,9 @@ private[xml] trait XmlCodecRecord:
           info.kind match
             case FieldKind.Tag =>
               val name: XmlExpandedName = element.getExpandedName
-              xmlTag.flatMap(tag => tag.fromName(name.localName).orElse(tag.fromName(name.qualifiedName))) match
+              xmlTag.flatMap(tag => tag.fromName(name.localName).orElse(tag.fromName(name.qName))) match
                 case Some(k) => store(regs, info.offset, info.typeTag, k)
-                case None => throw XmlError(s"Unknown element: ${name.qualifiedName}")
+                case None => throw XmlError(s"Unknown element: ${name.qName}")
             case FieldKind.Text =>
               val text: String = characterData(element)
               val value: Any =
@@ -113,7 +113,7 @@ private[xml] trait XmlCodecRecord:
           case e: XmlError => throw e.at(info.fieldName)
 
       val leftoverAttrs: Seq[String] =
-        attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qualifiedName).toSeq
+        attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qName).toSeq
       if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
       val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
         if available.contains(nodeIdx) then node.asElement.map(_.localName) else None
@@ -170,7 +170,7 @@ private[xml] trait XmlCodecRecord:
         case Some((uri, prefix)) if prefix.nonEmpty => Seq(XmlExpandedName.xmlnsAttribute(Some(prefix), uri))
         case Some((uri, _)) => Seq(XmlExpandedName.xmlnsAttribute(None, uri))
         case None => Seq.empty
-      val parsedName: XmlExpandedName = XmlExpandedName.parseQualified(name)
+      val parsedName: XmlExpandedName = XmlExpandedName.parseQName(name)
       val expandedName: XmlExpandedName = namespace match
         case Some((uri, prefix)) if prefix.nonEmpty && parsedName.prefix.isEmpty =>
           XmlExpandedName(parsedName.localName, Some(prefix), Some(uri))

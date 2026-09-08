@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `XmlAttribute.qName` / `XmlElement.qName` (was `name`); `XmlExpandedName.qName` (was `qualifiedName`); `parseQName` (was `parseQualified`).
+- `XmlAttribute(name, XmlNamespace)` auxiliary constructor; `xml:*` and default `xmlns` use it. Prefixed `xmlns` stays `Xmlns(prefix)` (apply: `extends` cannot call apply).
 - `XmlAttribute` adds `Lang`, `XmlLang`, `Src`, `Type`, `Title`, `Alt`, `Target`, `Rel`, `Role`.
 - Breaking: identity codec fields are `XmlTree` (alias of `Xml.Element`). Package given `xmlElementSchema` is in scope in `org.podval.xml`; other packages `import org.podval.xml.given`. Drop `import XmlCodec.xmlElementSchema`.
 - `XmlAst` node `fold` dispatches element/text/cdata/comment/PI/unknown. `converted`/`toNodes` and `XmlWriter.fromNode`/`preformat` use it.

@@ -13,7 +13,7 @@ final case class XmlExpandedName(
   prefix: Option[String] = None,
   namespace: Option[String] = None
 ) derives CanEqual:
-  def qualifiedName: String =
+  def qName: String =
     prefix.filter(_.nonEmpty).fold(localName)(p => s"$p:$localName")
 
   def isDefaultXmlns: Boolean =
@@ -30,8 +30,8 @@ final case class XmlExpandedName(
     localName == other.localName && namespace == other.namespace
 
   def matches(expected: String): Boolean =
-    val exp: XmlExpandedName = XmlExpandedName.parseQualified(expected)
-    qualifiedName == expected || localName == expected || localName == exp.localName
+    val exp: XmlExpandedName = XmlExpandedName.parseQName(expected)
+    qName == expected || localName == expected || localName == exp.localName
 
   def toZio: XmlName = XmlName(
     localName = localName,
@@ -48,7 +48,7 @@ object XmlExpandedName:
     name.namespace
   )
 
-  def parseQualified(name: String): XmlExpandedName =
+  def parseQName(name: String): XmlExpandedName =
     name.span(_ != ':') match
       case (prefix, rest) if prefix.nonEmpty && rest.nonEmpty =>
         XmlExpandedName(localName = rest.drop(1), prefix = Some(prefix))
@@ -60,7 +60,7 @@ object XmlExpandedName:
     isAttribute: Boolean = false,
     existing: Option[XmlExpandedName] = None
   ): XmlExpandedName =
-    val parsed: XmlExpandedName = parseQualified(name)
+    val parsed: XmlExpandedName = parseQName(name)
     val namespace: Option[String] =
       XmlNamespace.wellKnown(parsed.prefix, parsed.localName, isAttribute).map(_.uri)
         .orElse(xmlnsUri(parsed.prefix, attributes, isAttribute))
@@ -93,7 +93,7 @@ object XmlExpandedName:
       case None => None
 
   def asPairs(attributes: Seq[(XmlExpandedName, String)]): Seq[(String, String)] =
-    attributes.map((name, value) => name.qualifiedName -> value)
+    attributes.map((name, value) => name.qName -> value)
 
   def xmlnsAttribute(prefix: Option[String], uri: String): (XmlExpandedName, String) =
     prefix.filter(_.nonEmpty) match

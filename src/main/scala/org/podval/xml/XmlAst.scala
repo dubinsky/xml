@@ -156,7 +156,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   extension (element: Element)
     def getExpandedName: XmlExpandedName
 
-    def getName: String = element.getExpandedName.qualifiedName
+    def getName: String = element.getExpandedName.qName
 
     def localName: String = element.getExpandedName.localName
 
@@ -203,13 +203,13 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       element.getAttributes.find(_._1 == attribute).map(_._2)
 
     def set(attribute: XmlAttribute, value: String): Element =
-      set(attribute.name, value)
+      set(attribute.qName, value)
 
     def set(attribute: String, value: String): Element =
       withAttribute(element, attribute, value)
 
     def set(attribute: XmlAttribute, value: Option[String]): Element =
-      set(attribute.name, value)
+      set(attribute.qName, value)
 
     def set(attribute: String, value: Option[String]): Element =
       value.fold(element)(element.set(attribute, _))

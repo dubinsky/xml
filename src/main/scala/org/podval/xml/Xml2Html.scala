@@ -10,9 +10,9 @@ object Xml2Html:
   private val reservedHtmlElements: Set[String] = Set("head", "body", "title", "p")
 
   private val reservedAttributes: Set[String] = Set(
-    XmlAttribute.CssClass.name,
-    XmlAttribute.Target.name,
-    XmlAttribute.Lang.name,
+    XmlAttribute.CssClass.qName,
+    XmlAttribute.Target.qName,
+    XmlAttribute.Lang.qName,
     "frame"
   )
 
@@ -33,9 +33,9 @@ final class Xml2Html(prefix: String):
     val attributesConverted: E = element.setAttributes(element.getExpandedAttributes.map((name, value) =>
       val nameNew: String =
         if name.namespace.contains(XmlNamespace.xml.uri)
-        then name.qualifiedName
+        then name.qName
         else if !Xml2Html.reservedAttributes.contains(name.localName)
-        then name.qualifiedName
+        then name.qName
         else withPrefix(name.localName)
       (nameNew, value)
     ))

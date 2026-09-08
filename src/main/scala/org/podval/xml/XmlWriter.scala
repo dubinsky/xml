@@ -218,10 +218,10 @@ object XmlWriter:
     val children: Seq[String] =
       element.getChildren.flatMap(preformat)
 
-    val name: String = element.getName
-    if children.isEmpty then Seq(s"<$name$attributes/>")
-    else if children.length == 1 then Seq(s"<$name$attributes>${children.head}</$name>")
-    else Seq(s"<$name$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$name>")
+    val qName: String = element.getName
+    if children.isEmpty then Seq(s"<$qName$attributes/>")
+    else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
+    else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")
 
   private def preformat(using ast: XmlAst[?])(node: ast.Node): Seq[String] =
     node.fold(

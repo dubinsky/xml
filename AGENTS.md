@@ -17,18 +17,20 @@ Changes to this library also need to be verified against the behaviour of the si
 
 ## Consumer Gradle
 
-`./gradlew` in this checkout is only this library. The shell cwd is this repo; there is no Gradle `cwd` parameter. After `./gradlew test` here, consumer checks are a **different Gradle root** — `cd` first. Do not run `:opentorah-core:test` (or any consumer task) from here.
+`./gradlew` in this checkout is **only this library**. The Grok shell cwd is this repo on every command; there is no Gradle `cwd` parameter, and `cd` does not persist to the next tool call.
+
+**Trap:** after `./gradlew test` here, another `./gradlew test` is still this library (often `UP-TO-DATE` in well under a second). Consumer checks are a **different Gradle root**. `cd` in the **same** command as `./gradlew`. Do not run `:opentorah-core:test` (or any consumer task) from here — that project does not exist in this tree.
 
 Both consumers `includeBuild` this tree when present (override with `-PxmlDir=` only if the checkout is not at the default). Unreleased xml is picked up automatically; do not publish just to test them.
 
 ```bash
-# this library
+# this library (cwd is already this repo)
 ./gradlew test
 
-# site-publisher (includeBuild default ../xml)
+# site-publisher — must cd in this command; includeBuild default ../xml
 cd ~/Podval/site-publisher && ./gradlew test
 
-# opentorah core (includeBuild default ../../Podval/xml)
+# opentorah core — must cd in this command; includeBuild default ../../Podval/xml
 cd ~/OpenTorah/opentorah.org && ./gradlew :opentorah-core:test
 ```
 
