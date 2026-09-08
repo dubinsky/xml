@@ -52,16 +52,24 @@ given ScalaXml: XmlAst[Elem]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getExpandedName: XmlExpandedName =
-      fromScope(element.scope, element.prefix, element.label, isAttribute = false)
+    override def getExpandedName: XmlExpandedName = fromScope(
+      element.scope, 
+      element.prefix, 
+      element.label, 
+      isAttribute = false
+    )
 
     override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
       element.attributes.iterator.map: attribute =>
-        val prefix: String = attribute match
-          case prefixed: PrefixedAttribute => prefixed.pre
-          case _ => null
         (
-          fromScope(element.scope, prefix, attribute.key, isAttribute = true),
+          fromScope(
+            element.scope,
+            attribute match
+              case prefixed: PrefixedAttribute => prefixed.pre
+              case _ => null,
+            attribute.key,
+            isAttribute = true
+          ),
           NodeSeq.fromSeq(attribute.value).text
         )
       .toSeq

@@ -57,20 +57,20 @@ given Xml: XmlAst[XML.Element]:
     override def getChildren: Nodes =
       element.children
 
-  private def fromZio(name: XmlName): XmlExpandedName =
-    XmlExpandedName(name.localName, name.prefix, name.namespace)
+  private def fromZio(name: XmlName): XmlExpandedName = XmlExpandedName(
+    name.localName,
+    name.prefix,
+    name.namespace
+  )
 
   private def toZio(
     name: XmlExpandedName,
     attributes: Seq[(XmlExpandedName, String)],
     isAttribute: Boolean
-  ): XmlName =
-    val pairs: Seq[(String, String)] = XmlExpandedName.asPairs(attributes)
-    val namespace: Option[String] = name.namespace
+  ): XmlName = XmlName(
+    localName = name.localName,
+    prefix = name.prefix,
+    namespace = name.namespace
       .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute))
-      .orElse(XmlExpandedName.xmlnsUri(name.prefix, pairs, isAttribute))
-    XmlName(
-      localName = name.localName,
-      prefix = name.prefix,
-      namespace = namespace
-    )
+      .orElse(XmlExpandedName.xmlnsUri(name.prefix, XmlExpandedName.asPairs(attributes), isAttribute))
+  )
