@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Breaking: CSS class token is `CssClass`. `object HtmlClass` is only the HTML `class` attribute.
 - `XmlBuilder` stacks open elements with a child buffer and builds each element once on `endElement`. Adjacent text merges in the buffer. `result` requires a document element.
 - `XmlAst` is a mixin of core, walk, and HTML `class` helpers (public type unchanged). Record codec, field layout, and register load/store live in `XmlCodecRecord`.
-- Breaking: `given Html` and `given ScalaXml` are no longer in `org.podval.xml`. `given Xml` stays the default. Import `org.podval.xml.html.given` / `org.podval.xml.scalaxml.given`. `Html` / `ScalaXml` objects stay in `org.podval.xml`.
+- Breaking: `given Html` and `given ScalaXml` are no longer in `org.podval.xml`. `given Xml` stays the default. Import `Html.given` / `ScalaXml.given`. `Html` / `ScalaXml` objects stay in `org.podval.xml`.
 - `XmlExpandedName` owns xmlns/xml tests, ZIO `XmlName` conversion, and writer xmlns fill-in from URIs. `withAttribute` matches URI+local. Codec encode/decode uses expanded names. `isInclude` requires the XInclude namespace or `xi` prefix.
 - `Xml2Html`, `XmlWriterConfig` name sets, and `transform`/`gather` `stopAtCode` match local names. `xml:lang` / `xml:id` are not rewritten.
 - `parseHtml` drops the XHTML namespace; `parseXml` keeps it. `parseXml` still keeps undeclared entities (`&nbsp;`).

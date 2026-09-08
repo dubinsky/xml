@@ -3,8 +3,10 @@ package org.podval.xml
 import scala.xml.{Attribute, Comment, Elem, MetaData, NamespaceBinding, NodeSeq, PCData, PrefixedAttribute, ProcInstr,
   Text, TopScope}
 
-// XML AST for Scala XML. Not a package given: `import org.podval.xml.scalaxml.given`.
+// XML AST for Scala XML. Not a package given: `import ScalaXml.given`.
 object ScalaXml extends XmlAst[Elem]:
+  given ScalaXml.type = this
+
   override type Node = scala.xml.Node
 
   override def text(text: String): Node = Text(text)

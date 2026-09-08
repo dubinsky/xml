@@ -17,7 +17,7 @@ import java.net.URL
   * `parseXmlDocument` / `parseResourceDocument`.
   *
   * `E` is inferred from the expected type or `given Xml`. HTML and Scala XML
-  * need `import org.podval.xml.html.given` / `import org.podval.xml.scalaxml.given`.
+  * need `import Html.given` / `import ScalaXml.given`.
   * Catalog helpers pin ZIO Blocks XML internally.
   */
 object XmlParser:

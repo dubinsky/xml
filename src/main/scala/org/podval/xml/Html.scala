@@ -3,8 +3,10 @@ package org.podval.xml
 import zio.blocks.chunk.Chunk
 import zio.blocks.html.Dom as XML
 
-// XML AST for ZIO Blocks HTML. Not a package given: `import org.podval.xml.html.given`.
+// XML AST for ZIO Blocks HTML. Not a package given: `import Html.given`.
 object Html extends XmlAst[XML.Element]:
+  given Html.type = this
+
   override type Node = XML
 
   override def text(text: String): Node = XML.text(text)
