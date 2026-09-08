@@ -6,6 +6,15 @@ import zio.blocks.schema.xml.{Xml as XML}
 import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
+/** Canonical ZIO XML element for identity codec fields. Same type as `Xml.Element`. */
+type XmlTree = XML.Element
+
+object XmlTree:
+  given schema: Schema[XmlTree] =
+    Schema[Unit].transform(_ => XML.Element.empty, _ => ())(using TypeId.of[XML.Element])
+
+given xmlElementSchema: Schema[XML.Element] = XmlTree.schema
+
 /** Document-shaped XML codec over any `XmlAst`.
   *
   * Derive with `XmlCodec.derived` from a `Schema`. Binding hints are Schema modifiers
@@ -20,8 +29,8 @@ import scala.util.control.NonFatal
   * val el: Xml.Element = codec.encode(Language("ru"))
   * }}}
   *
-  * `encode` is polymorphic in the AST; pin it with a type ascription when more than one
-  * `XmlAst` is in scope.
+  * Identity fields use [[XmlTree]]. `encode` is polymorphic in the AST; pin it with a
+  * type ascription when more than one `XmlAst` is in scope.
   */
 object XmlCodec:
   /** `@Modifier.config(XmlCodec.Attribute, "")` or `@Modifier.config(XmlCodec.Attribute, "xml:id")`. */
@@ -33,24 +42,20 @@ object XmlCodec:
   final val NamespaceUri = "xml.namespace.uri"
   final val NamespacePrefix = "xml.namespace.prefix"
 
-  /** Opaque schema so records can hold identity `Xml.Element` fields. Import at `Schema.derived` sites. */
-  given xmlElementSchema: Schema[XML.Element] =
-    Schema[Unit].transform(_ => XML.Element.empty, _ => ())(using TypeId.of[XML.Element])
-
   /** Identity field: copy a named child as canonical ZIO XML. Same-AST decode keeps the node. */
-  val elementCodec: XmlCodec[XML.Element] = new XmlCodec[XML.Element]:
+  val elementCodec: XmlCodec[XmlTree] = new XmlCodec[XmlTree]:
     override def elementName: String = "element"
     override def isRecordLike: Boolean = true
-    override def unsafeDecode[E: XmlAst](element: E): XML.Element = toZioElement(element)
-    override def encodeNamed[E: XmlAst](name: String, value: XML.Element): E =
+    override def unsafeDecode[E: XmlAst](element: E): XmlTree = toZioElement(element)
+    override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E =
       fromZioElement(Xml.renamed(value, name))
-    override def encode[E: XmlAst](value: XML.Element): E = fromZioElement(value)
+    override def encode[E: XmlAst](value: XmlTree): E = fromZioElement(value)
 
-  private def toZioElement[E: XmlAst](element: E): XML.Element =
-    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[XML.Element]
+  private def toZioElement[E: XmlAst](element: E): XmlTree =
+    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[XmlTree]
     else element.to[XML.Element]
 
-  private def fromZioElement[E: XmlAst](element: XML.Element): E =
+  private def fromZioElement[E: XmlAst](element: XmlTree): E =
     if summon[XmlAst[E]] eq Xml then element.asInstanceOf[E]
     else element.to[E]
 

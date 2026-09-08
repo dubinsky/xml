@@ -10,10 +10,6 @@ object XmlEncode:
     * characters (Markdown HTML-as-XML). A decoded `&lt;` in the tree (Markdown
     * source `&amp;lt;` outside `<pre>`) therefore stays `&lt;` and browsers
     * show `<`.
-    *
-    * Not taken: decode HTML names to Unicode at parse (`nbsp` → U+00A0), then
-    * always encode `&`; or decode and re-emit names like `&nbsp;` when writing
-    * HTML.
     */
   def encodeXmlSpecials(string: String): String =
     encodeAmpersands(string).replace("<", "&lt;")

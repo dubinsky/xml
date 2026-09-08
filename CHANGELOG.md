@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: identity codec fields are `XmlTree` (alias of `Xml.Element`). Package given `xmlElementSchema` is in scope in `org.podval.xml`; other packages `import org.podval.xml.given`. Drop `import XmlCodec.xmlElementSchema`.
 - `XmlAst` node `fold` dispatches element/text/cdata/comment/PI/unknown. `converted`/`toNodes` and `XmlWriter.fromNode`/`preformat` use it.
 - `XmlWriter.chunkify` walks `Nil` / `node :: tail`.
 - Breaking: `XmlAttribute` and `XmlElement` hold `XmlExpandedName` (string auxiliary constructor remains). `get(XmlAttribute)` matches with `sameAs`. `isElement`/`isA` match local name and prefix (a default-namespace DocBook `a` is still `isA`). `xml:id` / `xml:base` / `xmlns*` are the xml/xmlns URIs.
@@ -17,10 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `parseHtml` drops the XHTML namespace; `parseXml` keeps it. `parseXml` still keeps undeclared entities (`&nbsp;`).
 - Breaking: drop `XmlUtil` and `XmlDecode`. Tree/codec helpers are `XmlAst` extensions; `XmlAst.toId`; `Xml2Html.renameElement`.
 - Writer always encodes `&` and `<` in text and `&`, `<`, `"` in attributes. Ampersands that already start an entity (`&nbsp;`, `&lt;`, `&#x…;`) are left alone. Drop `XmlWriterConfig.encodeXmlSpecials`. HTML CDATA becomes ordinary text (encoded on write).
-- Breaking: drop XInclude expansion (`XmlXInclude`, `xinclude` flags). `xi:include` stays in the tree. Codec leftover checks no longer ignore `xml:base`.
+- Breaking: drop XInclude expansion (`XmlXInclude`, `xinclude` flags). `xi:include` stays in the tree. Codec leftover checks no longer ignore `xml:base`. Xerces still mishandles nested `xml:base` ([XERCESJ-1102](https://issues.apache.org/jira/browse/XERCESJ-1102)).
 - Drop unused `XmlDialect`. Write-time dialect lives on `XmlWriterConfig`; document headers live on `XmlDocument` / `XmlDoctype`.
 - Drop unused `FromUrl`.
-- Breaking: drop `XmlNode` and `XmlExtras`. Leftover parent content is always an error. Identity fields are canonical `Xml.Element` (same-AST decode keeps the node; other ASTs convert).
+- Breaking: drop `XmlNode` and `XmlExtras`. Leftover parent content is always an error. Identity fields are canonical `XmlTree` (same-AST decode keeps the node; other ASTs convert).
 - `XmlNamespace` is a case class (`uri`, optional canonical `prefix`); well-known prefixes (`xml`, `xmlns`, `xi`, `xlink`) live on the instances. XHTML has no prefix.
 - Drop `XmlParserStAX`. Parse is SAX only (`XmlParser`); `XmlParserSax` is package-private. `XmlBuilder` stays public.
 - `XmlParser` / `XmlBuilder` are abstract over `XmlAst` (same as `XmlWriter` / `XmlCodec`). Catalog helpers still pin ZIO Blocks XML.

@@ -63,7 +63,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(result.swap.toOption.get.getMessage.contains("Unparsed attributes"))
   }
 
-  test("identity Xml.Element round-trips mixed content") {
+  test("identity XmlTree round-trips mixed content") {
     val codec: XmlCodec[Text] = XmlCodec.derived(using Text.schema)
     val xml: String = """<Text lang="ru"><body><!--n--><p>a<hi>b</hi></p></body></Text>"""
     val decoded: Text = codec.decode(parse(xml)).toOption.get
@@ -221,10 +221,9 @@ object Box:
 
 final case class Text(
   @Modifier.config(XmlCodec.Attribute, "") lang: Option[String],
-  @Modifier.config(XmlCodec.Element, "body") body: Xml.Element
+  @Modifier.config(XmlCodec.Element, "body") body: XmlTree
 ) derives CanEqual
 object Text:
-  import XmlCodec.xmlElementSchema
   given schema: Schema[Text] = Schema.derived
 
 sealed trait Part derives CanEqual

@@ -16,23 +16,11 @@ object Xml2Html:
     .addClass(element.localName)
     .rename(name)
 
-
-/*
-I tried to define CSS namespaces like this:
-@namespace tei   url("http://www.tei-c.org/ns/1.0");
-@namespace db    url("http://docbook.org/ns/docbook");
-@namespace xhtml url("http://www.w3.org/1999/xhtml");
-and use them in CSS rules like this: tei|div, docbook|title.
-
-It seems that in browser DOM all elements are in the HTML5 xhtml namespace
-unless `xmlns` attribute is present on that element;
-why aren't the namespace declarations inherited is not clear.
-
-So, I prefix names that clash with HTML (see Xml2Html.reservedHtmlElements).
-In particular HTML `p` cannot contain blocks; TEI `p` can, so it becomes `tei-p`.
-*/
 // Prefix attribute and element names that collide with the HTML ones.
 // Element and attribute sets match local names; `xml:*` is left as-is.
+// Namespace-based styling didn't work: browser DOM elements seem to be
+// in the HTML5 xhtml namespace unless `xmlns` attribute is present
+// on that very element (no inheritance).
 final class Xml2Html(prefix: String):
   private def withPrefix(name: String): String = s"$prefix-$name"
 
