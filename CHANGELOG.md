@@ -5,12 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `Xml2Html.elementName` / `attributeName` / `is` / `get` are the post-`convert` names (`Head` → `tei-head`, `Lang` → `tei-lang`). `get` prefers the prefixed attribute so HTML `class` from `renameKeepingClass` does not hide the original.
 - `XmlElement` adds `P`, `Head`, `Body`, `Title`, `Div`, `Span`, `Ul`, `Ol`, `Li`, `Img`, `Pre`, `Table`, `Tr`, `Td`, `Th`, `Dl`, `Dt`, `Dd`, `Blockquote`, `Figure`, `Figcaption`, `Br`, `Em`. `localName` is on the catalog object.
 - Breaking: drop `Xml2Html.renameElement`. Stamp-old-name-as-class is `XmlAst` `renameKeepingClass` (plain `rename` does not add a class).
 - Breaking: `XmlAttribute.qName` / `XmlElement.qName` / `XmlAst` element `qName` (were `name` / `getName`); `XmlExpandedName.qName` (was `qualifiedName`); `parseQName` (was `parseQualified`).
 - Breaking: `XmlExpandedName(localName, namespace: Option[XmlNamespace])`. Prefix and URI are `prefix` / `uri`. Prefix without a URI is `XmlNamespace.of`.
 - `XmlAttribute(name, XmlNamespace)` auxiliary constructor; `xml:*` and default `xmlns` use it. Prefixed `xmlns` stays `Xmlns(prefix)` (apply: `extends` cannot call apply).
-- `XmlAttribute` adds `Lang`, `XmlLang`, `Src`, `Type`, `Title`, `Alt`, `Target`, `Rel`, `Role`.
+- `XmlAttribute` adds `Lang`, `XmlLang`, `Src`, `Type`, `Title`, `Alt`, `Target`, `Rel`, `Role`, `Frame`. `localName` is on the catalog object.
 - Breaking: identity codec fields are `XmlTree` (alias of `Xml.Element`). Package given `xmlElementSchema` is in scope in `org.podval.xml`; other packages `import org.podval.xml.given`. Drop `import XmlCodec.xmlElementSchema`.
 - `XmlAst` node `fold` dispatches element/text/cdata/comment/PI/unknown. `converted`/`toNodes` and `XmlWriter.fromNode`/`preformat` use it.
 - `XmlWriter.chunkify` walks `Nil` / `node :: tail`.

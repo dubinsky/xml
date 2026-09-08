@@ -15,6 +15,8 @@ open class XmlAttribute(val expanded: XmlExpandedName):
 
   def qName: String = expanded.qName
 
+  def localName: String = expanded.localName
+
 object XmlAttribute:
   object Id extends XmlAttribute("id")
 
@@ -42,6 +44,9 @@ object XmlAttribute:
   object Alt extends XmlAttribute("alt")
 
   object Target extends XmlAttribute("target")
+
+  /** HTML `table@frame` / frameset `frame`; TEI tables use the same local name. */
+  object Frame extends XmlAttribute("frame")
 
   object Rel extends XmlAttribute("rel")
 

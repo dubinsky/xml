@@ -15,31 +15,46 @@ object Xml2Html:
   ).map(_.localName)
 
   private val reservedAttributes: Set[String] = Set(
-    XmlAttribute.CssClass.qName,
-    XmlAttribute.Target.qName,
-    XmlAttribute.Lang.qName,
-    "frame"
-  )
+    XmlAttribute.CssClass,
+    XmlAttribute.Target,
+    XmlAttribute.Lang,
+    XmlAttribute.Frame
+  ).map(_.localName)
 
 // Prefix attribute and element names that collide with the HTML ones.
 // Element and attribute sets match local names; `xml:*` is left as-is.
 // Namespace-based styling didn't work: browser DOM elements seem to be
 // in the HTML5 xhtml namespace unless `xmlns` attribute is present
 // on that very element (no inheritance).
-final class Xml2Html(prefix: String):
+final class Xml2Html(val prefix: String):
   private def withPrefix(name: String): String = s"$prefix-$name"
+
+  /** Local name after `convert`: reserved HTML tags get `$prefix-…`; others stay. */
+  def elementName(elem: XmlElement): String =
+    if Xml2Html.reservedHtmlElements.contains(elem.localName)
+    then withPrefix(elem.localName)
+    else elem.localName
+
+  /** Attribute qName after `convert`: reserved HTML names get `$prefix-…`; `xml:*` stays. */
+  def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.expanded)
+
+  def is[E: XmlAst](element: E, elem: XmlElement): Boolean =
+    element.qName == elementName(elem) || element.isElement(elem)
+
+  /** Prefixed name first, then the catalog name — so HTML `class` added by
+    * `renameKeepingClass` does not hide the original reserved `class`. */
+  def get[E: XmlAst](element: E, attr: XmlAttribute): Option[String] =
+    element.get(attributeName(attr)).orElse(element.get(attr))
 
   def convert[E: XmlAst](element: E): E =
     val attributesConverted: E = element.setAttributes(element.getExpandedAttributes.map((name, value) =>
-      val nameNew: String =
-        if name.isXml
-        then name.qName
-        else if !Xml2Html.reservedAttributes.contains(name.localName)
-        then name.qName
-        else withPrefix(name.localName)
-      (nameNew, value)
+      (rewriteAttribute(name), value)
     ))
-
     if !Xml2Html.reservedHtmlElements.contains(element.localName)
     then attributesConverted
     else attributesConverted.renameKeepingClass(withPrefix(element.localName))
+
+  private def rewriteAttribute(name: XmlExpandedName): String =
+    if name.isXml || !Xml2Html.reservedAttributes.contains(name.localName)
+    then name.qName
+    else withPrefix(name.localName)
