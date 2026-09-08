@@ -3,7 +3,13 @@ package org.podval.xml
 import scala.collection.mutable
 
 final class XmlBuilder[E](using ast: XmlAst[E]):
-  private val elements: mutable.Stack[E] = mutable.Stack.empty
+  private final class Frame(
+    val name: XmlExpandedName,
+    val attributes: Seq[(XmlExpandedName, String)],
+    val children: mutable.ArrayBuffer[ast.Node]
+  )
+
+  private val frames: mutable.Stack[Frame] = mutable.Stack.empty
 
   private var root: Option[E] = None
 
@@ -15,7 +21,9 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
 
   def done: Boolean = root.nonEmpty
 
-  def result: E = root.get
+  def result: E =
+    require(done, "XmlBuilder has no document element")
+    root.get
 
   def document: XmlDocument[E] = XmlDocument(
     declaration = None,
@@ -26,32 +34,32 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
   )
 
   def startElement(name: XmlExpandedName, attributes: Seq[(XmlExpandedName, String)]): Unit =
-    startElement(ast.element(name, attributes, Seq.empty))
+    frames.push(Frame(name, attributes, mutable.ArrayBuffer.empty))
 
   def startElement(element: E): Unit =
-    elements.push(element)
+    startElement(element.getExpandedName, element.getExpandedAttributes)
+    element.getChildren.foreach(addChild)
 
   def endElement(): Unit =
-    val element: E = elements.pop()
-    if elements.nonEmpty
+    val frame: Frame = frames.pop()
+    val element: E = ast.element(frame.name, frame.attributes, frame.children.toSeq)
+    if frames.nonEmpty
     then addChild(element)
     else root = Some(element)
 
   private def addChild(child: ast.Node): Unit =
-    if elements.nonEmpty then
-      val parent: E = elements.pop()
-      elements.push(parent.setChildren(appendChild(parent.getChildren, child)))
+    if frames.nonEmpty then appendChild(frames.top.children, child)
 
   def doctype(name: String, publicId: Option[String], systemId: Option[String]): Unit =
     if root.isEmpty then
       doctypeValue = Some(XmlDoctype(name, publicId, systemId))
 
   def processingInstruction(target: String, data: String): Unit =
-    if elements.nonEmpty then ast.processingInstruction(target, data).foreach(addChild)
+    if frames.nonEmpty then ast.processingInstruction(target, data).foreach(addChild)
     else addMisc(XmlMisc.ProcessingInstruction(target, data))
 
   def comment(text: String): Unit =
-    if elements.nonEmpty then ast.comment(text).foreach(addChild)
+    if frames.nonEmpty then ast.comment(text).foreach(addChild)
     else addMisc(XmlMisc.Comment(text))
 
   private def addMisc(misc: XmlMisc): Unit =
@@ -65,9 +73,12 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
   def cdata(value: String): Unit =
     if value.nonEmpty then addChild(ast.cdata(value))
 
-  private def appendChild(children: ast.Nodes, child: ast.Node): ast.Nodes = child.asText match
-    case Some(more) =>
-      children.lastOption.flatMap(_.asText) match
-        case Some(prev) => children.dropRight(1) :+ ast.text(prev + more)
-        case None => children :+ child
-    case None => children :+ child
+  private def appendChild(children: mutable.ArrayBuffer[ast.Node], child: ast.Node): Unit =
+    child.asText match
+      case Some(more) =>
+        children.lastOption.flatMap(_.asText) match
+          case Some(prev) =>
+            children.dropRightInPlace(1)
+            children += ast.text(prev + more)
+          case None => children += child
+      case None => children += child

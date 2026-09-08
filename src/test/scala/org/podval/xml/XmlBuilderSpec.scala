@@ -74,6 +74,23 @@ final class XmlBuilderSpec extends AnyFunSuite:
     assert(doc.root.getChildren.flatMap(_.asComment) == Seq("inside"))
   }
 
+  test("nested elements are built from the child buffer") {
+    val builder: XmlBuilder[Xml.Element] = XmlBuilder()
+    builder.startElement(Xml.element("outer"))
+    builder.startElement(Xml.element("inner"))
+    builder.text("a")
+    builder.endElement()
+    builder.endElement()
+    val xml: Xml.Element = builder.result
+    assert(xml.getName == "outer")
+    assert(xml.getChildren.flatMap(_.asElement).map(_.getName) == Seq("inner"))
+    assert(xml.getChildren.flatMap(_.asElement).head.getChildren.flatMap(_.asText) == Seq("a"))
+  }
+
+  test("result requires a document element") {
+    intercept[IllegalArgumentException](XmlBuilder[Xml.Element]().result)
+  }
+
   test("HTML document keeps prologue comments that the tree drops") {
     val builder: XmlBuilder[Html.Element] = XmlBuilder()
     builder.comment("c")
