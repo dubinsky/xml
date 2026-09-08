@@ -16,16 +16,12 @@ object Xml2Html:
     "frame"
   )
 
-  // TODO move into XmlAst
-  def renameElement[E: XmlAst](name: String, element: E): E = element
-    .addClass(element.localName)
-    .rename(name)
-
 // Prefix attribute and element names that collide with the HTML ones.
 // Element and attribute sets match local names; `xml:*` is left as-is.
 // Namespace-based styling didn't work: browser DOM elements seem to be
 // in the HTML5 xhtml namespace unless `xmlns` attribute is present
 // on that very element (no inheritance).
+// TODO maybe this should be a method?
 final class Xml2Html(prefix: String):
   private def withPrefix(name: String): String = s"$prefix-$name"
 
@@ -42,4 +38,4 @@ final class Xml2Html(prefix: String):
 
     if !Xml2Html.reservedHtmlElements.contains(element.localName)
     then attributesConverted
-    else Xml2Html.renameElement(withPrefix(element.localName), attributesConverted)
+    else attributesConverted.renameKeepingClass(withPrefix(element.localName))

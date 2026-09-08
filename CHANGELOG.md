@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: drop `Xml2Html.renameElement`. Stamp-old-name-as-class is `XmlAst` `renameKeepingClass` (plain `rename` does not add a class).
 - Breaking: `XmlAttribute.qName` / `XmlElement.qName` / `XmlAst` element `qName` (were `name` / `getName`); `XmlExpandedName.qName` (was `qualifiedName`); `parseQName` (was `parseQualified`).
 - Breaking: `XmlExpandedName(localName, namespace: Option[XmlNamespace])`. Prefix and URI are `prefix` / `uri`. Prefix without a URI is `XmlNamespace.of`.
 - `XmlAttribute(name, XmlNamespace)` auxiliary constructor; `xml:*` and default `xmlns` use it. Prefixed `xmlns` stays `Xmlns(prefix)` (apply: `extends` cannot call apply).

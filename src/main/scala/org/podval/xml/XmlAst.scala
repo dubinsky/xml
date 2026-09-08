@@ -167,6 +167,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     // TODO name this and above consistently or remove
     def rename(name: String): Element = renamed(element, name)
 
+    def renameKeepingClass(name: String): Element =
+      element.addClass(element.localName).rename(name)
+
     def isElement(elem: XmlElement): Boolean =
       element.localName == elem.expanded.localName &&
         element.getPrefix == elem.expanded.prefix

@@ -141,6 +141,14 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(xml.getClasses == Seq("x"))
   }
 
+  test("renameKeepingClass stamps the old local name as a class") {
+    val xml: Xml.Element = parse("""<tei:p xmlns:tei="http://www.tei-c.org/ns/1.0">a</tei:p>""")
+    val renamed: Xml.Element = xml.renameKeepingClass("tei-p")
+    assert(renamed.qName == "tei-p")
+    assert(renamed.getClasses.contains("p"))
+    assert(xml.rename("div").getClasses.isEmpty)
+  }
+
   test("transform stopAtCode matches local name") {
     val xml: Xml.Element = parse(
       """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""
