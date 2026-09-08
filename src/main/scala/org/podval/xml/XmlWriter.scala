@@ -65,7 +65,7 @@ object XmlWriter:
         chunks.tail.init.map(chunk => fromChunk(chunk, canBreakLeft = true, canBreakRight = true)) :+
         fromChunk(chunks.last, canBreakLeft = true, canBreakRight = canBreakRight1)
 
-    val qName: String = element.getName
+    val qName: String = element.qName
     val local: String = element.localName
 
     if children.isEmpty then
@@ -218,7 +218,7 @@ object XmlWriter:
     val children: Seq[String] =
       element.getChildren.flatMap(preformat)
 
-    val qName: String = element.getName
+    val qName: String = element.qName
     if children.isEmpty then Seq(s"<$qName$attributes/>")
     else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
     else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")

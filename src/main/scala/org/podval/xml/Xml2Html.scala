@@ -32,7 +32,7 @@ final class Xml2Html(prefix: String):
   def convert[E: XmlAst](element: E): E =
     val attributesConverted: E = element.setAttributes(element.getExpandedAttributes.map((name, value) =>
       val nameNew: String =
-        if name.namespace.contains(XmlNamespace.xml.uri)
+        if name.isXml
         then name.qName
         else if !Xml2Html.reservedAttributes.contains(name.localName)
         then name.qName

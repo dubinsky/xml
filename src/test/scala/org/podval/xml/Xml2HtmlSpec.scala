@@ -8,7 +8,7 @@ final class Xml2HtmlSpec extends AnyFunSuite:
 
   test("unprefixed reserved element is prefixed") {
     val html: Xml.Element = Xml2Html("tei").convert(parse("<p>a</p>"))
-    assert(html.getName == "tei-p")
+    assert(html.qName == "tei-p")
     assert(html.getClasses.contains("p"))
   }
 
@@ -16,7 +16,7 @@ final class Xml2HtmlSpec extends AnyFunSuite:
     val html: Xml.Element = Xml2Html("tei").convert(
       parse("""<tei:p xmlns:tei="http://www.tei-c.org/ns/1.0">a</tei:p>""")
     )
-    assert(html.getName == "tei-p")
+    assert(html.qName == "tei-p")
     assert(html.getClasses.contains("p"))
   }
 

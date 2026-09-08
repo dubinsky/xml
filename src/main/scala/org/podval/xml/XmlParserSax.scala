@@ -151,10 +151,10 @@ private def fromName(
 
   XmlExpandedName(
     localName = local,
-    prefix = prefix,
-    namespace = namespaceOf(uri, prefix, local, isAttribute)
+    namespace = XmlNamespace.of(prefix, namespaceOf(uri, prefix, local, isAttribute))
   )
 
+// TODO unfold
 private def namespaceOf(
   uri: String,
   prefix: Option[String],

@@ -61,8 +61,8 @@ given Xml: XmlAst[XML.Element]:
     name: XmlExpandedName,
     attributes: Seq[(XmlExpandedName, String)],
     isAttribute: Boolean
-  ): XmlName = name.copy(
-    namespace = name.namespace
+  ): XmlName =
+    val uri: Option[String] = name.uri
       .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute).map(_.uri))
       .orElse(XmlExpandedName.declaredUri(name.prefix, attributes, isAttribute))
-  ).toZio
+    XmlExpandedName(name.localName, XmlNamespace.of(name.prefix, uri)).toZio

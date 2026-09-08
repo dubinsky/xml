@@ -15,7 +15,7 @@ final class XmlParserSpec extends AnyFunSuite:
         |  <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="includee.xml"/>
         |</includer>""".stripMargin
     ).toOption.get
-    assert(xml.getName == "includer")
+    assert(xml.qName == "includer")
     assert(children(xml).map(_.localName) == Seq("include"))
   }
 
@@ -28,14 +28,14 @@ final class XmlParserSpec extends AnyFunSuite:
   test("parseXml from URL") {
     val url = classOf[XmlParserSpec].getResource("includee.xml")
     val xml: Xml.Element = XmlParser.parseXml(url).toOption.get
-    assert(xml.getName == "includee")
+    assert(xml.qName == "includee")
   }
 
   test("parseXml from File") {
     val url = classOf[XmlParserSpec].getResource("includee.xml")
     assert(url.getProtocol == "file")
     val xml: Xml.Element = XmlParser.parseXml(File(url.toURI)).toOption.get
-    assert(xml.getName == "includee")
+    assert(xml.qName == "includee")
   }
 
   test("missing resource is Left") {
@@ -51,17 +51,17 @@ final class XmlParserSpec extends AnyFunSuite:
         |<!-- prologue -->
         |<Day><names/></Day>""".stripMargin
     ).toOption.get
-    assert(xml.getName == "Day")
-    assert(children(xml).map(_.getName) == Seq("names"))
+    assert(xml.qName == "Day")
+    assert(children(xml).map(_.qName) == Seq("names"))
   }
 
   test("parseHtml from URL matches string parse") {
     val fromString: Xml.Element = XmlParser.parseHtml("<p>a<b>c</b></p>").toOption.get
     val url = classOf[XmlParserSpec].getResource("fragment.html")
     val fromUrl: Xml.Element = XmlParser.parseHtml(url).toOption.get
-    assert(fromUrl.getName == fromString.getName)
-    assert(fromUrl.getName == "p")
-    assert(children(fromUrl).map(_.getName) == Seq("b"))
+    assert(fromUrl.qName == fromString.qName)
+    assert(fromUrl.qName == "p")
+    assert(children(fromUrl).map(_.qName) == Seq("b"))
     assert(fromUrl.getText == fromString.getText)
   }
 
@@ -80,7 +80,7 @@ final class XmlParserSpec extends AnyFunSuite:
 
   test("parseXml into ScalaXml keeps names, text, CDATA, and comments") {
     val xml: ScalaXml.Element = XmlParser.parseXml("""<p xml:id="x">a<![CDATA[b]]><!--c--></p>""").toOption.get
-    assert(ScalaXml.getName(xml) == "p")
+    assert(ScalaXml.qName(xml) == "p")
     assert(ScalaXml.get(xml)(XmlAttribute.XmlId).contains("x"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("a"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asCData) == Seq("b"))
@@ -89,9 +89,9 @@ final class XmlParserSpec extends AnyFunSuite:
 
   test("parseHtml into Html keeps tags and text and drops comments") {
     val html: Html.Element = XmlParser.parseHtml("<p>a<!--c--><b>d</b></p>").toOption.get
-    assert(html.getName == "p")
+    assert(html.qName == "p")
     assert(html.getChildren.flatMap(_.asComment).isEmpty)
-    assert(html.getChildren.flatMap(_.asElement).map(_.getName) == Seq("b"))
+    assert(html.getChildren.flatMap(_.asElement).map(_.qName) == Seq("b"))
     assert(html.getText == "ad")
   }
 

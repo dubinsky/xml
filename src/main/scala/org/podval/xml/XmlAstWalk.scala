@@ -69,7 +69,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       element.getChildren.flatMap(_.asElement).filter(_.localName == name)
 
     def requireName(name: String): Unit =
-      if element.localName != name then throw XmlError(s"Expected '$name', found '${element.getName}'")
+      if element.localName != name then throw XmlError(s"Expected '$name', found '${element.qName}'")
 
     def requireAttr(name: String): String =
       element.get(name).map(_.trim).filter(_.nonEmpty).getOrElse:

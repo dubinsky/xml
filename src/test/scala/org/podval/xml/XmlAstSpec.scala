@@ -11,15 +11,15 @@ final class XmlAstSpec extends AnyFunSuite:
   test("convertElements keeps mixed text and elements") {
     val converted: Xml.Nodes = parse("<p>a<x/>b</p>").getChildren.convertElements(_ => None)
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
-    assert(converted.flatMap(_.asElement).map(_.getName) == Seq("x"))
+    assert(converted.flatMap(_.asElement).map(_.qName) == Seq("x"))
   }
 
   test("convertElements can expand an element among text") {
     val converted: Xml.Nodes = parse("<p>a<note/>b</p>").getChildren.convertElements(
-      el => Option.when(el.getName == "note")(Chunk(Xml.element("span"), Xml.element("aside")))
+      el => Option.when(el.qName == "note")(Chunk(Xml.element("span"), Xml.element("aside")))
     )
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
-    assert(converted.flatMap(_.asElement).map(_.getName) == Seq("span", "aside"))
+    assert(converted.flatMap(_.asElement).map(_.qName) == Seq("span", "aside"))
   }
 
   test("to[Html.Element] keeps mixed text and elements") {
@@ -31,15 +31,15 @@ final class XmlAstSpec extends AnyFunSuite:
 
   test("to[Html.Element] keeps attributes and nesting") {
     val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[Html.Element]
-    assert(html.getName == "div")
+    assert(html.qName == "div")
     assert(html.get(XmlAttribute.XmlId).contains("x"))
     assert(html.get(XmlAttribute.CssClass).contains("y"))
-    assert(html.getChildren.flatMap(_.asElement).map(_.getName) == Seq("p"))
+    assert(html.getChildren.flatMap(_.asElement).map(_.qName) == Seq("p"))
   }
 
   test("to[Html.Element] keeps empty elements") {
     val html: Html.Element = parse("<x/>").to[Html.Element]
-    assert(html.getName == "x")
+    assert(html.qName == "x")
     assert(html.getChildren.isEmpty)
   }
 
@@ -119,12 +119,12 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(xml.get(XmlAttribute.XmlLang).contains("en"))
     assert(xml.get(XmlAttribute.Lang).contains("fr"))
     assert(XmlAttribute.XmlId.qName == "xml:id")
-    assert(XmlAttribute.XmlId.expanded.namespace.contains(XmlNamespace.xml.uri))
+    assert(XmlAttribute.XmlId.expanded.uri.contains(XmlNamespace.xml.uri))
     assert(XmlAttribute.XmlLang.qName == "xml:lang")
     assert(XmlAttribute.XmlBase.qName == "xml:base")
     assert(XmlAttribute.Xmlns.qName == "xmlns")
     assert(XmlAttribute.Xmlns.expanded.prefix.isEmpty)
-    assert(XmlAttribute.Xmlns.expanded.namespace.contains(XmlNamespace.xmlns.uri))
+    assert(XmlAttribute.Xmlns.expanded.uri.contains(XmlNamespace.xmlns.uri))
     assert(XmlAttribute.Xmlns("xsi").qName == "xmlns:xsi")
     assert(XmlAttribute.Lang.qName == "lang")
     assert(!xml.isElement(XmlElement.A))
@@ -146,6 +146,6 @@ final class XmlAstSpec extends AnyFunSuite:
       """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""
     )
     val transformed: Xml.Element = xml.transform(_.rename("y"))
-    assert(transformed.getName == "tei:code")
-    assert(transformed.getChildren.flatMap(_.asElement).map(_.getName) == Seq("x"))
+    assert(transformed.qName == "tei:code")
+    assert(transformed.getChildren.flatMap(_.asElement).map(_.qName) == Seq("x"))
   }

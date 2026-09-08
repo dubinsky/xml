@@ -66,7 +66,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     attributes: Seq[(XmlExpandedName, String)]
   ): Element = this.element(
     XmlExpandedName.parse(
-      element.getName,
+      element.qName,
       XmlExpandedName.asPairs(attributes),
       isAttribute = false,
       existing = Some(element.getExpandedName)
@@ -156,14 +156,15 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   extension (element: Element)
     def getExpandedName: XmlExpandedName
 
-    def getName: String = element.getExpandedName.qName
+    def qName: String = element.getExpandedName.qName
 
     def localName: String = element.getExpandedName.localName
 
     def getPrefix: Option[String] = element.getExpandedName.prefix
 
-    def getNamespace: Option[String] = element.getExpandedName.namespace
+    def getNamespace: Option[String] = element.getExpandedName.uri
 
+    // TODO name this and above consistently or remove
     def rename(name: String): Element = renamed(element, name)
 
     def isElement(elem: XmlElement): Boolean =

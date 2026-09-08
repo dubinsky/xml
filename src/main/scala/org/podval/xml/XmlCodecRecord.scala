@@ -173,10 +173,10 @@ private[xml] trait XmlCodecRecord:
       val parsedName: XmlExpandedName = XmlExpandedName.parseQName(name)
       val expandedName: XmlExpandedName = namespace match
         case Some((uri, prefix)) if prefix.nonEmpty && parsedName.prefix.isEmpty =>
-          XmlExpandedName(parsedName.localName, Some(prefix), Some(uri))
+          XmlExpandedName(parsedName.localName, Some(XmlNamespace(uri, Some(prefix))))
         case Some((uri, _)) if parsedName.prefix.isEmpty =>
-          XmlExpandedName(parsedName.localName, None, Some(uri))
-        case Some((uri, _)) => parsedName.copy(namespace = Some(uri))
+          XmlExpandedName(parsedName.localName, Some(XmlNamespace(uri, None)))
+        case Some((uri, _)) => parsedName.copy(namespace = XmlNamespace.of(parsedName.prefix, Some(uri)))
         case None =>
           XmlExpandedName.parse(
             name,

@@ -92,7 +92,7 @@ object ScalaXml extends XmlAst[Elem]:
         else
           val key: String = p.orNull
           Option(scope.getURI(key)).filter(uri => uri != null && uri.nonEmpty)
-    XmlExpandedName(local, p, namespace)
+    XmlExpandedName(local, XmlNamespace.of(p, namespace))
 
   // scala.xml rejects prefix ""; unprefixed names use null.
   private def toMetaData(attributes: Seq[(XmlExpandedName, String)]): MetaData =
@@ -118,7 +118,7 @@ object ScalaXml extends XmlAst[Elem]:
   private def bind(
     scope: NamespaceBinding,
     name: XmlExpandedName
-  ): NamespaceBinding = name.namespace match
+  ): NamespaceBinding = name.uri match
     case None => scope
     case Some(_) if name.isXmlnsDeclaration => scope
     case Some(uri) =>

@@ -21,9 +21,16 @@ package org.podval.xml
 final case class XmlNamespace(
   uri: String,
   prefix: Option[String]
-) derives CanEqual
+) derives CanEqual:
+  def unprefixed: XmlNamespace = copy(prefix = None)
 
 object XmlNamespace:
+  def of(prefix: Option[String], uri: Option[String]): Option[XmlNamespace] =
+    val p: Option[String] = prefix.filter(_.nonEmpty)
+    val u: Option[String] = uri.filter(_.nonEmpty)
+    if p.isEmpty && u.isEmpty then None
+    else Some(XmlNamespace(u.getOrElse(""), p))
+
   val xml: XmlNamespace = XmlNamespace("http://www.w3.org/XML/1998/namespace", Some("xml"))
 
   val xmlns: XmlNamespace = XmlNamespace("http://www.w3.org/2000/xmlns/", Some("xmlns"))

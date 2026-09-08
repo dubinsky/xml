@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 final class ScalaXmlSpec extends AnyFunSuite:
   test("element uses the given name") {
     val el: ScalaXml.Element = ScalaXml.element("p")
-    assert(ScalaXml.getName(el) == "p")
+    assert(ScalaXml.qName(el) == "p")
     assert(el.label == "p")
     assert(el.prefix == null)
   }
@@ -17,23 +17,23 @@ final class ScalaXmlSpec extends AnyFunSuite:
       Seq("xml:id" -> "x"),
       Seq(ScalaXml.text("a"))
     )
-    assert(ScalaXml.getName(el) == "p")
+    assert(ScalaXml.qName(el) == "p")
     assert(ScalaXml.getAttributes(el) == Seq("xml:id" -> "x"))
     assert(ScalaXml.getChildren(el).flatMap(ScalaXml.asText) == Seq("a"))
   }
 
   test("qualified element names round-trip prefix and label") {
     val el: ScalaXml.Element = ScalaXml.element("tei:p")
-    assert(ScalaXml.getName(el) == "tei:p")
+    assert(ScalaXml.qName(el) == "tei:p")
     assert(el.prefix == "tei")
     assert(el.label == "p")
     val renamed: ScalaXml.Element = ScalaXml.rename(el)("div")
-    assert(ScalaXml.getName(renamed) == "div")
+    assert(ScalaXml.qName(renamed) == "div")
     assert(renamed.prefix == null)
     assert(renamed.label == "div")
   }
 
-  test("getName reconstructs prefix from an existing Elem") {
+  test("qName reconstructs prefix from an existing Elem") {
     val existing: scala.xml.Elem = scala.xml.Elem(
       "tei",
       "p",
@@ -41,7 +41,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
       scala.xml.TopScope,
       false
     )
-    assert(ScalaXml.getName(existing) == "tei:p")
+    assert(ScalaXml.qName(existing) == "tei:p")
   }
 
   test("attributes preserve order and prefixes") {
@@ -63,9 +63,9 @@ final class ScalaXmlSpec extends AnyFunSuite:
   test("to round-trips Xml through ScalaXml") {
     val xml: Xml.Element = XmlParser.parseXml("""<p xml:id="x"><q>a</q>b</p>""").toOption.get
     val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
-    assert(round.getName == "p")
+    assert(round.qName == "p")
     assert(round.get(XmlAttribute.XmlId).contains("x"))
-    assert(round.getChildren.flatMap(_.asElement).map(_.getName) == Seq("q"))
+    assert(round.getChildren.flatMap(_.asElement).map(_.qName) == Seq("q"))
     assert(round.getChildren.flatMap(_.asText) == Seq("b"))
   }
 

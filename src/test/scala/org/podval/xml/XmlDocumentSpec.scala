@@ -18,9 +18,9 @@ final class XmlDocumentSpec extends AnyFunSuite:
         |<Day><names/></Day>
         |<!-- epilogue -->""".stripMargin
     ).toOption.get
-    assert(xml.getName == "Day")
+    assert(xml.qName == "Day")
     assert(xml.getChildren.flatMap(_.asComment).isEmpty)
-    assert(xml.getChildren.flatMap(_.asElement).map(_.getName) == Seq("names"))
+    assert(xml.getChildren.flatMap(_.asElement).map(_.qName) == Seq("names"))
   }
 
   test("parseXmlDocument keeps prolog and epilog comments") {
@@ -30,7 +30,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
         |<Day><names/></Day>
         |<!-- epilogue -->""".stripMargin
     )
-    assert(doc.root.getName == "Day")
+    assert(doc.root.qName == "Day")
     assert(doc.declaration.contains(XmlDeclaration()))
     assert(doc.doctype.isEmpty)
     assert(doc.prolog == Seq(XmlMisc.Comment(" prologue ")))
@@ -98,7 +98,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(round.doctype == doc.doctype, dumped)
     assert(round.prolog == doc.prolog, dumped)
     assert(round.epilog == doc.epilog, dumped)
-    assert(round.root.getName == "Day", dumped)
+    assert(round.root.qName == "Day", dumped)
   }
 
   test("Haftarah-shaped prologue comment survives parse/write") {
@@ -123,7 +123,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(url.getProtocol == "file")
     val fromFile: XmlDocument[Xml.Element] = XmlParser.parseXmlDocument(File(url.toURI)).toOption.get
     val fromString: XmlDocument[Xml.Element] = parseDoc("<includee><content>Blah!</content></includee>")
-    assert(fromFile.root.getName == fromString.root.getName)
+    assert(fromFile.root.qName == fromString.root.qName)
     assert(fromFile.declaration.contains(XmlDeclaration()))
   }
 
@@ -132,7 +132,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
       "<!-- c --><p>a</p>"
     ).toOption.get
     assert(doc.prolog == Seq(XmlMisc.Comment(" c ")))
-    assert(ScalaXml.getName(doc.root) == "p")
+    assert(ScalaXml.qName(doc.root) == "p")
   }
 
   test("XmlDocument.xml helper sets the canonical declaration") {

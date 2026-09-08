@@ -91,7 +91,7 @@ object XmlCodec:
     /** `wrappedSeq(name)`: require wrapper `name`, then [[decodeChildren]]. */
     def decodeCatalog[E: XmlAst](root: E, name: String): Either[XmlError, Seq[A]] =
       val ast: XmlAst[E] = summon[XmlAst[E]]
-      val found: String = ast.getName(root)
+      val found: String = ast.qName(root)
       if found != name && ast.localName(root) != name then
         Left(XmlError(s"Expected catalog '$name', found '$found'"))
       else codec.decodeChildren(root)
