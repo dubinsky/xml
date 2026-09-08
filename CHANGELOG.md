@@ -5,8 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
-- `Xml2Html.elementName` / `attributeName` / `is` / `get` are the post-`convert` names (`Head` → `tei-head`, `Lang` → `tei-lang`). `get` prefers the prefixed attribute so HTML `class` from `renameKeepingClass` does not hide the original.
-- `XmlElement` adds `P`, `Head`, `Body`, `Title`, `Div`, `Span`, `Ul`, `Ol`, `Li`, `Img`, `Pre`, `Table`, `Tr`, `Td`, `Th`, `Dl`, `Dt`, `Dd`, `Blockquote`, `Figure`, `Figcaption`, `Br`, `Em`. `localName` is on the catalog object.
+- `Xml2Html.elementName` / `attributeName` / `is` / `get` are the post-`convert` names (`Head` → `tei-head`, `Lang` → `tei-lang`). `get` prefers the prefixed attribute so HTML `class` from `renameKeepingClass` does not hide the original. `convert` rewrites expanded names in place (`setExpandedAttributes`).
+- Breaking: drop `XmlAst` `getAttributes`. The list is `getExpandedAttributes`; qName pairs are `XmlExpandedName.asPairs`. `XmlExpandedName.parseDeclared` binds xmlns from expanded attributes.
+- `XmlElement` adds `Html`, `P`, `Head`, `Body`, `Title`, `Div`, `Span`, `Ul`, `Ol`, `Li`, `Img`, `Pre`, `Table`, `Tr`, `Td`, `Th`, `Dl`, `Dt`, `Dd`, `Blockquote`, `Figure`, `Figcaption`, `Br`, `Em`. `localName` is on the catalog object. `HtmlTagSoup` strips `Html`/`Body` wrappers by catalog local name.
 - Breaking: drop `Xml2Html.renameElement`. Stamp-old-name-as-class is `XmlAst` `renameKeepingClass` (plain `rename` does not add a class).
 - Breaking: `XmlAttribute.qName` / `XmlElement.qName` / `XmlAst` element `qName` (were `name` / `getName`); `XmlExpandedName.qName` (was `qualifiedName`); `parseQName` (was `parseQualified`).
 - Breaking: `XmlExpandedName(localName, namespace: Option[XmlNamespace])`. Prefix and URI are `prefix` / `uri`. Prefix without a URI is `XmlNamespace.of`.

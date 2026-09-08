@@ -14,6 +14,8 @@ object XmlElement:
 
   object P extends XmlElement("p")
 
+  object Html extends XmlElement("html")
+
   object Head extends XmlElement("head")
 
   object Body extends XmlElement("body")

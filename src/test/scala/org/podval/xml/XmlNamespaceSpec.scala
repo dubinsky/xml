@@ -129,7 +129,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
-    assert(xml.getAttributes == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
+    assert(XmlExpandedName.asPairs(xml.getExpandedAttributes) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
     assert(attrName(xml, "xml:id").namespace.contains(XmlNamespace.xml.uri))
     assert(attrName(xml, "xmlns:tei").namespace.contains(XmlNamespace.xmlns.uri))
   }
@@ -164,7 +164,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(el.label == "p")
     assert(el.scope.getURI("tei") == tei)
     assert(el.scope.getURI("xml") == XmlNamespace.xml.uri)
-    assert(ScalaXml.getAttributes(el) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
+    assert(XmlExpandedName.asPairs(ScalaXml.getExpandedAttributes(el)) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
   }
 
   test("ScalaXml default xmlns is on scope") {

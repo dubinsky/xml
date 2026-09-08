@@ -9,6 +9,8 @@ import scala.collection.mutable
 // - does not support namespaces at all;
 // - lower-cases element and attribute names.
 object HtmlTagSoup:
+  private val wrappers: Set[String] = Set(XmlElement.Html, XmlElement.Body).map(_.localName)
+
   def reader: XMLReader =
     val tagSoup: XMLReader = TagSoupParser()
     tagSoup.setFeature(TagSoupParser.rootBogonsFeature, true)
@@ -24,8 +26,7 @@ object HtmlTagSoup:
   private final class TagSoupFilter extends XMLFilterImpl:
     private val suppressedPrefixes: mutable.Set[String] = mutable.Set.empty
 
-    private def suppress(localName: String): Boolean =
-      "html".equalsIgnoreCase(localName) || "body".equalsIgnoreCase(localName)
+    private def suppress(localName: String): Boolean = HtmlTagSoup.wrappers.contains(localName)
 
     private def dropXhtml(uri: String): String =
       if uri == XmlNamespace.xhtml.uri then "" else uri

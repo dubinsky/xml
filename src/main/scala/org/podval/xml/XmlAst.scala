@@ -48,9 +48,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   ): Element
 
   final def renamed(element: Element, name: String): Element = this.element(
-    XmlExpandedName.parse(
+    XmlExpandedName.parseDeclared(
       name,
-      XmlExpandedName.asPairs(element.getExpandedAttributes),
+      element.getExpandedAttributes,
       isAttribute = false,
       existing = Some(element.getExpandedName)
     ),
@@ -65,9 +65,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     element: Element,
     attributes: Seq[(XmlExpandedName, String)]
   ): Element = this.element(
-    XmlExpandedName.parse(
+    XmlExpandedName.parseDeclared(
       element.qName,
-      XmlExpandedName.asPairs(attributes),
+      attributes,
       isAttribute = false,
       existing = Some(element.getExpandedName)
     ),
@@ -79,9 +79,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     withExpandedAttributes(element, XmlExpandedName.attributes(attributes))
 
   final def withAttribute(element: Element, attribute: String, value: String): Element =
-    val parsed: XmlExpandedName = XmlExpandedName.parse(
+    val parsed: XmlExpandedName = XmlExpandedName.parseDeclared(
       attribute,
-      element.getAttributes,
+      element.getExpandedAttributes,
       isAttribute = true
     )
     val other: Seq[(XmlExpandedName, String)] =
@@ -193,8 +193,8 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
 
     def getExpandedAttributes: Seq[(XmlExpandedName, String)]
 
-    def getAttributes: Seq[(String, String)] =
-      XmlExpandedName.asPairs(element.getExpandedAttributes)
+    def setExpandedAttributes(attributes: Seq[(XmlExpandedName, String)]): Element =
+      withExpandedAttributes(element, attributes)
 
     def setAttributes(attributes: Seq[(String, String)]): Element =
       withAttributes(element, attributes)
@@ -204,7 +204,8 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
         case (n, v) if n.sameAs(attribute.expanded) => v
 
     def get(attribute: String): Option[String] =
-      element.getAttributes.find(_._1 == attribute).map(_._2)
+      element.getExpandedAttributes.collectFirst:
+        case (n, v) if n.qName == attribute => v
 
     def set(attribute: XmlAttribute, value: String): Element =
       set(attribute.qName, value)

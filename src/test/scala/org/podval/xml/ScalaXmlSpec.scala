@@ -18,7 +18,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
       Seq(ScalaXml.text("a"))
     )
     assert(ScalaXml.qName(el) == "p")
-    assert(ScalaXml.getAttributes(el) == Seq("xml:id" -> "x"))
+    assert(XmlExpandedName.asPairs(ScalaXml.getExpandedAttributes(el)) == Seq("xml:id" -> "x"))
     assert(ScalaXml.getChildren(el).flatMap(ScalaXml.asText) == Seq("a"))
   }
 
@@ -50,7 +50,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
       "xml:id" -> "b",
       "class" -> "c"
     ))
-    assert(ScalaXml.getAttributes(el) == Seq("id" -> "a", "xml:id" -> "b", "class" -> "c"))
+    assert(XmlExpandedName.asPairs(ScalaXml.getExpandedAttributes(el)) == Seq("id" -> "a", "xml:id" -> "b", "class" -> "c"))
   }
 
   test("cdata is PCData") {

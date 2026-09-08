@@ -36,7 +36,7 @@ final class Xml2Html(val prefix: String):
     else elem.localName
 
   /** Attribute qName after `convert`: reserved HTML names get `$prefix-…`; `xml:*` stays. */
-  def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.expanded)
+  def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.expanded).qName
 
   def is[E: XmlAst](element: E, elem: XmlElement): Boolean =
     element.qName == elementName(elem) || element.isElement(elem)
@@ -47,14 +47,14 @@ final class Xml2Html(val prefix: String):
     element.get(attributeName(attr)).orElse(element.get(attr))
 
   def convert[E: XmlAst](element: E): E =
-    val attributesConverted: E = element.setAttributes(element.getExpandedAttributes.map((name, value) =>
-      (rewriteAttribute(name), value)
-    ))
+    val attributesConverted: E = element.setExpandedAttributes(
+      element.getExpandedAttributes.map((name, value) => (rewriteAttribute(name), value))
+    )
     if !Xml2Html.reservedHtmlElements.contains(element.localName)
     then attributesConverted
     else attributesConverted.renameKeepingClass(withPrefix(element.localName))
 
-  private def rewriteAttribute(name: XmlExpandedName): String =
+  private def rewriteAttribute(name: XmlExpandedName): XmlExpandedName =
     if name.isXml || !Xml2Html.reservedAttributes.contains(name.localName)
-    then name.qName
-    else withPrefix(name.localName)
+    then name
+    else XmlExpandedName(withPrefix(name.localName))

@@ -62,9 +62,27 @@ object XmlExpandedName:
     existing: Option[XmlExpandedName] = None
   ): XmlExpandedName =
     val parsed: XmlExpandedName = parseQName(name)
+    bind(parsed, isAttribute, xmlnsUri(parsed.prefix, attributes, isAttribute), existing)
+
+  /** Like `parse`, with xmlns taken from already-expanded attributes (`declaredUri`). */
+  def parseDeclared(
+    name: String,
+    attributes: Seq[(XmlExpandedName, String)],
+    isAttribute: Boolean = false,
+    existing: Option[XmlExpandedName] = None
+  ): XmlExpandedName =
+    val parsed: XmlExpandedName = parseQName(name)
+    bind(parsed, isAttribute, declaredUri(parsed.prefix, attributes, isAttribute), existing)
+
+  private def bind(
+    parsed: XmlExpandedName,
+    isAttribute: Boolean,
+    declared: Option[String],
+    existing: Option[XmlExpandedName]
+  ): XmlExpandedName =
     val uri: Option[String] =
       XmlNamespace.wellKnown(parsed.prefix, parsed.localName, isAttribute).map(_.uri)
-        .orElse(xmlnsUri(parsed.prefix, attributes, isAttribute))
+        .orElse(declared)
         .orElse(existing.filter(_.prefix == parsed.prefix).flatMap(_.uri))
     parsed.copy(namespace = XmlNamespace.of(parsed.prefix, uri))
 

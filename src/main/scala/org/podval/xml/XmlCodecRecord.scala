@@ -178,11 +178,7 @@ private[xml] trait XmlCodecRecord:
           XmlExpandedName(parsedName.localName, Some(XmlNamespace(uri, None)))
         case Some((uri, _)) => parsedName.copy(namespace = XmlNamespace.of(parsedName.prefix, Some(uri)))
         case None =>
-          XmlExpandedName.parse(
-            name,
-            XmlExpandedName.asPairs(nsAttrs ++ attributes.toSeq),
-            isAttribute = false
-          )
+          XmlExpandedName.parseDeclared(name, nsAttrs ++ attributes.toSeq, isAttribute = false)
       ast.element(expandedName, nsAttrs ++ attributes.toSeq, children.toSeq)
 
   protected def fieldInfo[F[_, _], A](recordTypeId: TypeId[A], field: Term[F, A, ?], offset: RegisterOffset)(using
