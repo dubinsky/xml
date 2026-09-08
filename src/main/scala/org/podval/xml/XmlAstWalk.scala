@@ -10,7 +10,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       stopAtCode: Boolean = true
     ): Element =
       def loop(element: Element): Element =
-        if stopAtCode && element.localName == XmlElement.Code.localName then element
+        if stopAtCode && element.isNamed(XmlElement.Code.localName) then element
         else
           val result: Element = transformElement(element)
           result.setChildren(result.getChildren.map(xml => xml.asElement.fold(xml)(loop)))
@@ -23,7 +23,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       def loop(element: Element): Seq[A] =
         val fromElement: Option[A] = gatherElement(element)
         val fromChildren: Seq[A] =
-          if stopAtCode && element.localName == XmlElement.Code.localName then Seq.empty
+          if stopAtCode && element.isNamed(XmlElement.Code.localName) then Seq.empty
           else element.flatMapElements(loop)
         fromElement.toSeq ++ fromChildren
       loop(element)
@@ -36,7 +36,7 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       def loop(element: Element, context: Option[Element]): Seq[A] =
         val fromElement: Option[A] = gatherElement(element, context)
         val fromChildren: Seq[A] =
-          if stopAtCode && element.localName == XmlElement.Code.localName then Seq.empty
+          if stopAtCode && element.isNamed(XmlElement.Code.localName) then Seq.empty
           else
             val contextNew: Option[Element] = if isContext(element) then Some(element) else context
             element.flatMapElements(loop(_, contextNew))
@@ -62,14 +62,14 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       .head
 
     def isInclude: Boolean =
-      XmlNamespace.isInclude(element.localName, element.getNamespace, element.getPrefix) &&
+      element.getName.isInclude &&
         element.get(XmlAttribute.Href).exists(_.trim.nonEmpty)
 
     def childrenNamed(name: String): Seq[Element] =
-      element.getChildren.flatMap(_.asElement).filter(_.localName == name)
+      element.getChildren.flatMap(_.asElement).filter(_.isNamed(name))
 
     def requireName(name: String): Unit =
-      if element.localName != name then throw XmlError(s"Expected '$name', found '${element.qName}'")
+      if !element.isNamed(name) then throw XmlError(s"Expected '$name', found '${element.getName.qName}'")
 
     def requireAttr(name: String): String =
       element.get(name).map(_.trim).filter(_.nonEmpty).getOrElse:
@@ -80,7 +80,8 @@ private[xml] trait XmlAstWalk[ELEMENT]:
         raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
 
     def requireNoOther(allowed: Set[String]): Unit =
-      val extra: Seq[String] = element.getChildren.flatMap(_.asElement).map(_.localName).filterNot(allowed.contains)
+      val extra: Seq[String] =
+        element.getChildren.flatMap(_.asElement).map(_.getName.localName).filterNot(allowed.contains)
       if extra.nonEmpty then throw XmlError(s"Unparsed elements: $extra")
 
     def intAttr(name: String): Int =

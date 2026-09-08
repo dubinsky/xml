@@ -11,15 +11,15 @@ final class XmlAstSpec extends AnyFunSuite:
   test("convertElements keeps mixed text and elements") {
     val converted: Xml.Nodes = parse("<p>a<x/>b</p>").getChildren.convertElements(_ => None)
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
-    assert(converted.flatMap(_.asElement).map(_.qName) == Seq("x"))
+    assert(converted.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
   }
 
   test("convertElements can expand an element among text") {
     val converted: Xml.Nodes = parse("<p>a<note/>b</p>").getChildren.convertElements(
-      el => Option.when(el.qName == "note")(Chunk(Xml.element(XmlElement.Span), Xml.element("aside")))
+      el => Option.when(el.isNamed("note"))(Chunk(Xml.element(XmlElement.Span), Xml.element("aside")))
     )
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
-    assert(converted.flatMap(_.asElement).map(_.qName) == Seq("span", "aside"))
+    assert(converted.flatMap(_.asElement).map(_.getName.qName) == Seq("span", "aside"))
   }
 
   test("to[Html.Element] keeps mixed text and elements") {
@@ -34,12 +34,12 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(html.isElement(XmlElement.Div))
     assert(html.get(XmlAttribute.XmlId).contains("x"))
     assert(html.get(XmlAttribute.CssClass).contains("y"))
-    assert(html.getChildren.flatMap(_.asElement).map(_.qName) == Seq("p"))
+    assert(html.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
   }
 
   test("to[Html.Element] keeps empty elements") {
     val html: Html.Element = parse("<x/>").to[Html.Element]
-    assert(html.qName == "x")
+    assert(html.isNamed("x"))
     assert(html.getChildren.isEmpty)
   }
 
@@ -144,7 +144,7 @@ final class XmlAstSpec extends AnyFunSuite:
   test("renameKeepingClass stamps the old local name as a class") {
     val xml: Xml.Element = parse("""<tei:p xmlns:tei="http://www.tei-c.org/ns/1.0">a</tei:p>""")
     val renamed: Xml.Element = xml.renameKeepingClass("tei-p")
-    assert(renamed.qName == "tei-p")
+    assert(renamed.getName.qName == "tei-p")
     assert(renamed.getClasses.contains("p"))
     assert(xml.rename("div").getClasses.isEmpty)
   }
@@ -154,6 +154,6 @@ final class XmlAstSpec extends AnyFunSuite:
       """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""
     )
     val transformed: Xml.Element = xml.transform(_.rename("y"))
-    assert(transformed.qName == "tei:code")
-    assert(transformed.getChildren.flatMap(_.asElement).map(_.qName) == Seq("x"))
+    assert(transformed.getName.qName == "tei:code")
+    assert(transformed.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
   }

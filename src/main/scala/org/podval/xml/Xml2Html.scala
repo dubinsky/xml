@@ -39,7 +39,7 @@ final class Xml2Html(val prefix: String):
   def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.name).qName
 
   def is[E: XmlAst](element: E, elem: XmlElement): Boolean =
-    element.qName == elementName(elem) || element.isElement(elem)
+    element.isNamed(elementName(elem)) || element.isElement(elem)
 
   /** Prefixed name first, then the catalog name — so HTML `class` added by
     * `renameKeepingClass` does not hide the original reserved `class`. */
@@ -50,11 +50,11 @@ final class Xml2Html(val prefix: String):
     val attributesConverted: E = element.setAttributes(
       element.getAttributes.map((name, value) => (rewriteAttribute(name), value))
     )
-    if !Xml2Html.reservedHtmlElements.contains(element.localName)
+    if !element.getName.localNameIn(Xml2Html.reservedHtmlElements)
     then attributesConverted
-    else attributesConverted.renameKeepingClass(withPrefix(element.localName))
+    else attributesConverted.renameKeepingClass(withPrefix(element.getName.localName))
 
   private def rewriteAttribute(name: XmlName): XmlName =
-    if name.isXml || !Xml2Html.reservedAttributes.contains(name.localName)
+    if name.isXml || !name.localNameIn(Xml2Html.reservedAttributes)
     then name
     else XmlName(withPrefix(name.localName))

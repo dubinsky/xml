@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 final class ScalaXmlSpec extends AnyFunSuite:
   test("element uses the given name") {
     val el: ScalaXml.Element = ScalaXml.element(XmlElement.P)
-    assert(ScalaXml.qName(el) == "p")
+    assert(el.getName.qName == "p")
     assert(el.label == "p")
     assert(el.prefix == null)
   }
@@ -17,18 +17,18 @@ final class ScalaXmlSpec extends AnyFunSuite:
       Seq("xml:id" -> "x"),
       Seq(ScalaXml.text("a"))
     )
-    assert(ScalaXml.qName(el) == "p")
+    assert(el.getName.qName == "p")
     assert(XmlName.asPairs(ScalaXml.getAttributes(el)) == Seq("xml:id" -> "x"))
     assert(ScalaXml.getChildren(el).flatMap(ScalaXml.asText) == Seq("a"))
   }
 
   test("qualified element names round-trip prefix and label") {
     val el: ScalaXml.Element = ScalaXml.element("tei:p")
-    assert(ScalaXml.qName(el) == "tei:p")
+    assert(el.getName.qName == "tei:p")
     assert(el.prefix == "tei")
     assert(el.label == "p")
     val renamed: ScalaXml.Element = ScalaXml.rename(el)("div")
-    assert(ScalaXml.qName(renamed) == "div")
+    assert(renamed.getName.qName == "div")
     assert(renamed.prefix == null)
     assert(renamed.label == "div")
   }
@@ -41,7 +41,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
       scala.xml.TopScope,
       false
     )
-    assert(ScalaXml.qName(existing) == "tei:p")
+    assert(existing.getName.qName == "tei:p")
   }
 
   test("attributes preserve order and prefixes") {
@@ -65,7 +65,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
     val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.isElement(XmlElement.P))
     assert(round.get(XmlAttribute.XmlId).contains("x"))
-    assert(round.getChildren.flatMap(_.asElement).map(_.qName) == Seq("q"))
+    assert(round.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("q"))
     assert(round.getChildren.flatMap(_.asText) == Seq("b"))
   }
 

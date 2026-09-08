@@ -8,7 +8,6 @@ import zio.blocks.schema.xml.XmlName as ZioXmlName
   * `xmlns*` stay attributes (declarations for the writer). This is the
   * in-scope name of an element or attribute, including URIs inherited from
   * ancestors. */
-// TODO clean up
 final case class XmlName(
   localName: String,
   namespace: Option[XmlNamespace] = None
@@ -29,19 +28,42 @@ final case class XmlName(
   def isXml: Boolean =
     prefix == XmlNamespace.xml.prefix || uri.contains(XmlNamespace.xml.uri)
 
+  def isInclude: Boolean =
+    localName == "include" &&
+      (uri.contains(XmlNamespace.xinclude.uri) || prefix.contains("xi"))
+
   /** Same in-scope name: local part and URI, ignoring prefix. */
   def sameAs(other: XmlName): Boolean =
     localName == other.localName && uri == other.uri
 
+  def sameAs(attr: XmlAttribute): Boolean = sameAs(attr.name)
+
+  /** Catalog element: local + prefix, URI ignored (default-namespace DocBook `a` is still `A`). */
+  def is(elem: XmlElement): Boolean =
+    localName == elem.localName && prefix == elem.name.prefix
+
+  /** Catalog attribute: Clark identity (`xml:id` ≠ `id`). */
+  def is(attr: XmlAttribute): Boolean = sameAs(attr.name)
+
   def matches(expected: String): Boolean =
     val exp: XmlName = XmlName.parseQName(expected)
     qName == expected || localName == expected || localName == exp.localName
+
+  def matchesAny(expected: Iterable[String]): Boolean = expected.exists(matches)
+
+  def localNameIn(names: Set[String]): Boolean = names.contains(localName)
 
   def toZio: ZioXmlName = ZioXmlName(
     localName = localName,
     prefix = prefix,
     namespace = uri
   )
+
+  def toZio(attributes: Seq[(XmlName, String)], isAttribute: Boolean): ZioXmlName =
+    val resolved: Option[String] = uri
+      .orElse(XmlNamespace.wellKnown(prefix, localName, isAttribute).map(_.uri))
+      .orElse(XmlName.declaredUri(prefix, attributes, isAttribute))
+    XmlName(localName, XmlNamespace.of(prefix, resolved)).toZio
 
 object XmlName:
   given schema: Schema[XmlName] = Schema.derived
@@ -73,6 +95,13 @@ object XmlName:
   ): XmlName =
     val parsed: XmlName = parseQName(name)
     bind(parsed, isAttribute, declaredUri(parsed.prefix, attributes, isAttribute), existing)
+
+  def parseDeclared(
+    name: XmlName,
+    attributes: Seq[(XmlName, String)],
+    isAttribute: Boolean
+  ): XmlName =
+    bind(name, isAttribute, declaredUri(name.prefix, attributes, isAttribute), Some(name))
 
   private def bind(
     parsed: XmlName,

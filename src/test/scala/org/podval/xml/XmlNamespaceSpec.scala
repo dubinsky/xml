@@ -21,8 +21,8 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: Xml.Element = parse(
       s"""<tei:p xmlns:tei="$tei" xml:id="n1">a</tei:p>"""
     )
-    assert(xml.qName == "tei:p")
-    assert(xml.localName == XmlElement.P.localName)
+    assert(xml.getName.qName == "tei:p")
+    assert(xml.getName.localName == XmlElement.P.localName)
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
@@ -42,7 +42,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: Xml.Element = parse(
       s"""<article xmlns="$docbook"><title>Go</title></article>"""
     )
-    assert(xml.qName == "article")
+    assert(xml.isNamed("article"))
     assert(xml.name.prefix.isEmpty)
     assert(xml.name.namespace.contains(docbook))
     assert(xml.get(XmlAttribute.Xmlns).contains(docbook))
@@ -57,7 +57,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     )
     assert(xml.name.namespace.contains(docbook))
     val inner: Xml.Element = children(xml).head
-    assert(inner.qName == "inner")
+    assert(inner.isNamed("inner"))
     assert(inner.name.namespace.contains(tei))
   }
 
@@ -96,7 +96,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
          |</includer>""".stripMargin
     )
     val include: Xml.Element = children(xml).head
-    assert(include.localName == "include")
+    assert(include.isNamed("include"))
     assert(include.name.prefix.contains("xi"))
     assert(include.name.namespace.contains(XmlNamespace.xinclude.uri))
   }
@@ -125,7 +125,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
       Seq("xmlns:tei" -> tei, "xml:id" -> "n1"),
       Seq(Xml.text("a"))
     )
-    assert(xml.qName == "tei:p")
+    assert(xml.getName.qName == "tei:p")
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
@@ -159,7 +159,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
       Seq("xmlns:tei" -> tei, "xml:id" -> "n1"),
       Seq(ScalaXml.text("a"))
     )
-    assert(ScalaXml.qName(el) == "tei:p")
+    assert(el.getName.qName == "tei:p")
     assert(el.prefix == "tei")
     assert(el.label == "p")
     assert(el.scope.getURI("tei") == tei)
@@ -169,7 +169,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("ScalaXml default xmlns is on scope") {
     val el: ScalaXml.Element = ScalaXml.element("article", Seq("xmlns" -> docbook), Seq.empty)
-    assert(ScalaXml.qName(el) == "article")
+    assert(el.getName.qName == "article")
     assert(el.prefix == null)
     assert(el.scope.getURI(null) == docbook)
   }
@@ -177,16 +177,16 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   test("to Xml through ScalaXml keeps prefixes, xmlns, and xml: attributes") {
     val xml: Xml.Element = parse(s"""<tei:p xmlns:tei="$tei" xml:id="n1"><tei:hi>a</tei:hi></tei:p>""")
     val scalaEl: ScalaXml.Element = xml.to[ScalaXml.Element]
-    assert(ScalaXml.qName(scalaEl) == "tei:p")
+    assert(scalaEl.getName.qName == "tei:p")
     assert(scalaEl.scope.getURI("tei") == tei)
     val round: Xml.Element = ScalaXml.converted(scalaEl)
-    assert(round.qName == "tei:p")
+    assert(round.getName.qName == "tei:p")
     assert(round.name.localName == "p")
     assert(round.name.prefix.contains("tei"))
     assert(round.name.namespace.contains(tei))
     assert(round.get(XmlAttribute.XmlId).contains("n1"))
     assert(round.get(XmlAttribute.Xmlns("tei")).contains(tei))
-    assert(children(round).map(_.qName) == Seq("tei:hi"))
+    assert(children(round).map(_.getName.qName) == Seq("tei:hi"))
     assert(children(round).head.name.prefix.contains("tei"))
     assert(children(round).head.name.namespace.contains(tei))
     val scalaChild: ScalaXml.Element =
@@ -229,6 +229,19 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xmlId.isXml)
     assert(!xmlId.isXmlnsDeclaration)
     assert(xmlId.sameAs(XmlName("id", Some(XmlNamespace.xml))))
+    assert(xmlId.sameAs(XmlAttribute.XmlId))
+    assert(xmlId.is(XmlAttribute.XmlId))
+    assert(XmlAttribute.XmlId.matches(xmlId))
+    assert(!xmlId.is(XmlAttribute.Id))
+    assert(!XmlName("id").is(XmlAttribute.XmlId))
+    assert(XmlName("p").is(XmlElement.P))
+    assert(XmlElement.P.matches(XmlName("p")))
+    assert(!XmlName.parse("tei:p").is(XmlElement.P))
+    assert(XmlName.parse("tei:p").matches("p"))
+    assert(XmlName.parse("tei:p").matchesAny(Seq("div", "p")))
+    assert(XmlName.parse("tei:p").localNameIn(Set("p", "div")))
+    assert(XmlName.parse("xi:include").isInclude)
+    assert(!XmlName("include").isInclude)
   }
 
   test("writer emits xmlns for an inherited namespace on a child written alone") {

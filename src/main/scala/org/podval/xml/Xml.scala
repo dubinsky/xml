@@ -1,7 +1,7 @@
 package org.podval.xml
 
 import zio.blocks.chunk.Chunk
-import zio.blocks.schema.xml.{XmlName as ZioXmlName, Xml as XML}
+import zio.blocks.schema.xml.Xml as XML
 
 // XML AST for ZIO Blocks XML
 given Xml: XmlAst[XML.Element]:
@@ -20,8 +20,8 @@ given Xml: XmlAst[XML.Element]:
     attributes: Seq[(XmlName, String)],
     children: Nodes
   ): Element = XML.Element(
-    name = toZio(name, attributes, isAttribute = false),
-    attributes = Chunk.from(attributes).map((attr, value) => (toZio(attr, attributes, isAttribute = true), value)),
+    name = name.toZio(attributes, isAttribute = false),
+    attributes = Chunk.from(attributes).map((attr, value) => (attr.toZio(attributes, isAttribute = true), value)),
     children = Chunk.from(children)
   )
 
@@ -56,14 +56,3 @@ given Xml: XmlAst[XML.Element]:
 
     override def getChildren: Nodes =
       element.children
-
-  // TODO move into XmlName
-  private def toZio(
-    name: XmlName,
-    attributes: Seq[(XmlName, String)],
-    isAttribute: Boolean
-  ): ZioXmlName =
-    val uri: Option[String] = name.uri
-      .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute).map(_.uri))
-      .orElse(XmlName.declaredUri(name.prefix, attributes, isAttribute))
-    XmlName(name.localName, XmlNamespace.of(name.prefix, uri)).toZio

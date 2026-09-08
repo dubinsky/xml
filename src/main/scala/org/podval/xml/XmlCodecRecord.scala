@@ -83,7 +83,7 @@ private[xml] trait XmlCodecRecord:
             case FieldKind.Child =>
               val matched: Seq[(E, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
                 if !available.contains(nodeIdx) then None
-                else node.asElement.filter(el => info.itemNames.exists(el.getName.matches)).map(_ -> nodeIdx)
+                else node.asElement.filter(el => el.getName.matchesAny(info.itemNames)).map(_ -> nodeIdx)
               if info.sequence then
                 val decodedItems: Seq[Any] = matched.map: (el, nodeIdx) =>
                   available -= nodeIdx
@@ -116,7 +116,7 @@ private[xml] trait XmlCodecRecord:
         attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qName).toSeq
       if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
       val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
-        if available.contains(nodeIdx) then node.asElement.map(_.localName) else None
+        if available.contains(nodeIdx) then node.asElement.map(_.getName.localName) else None
       if leftoverElements.nonEmpty then throw XmlError(s"Unparsed elements: ${leftoverElements.mkString(", ")}")
       val leftoverText: Boolean = nodes.zipWithIndex.exists: (node, nodeIdx) =>
         !available.contains(nodeIdx) &&

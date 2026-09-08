@@ -7,6 +7,8 @@ open class XmlElement(val name: XmlName):
 
   def localName: String = name.localName
 
+  def matches(other: XmlName): Boolean = other.is(this)
+
 object XmlElement:
   object A extends XmlElement("a")
   object Blockquote extends XmlElement("blockquote")

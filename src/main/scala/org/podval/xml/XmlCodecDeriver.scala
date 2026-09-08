@@ -163,7 +163,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
             val names: Seq[String] =
               if itemCodec.caseNames.nonEmpty then itemCodec.caseNames else Seq(itemCodec.elementName)
             val matched: Seq[E] =
-              if itemCodec.isRecordLike then children.filter(child => names.exists(child.getName.matches))
+              if itemCodec.isRecordLike then children.filter(child => child.getName.matchesAny(names))
               else children
             val builder = seqBinding.constructor.newBuilder[A](matched.size)(using itemClassTag)
             matched.foreach: child =>

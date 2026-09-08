@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: drop `XmlAst` element `qName` / `localName` / `getPrefix` / `getNamespace`. Compare with `isNamed` / `isElement`; read components from `getName`. Writer/error text uses `getName.qName`.
+- `XmlName.is(XmlElement)` is local+prefix (today's `isElement`). `XmlName.is(XmlAttribute)` / `sameAs(XmlAttribute)` are Clark identity. `matchesAny` / `localNameIn` / `isInclude`. Catalog `XmlElement.matches` / `XmlAttribute.matches`.
+- `set(XmlAttribute)` uses the expanded name (no stringify through `qName`). `get(String)` still matches attribute qName (`id` ≠ `xml:id`).
 - Breaking: `XmlName` (was `XmlExpandedName`).
 - Breaking: `XmlAttribute` / `XmlElement` constructor field is `name` (was `expanded`).
 - `HtmlXmlWriterConfig.break` includes `br` (hard newline after the tag when a right-side break is allowed).

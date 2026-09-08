@@ -65,26 +65,23 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     element: Element,
     attributes: Seq[(XmlName, String)]
   ): Element = this.element(
-    XmlName.parseDeclared(
-      element.qName,
-      attributes,
-      isAttribute = false,
-      existing = Some(element.getName)
-    ),
+    XmlName.parseDeclared(element.getName, attributes, isAttribute = false),
     attributes,
     element.getChildren
   )
 
   final def withAttribute(element: Element, attribute: String, value: String): Element =
-    val parsed: XmlName = XmlName.parseDeclared(
-      attribute,
-      element.getAttributes,
-      isAttribute = true
+    withAttribute(
+      element,
+      XmlName.parseDeclared(attribute, element.getAttributes, isAttribute = true),
+      value
     )
+
+  final def withAttribute(element: Element, attribute: XmlName, value: String): Element =
     val other: Seq[(XmlName, String)] =
-      element.getAttributes.filterNot((name, _) => name.sameAs(parsed))
+      element.getAttributes.filterNot((name, _) => name.sameAs(attribute))
     val attrs: Seq[(XmlName, String)] =
-      if value.nonEmpty then other.appended(parsed -> value) else other
+      if value.nonEmpty then other.appended(attribute -> value) else other
     withAttributes(element, attrs)
 
   // Concatenate only: text nodes already carry author whitespace. Joining with a space
@@ -153,23 +150,14 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   extension (element: Element)
     def getName: XmlName
 
-    def qName: String = element.getName.qName
-
-    def localName: String = element.getName.localName
-
-    def getPrefix: Option[String] = element.getName.prefix
-
-    def getNamespace: Option[String] = element.getName.uri
-
-    // TODO name this and above consistently or remove
     def rename(name: String): Element = renamed(element, name)
 
     def renameKeepingClass(name: String): Element =
-      element.addClass(element.localName).rename(name)
+      element.addClass(element.getName.localName).rename(name)
 
-    def isElement(elem: XmlElement): Boolean =
-      element.localName == elem.name.localName &&
-        element.getPrefix == elem.name.prefix
+    def isElement(elem: XmlElement): Boolean = element.getName.is(elem)
+
+    def isNamed(name: String): Boolean = element.getName.matches(name)
 
     def isA: Boolean = isElement(XmlElement.A)
 
@@ -195,20 +183,20 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
 
     def get(attribute: XmlAttribute): Option[String] =
       element.getAttributes.collectFirst:
-        case (n, v) if n.sameAs(attribute.name) => v
+        case (n, v) if n.is(attribute) => v
 
     def get(attribute: String): Option[String] =
       element.getAttributes.collectFirst:
         case (n, v) if n.qName == attribute => v
 
     def set(attribute: XmlAttribute, value: String): Element =
-      set(attribute.qName, value)
+      withAttribute(element, attribute.name, value)
 
     def set(attribute: String, value: String): Element =
       withAttribute(element, attribute, value)
 
     def set(attribute: XmlAttribute, value: Option[String]): Element =
-      set(attribute.qName, value)
+      value.fold(element)(element.set(attribute, _))
 
     def set(attribute: String, value: Option[String]): Element =
       value.fold(element)(element.set(attribute, _))

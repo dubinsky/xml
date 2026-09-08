@@ -17,6 +17,8 @@ open class XmlAttribute(val name: XmlName):
 
   def localName: String = name.localName
 
+  def matches(other: XmlName): Boolean = other.is(this)
+
 object XmlAttribute:
   object Id extends XmlAttribute("id")
 

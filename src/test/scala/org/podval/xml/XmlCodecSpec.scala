@@ -22,7 +22,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: LangUsage = codec.decode(parse(xml)).toOption.get
     assert(decoded.languages.map(_.ident) == Seq("ru", "he"))
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.qName) == Seq("language", "language"))
+    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("language", "language"))
     assert(encoded.getChildren.flatMap(_.asElement).flatMap(_.get("ident")) == Seq("ru", "he"))
   }
 
@@ -72,11 +72,11 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.body.getChildren.exists(_.asComment.contains("n")))
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get(XmlAttribute.Lang).contains("ru"))
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.qName) == Seq("body"))
+    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("body"))
     assert(encoded.getChildren.flatMap(_.asElement).head.getChildren.exists(_.asComment.contains("n")))
     val scalaEl: ScalaXml.Element = codec.encode(decoded)
-    assert(ScalaXml.qName(scalaEl) == "Text")
-    assert(codec.decode(scalaEl).toOption.get.body.getChildren.flatMap(_.asElement).map(_.qName) == Seq("p"))
+    assert(scalaEl.getName.qName == "Text")
+    assert(codec.decode(scalaEl).toOption.get.body.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
   }
 
   test("sealed trait sequence uses case element names") {
@@ -85,7 +85,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: Lesson = codec.decode(parse(xml)).toOption.get
     assert(decoded.parts == Seq(Positive(1), Negative(2)))
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.qName) == Seq("positive", "negative"))
+    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("positive", "negative"))
   }
 
   test("the same codec encodes ZIO XML and Scala XML") {
@@ -117,7 +117,7 @@ final class XmlCodecSpec extends AnyFunSuite:
   test("namespace modifiers encode xmlns and a prefixed name") {
     val codec: XmlCodec[NsBox] = XmlCodec.derived(using NsBox.schema)
     val encoded: Xml.Element = codec.encode(NsBox("1"))
-    assert(encoded.qName == "ex:NsBox")
+    assert(encoded.getName.qName == "ex:NsBox")
     assert(encoded.name.localName == "NsBox")
     assert(encoded.name.prefix.contains("ex"))
     assert(encoded.name.namespace.contains("http://example.com/ns"))
@@ -126,7 +126,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: NsBox = codec.decode(parse("""<ex:NsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
     assert(decoded.n == "1")
     val scalaEl: ScalaXml.Element = codec.encode(NsBox("1"))
-    assert(ScalaXml.qName(scalaEl) == "ex:NsBox")
+    assert(scalaEl.getName.qName == "ex:NsBox")
     assert(scalaEl.scope.getURI("ex") == "http://example.com/ns")
   }
 
