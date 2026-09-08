@@ -37,7 +37,7 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
     frames.push(Frame(name, attributes, mutable.ArrayBuffer.empty))
 
   def startElement(element: E): Unit =
-    startElement(element.getExpandedName, element.getExpandedAttributes)
+    startElement(element.getName, element.getAttributes)
     element.getChildren.foreach(addChild)
 
   def endElement(): Unit =

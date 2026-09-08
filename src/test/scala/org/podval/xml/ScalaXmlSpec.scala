@@ -18,7 +18,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
       Seq(ScalaXml.text("a"))
     )
     assert(ScalaXml.qName(el) == "p")
-    assert(XmlExpandedName.asPairs(ScalaXml.getExpandedAttributes(el)) == Seq("xml:id" -> "x"))
+    assert(XmlExpandedName.asPairs(ScalaXml.getAttributes(el)) == Seq("xml:id" -> "x"))
     assert(ScalaXml.getChildren(el).flatMap(ScalaXml.asText) == Seq("a"))
   }
 
@@ -45,12 +45,12 @@ final class ScalaXmlSpec extends AnyFunSuite:
   }
 
   test("attributes preserve order and prefixes") {
-    val el: ScalaXml.Element = ScalaXml.setAttributes(ScalaXml.element(XmlElement.P))(Seq(
-      "id" -> "a",
-      "xml:id" -> "b",
-      "class" -> "c"
-    ))
-    assert(XmlExpandedName.asPairs(ScalaXml.getExpandedAttributes(el)) == Seq("id" -> "a", "xml:id" -> "b", "class" -> "c"))
+    val el: ScalaXml.Element = ScalaXml.element(
+      "p",
+      Seq("id" -> "a", "xml:id" -> "b", "class" -> "c"),
+      Seq.empty
+    )
+    assert(XmlExpandedName.asPairs(ScalaXml.getAttributes(el)) == Seq("id" -> "a", "xml:id" -> "b", "class" -> "c"))
   }
 
   test("cdata is PCData") {

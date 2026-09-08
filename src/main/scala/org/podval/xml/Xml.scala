@@ -49,9 +49,9 @@ given Xml: XmlAst[XML.Element]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getExpandedName: XmlExpandedName = XmlExpandedName.fromZio(element.name)
+    override def getName: XmlExpandedName = XmlExpandedName.fromZio(element.name)
 
-    override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
+    override def getAttributes: Seq[(XmlExpandedName, String)] =
       element.attributes.map((name, value) => (XmlExpandedName.fromZio(name), value))
 
     override def getChildren: Nodes =

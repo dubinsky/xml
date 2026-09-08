@@ -47,8 +47,8 @@ final class Xml2Html(val prefix: String):
     element.get(attributeName(attr)).orElse(element.get(attr))
 
   def convert[E: XmlAst](element: E): E =
-    val attributesConverted: E = element.setExpandedAttributes(
-      element.getExpandedAttributes.map((name, value) => (rewriteAttribute(name), value))
+    val attributesConverted: E = element.setAttributes(
+      element.getAttributes.map((name, value) => (rewriteAttribute(name), value))
     )
     if !Xml2Html.reservedHtmlElements.contains(element.localName)
     then attributesConverted

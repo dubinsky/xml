@@ -112,7 +112,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         override def isEnumeration: Boolean = enumeration
         override def caseNames: Seq[String] = caseCodecs.map(_._1)
         override def unsafeDecode[E: XmlAst](element: E): A =
-          val name: XmlExpandedName = element.getExpandedName
+          val name: XmlExpandedName = element.getName
           caseByName(name) match
             case Some((_, codec, empty)) =>
               empty.getOrElse(codec.unsafeDecode(element))
@@ -163,7 +163,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
             val names: Seq[String] =
               if itemCodec.caseNames.nonEmpty then itemCodec.caseNames else Seq(itemCodec.elementName)
             val matched: Seq[E] =
-              if itemCodec.isRecordLike then children.filter(child => names.exists(child.getExpandedName.matches))
+              if itemCodec.isRecordLike then children.filter(child => names.exists(child.getName.matches))
               else children
             val builder = seqBinding.constructor.newBuilder[A](matched.size)(using itemClassTag)
             matched.foreach: child =>

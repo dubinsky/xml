@@ -44,7 +44,7 @@ private[xml] trait XmlCodecRecord:
     override def unsafeDecode[E: XmlAst](element: E): A =
       val ast: XmlAst[E] = summon[XmlAst[E]]
       val attrs: mutable.LinkedHashMap[XmlExpandedName, String] =
-        mutable.LinkedHashMap.from(element.getExpandedAttributes)
+        mutable.LinkedHashMap.from(element.getAttributes)
       val nodes: ast.Nodes = ast.getChildren(element)
       val available: mutable.BitSet = mutable.BitSet.empty
       nodes.zipWithIndex.foreach: (node, idx) =>
@@ -54,7 +54,7 @@ private[xml] trait XmlCodecRecord:
         try
           info.kind match
             case FieldKind.Tag =>
-              val name: XmlExpandedName = element.getExpandedName
+              val name: XmlExpandedName = element.getName
               xmlTag.flatMap(tag => tag.fromName(name.localName).orElse(tag.fromName(name.qName))) match
                 case Some(k) => store(regs, info.offset, info.typeTag, k)
                 case None => throw XmlError(s"Unknown element: ${name.qName}")
@@ -83,7 +83,7 @@ private[xml] trait XmlCodecRecord:
             case FieldKind.Child =>
               val matched: Seq[(E, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
                 if !available.contains(nodeIdx) then None
-                else node.asElement.filter(el => info.itemNames.exists(el.getExpandedName.matches)).map(_ -> nodeIdx)
+                else node.asElement.filter(el => info.itemNames.exists(el.getName.matches)).map(_ -> nodeIdx)
               if info.sequence then
                 val decodedItems: Seq[Any] = matched.map: (el, nodeIdx) =>
                   available -= nodeIdx

@@ -95,7 +95,7 @@ final class XmlAstSpec extends AnyFunSuite:
     val updated: Xml.Element = xml.set(XmlAttribute.XmlId, "new")
     assert(updated.get(XmlAttribute.XmlId).contains("new"))
     assert(updated.get("n").contains("1"))
-    assert(updated.getExpandedAttributes.count((name, _) => name.localName == "id") == 1)
+    assert(updated.getAttributes.count((name, _) => name.localName == "id") == 1)
   }
 
   test("fold dispatches node kinds") {

@@ -50,18 +50,18 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   final def renamed(element: Element, name: String): Element = this.element(
     XmlExpandedName.parseDeclared(
       name,
-      element.getExpandedAttributes,
+      element.getAttributes,
       isAttribute = false,
-      existing = Some(element.getExpandedName)
+      existing = Some(element.getName)
     ),
-    element.getExpandedAttributes,
+    element.getAttributes,
     element.getChildren
   )
 
   final def withChildren(element: Element, children: Nodes): Element =
-    this.element(element.getExpandedName, element.getExpandedAttributes, children)
+    this.element(element.getName, element.getAttributes, children)
 
-  final def withExpandedAttributes(
+  final def withAttributes(
     element: Element,
     attributes: Seq[(XmlExpandedName, String)]
   ): Element = this.element(
@@ -69,26 +69,23 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       element.qName,
       attributes,
       isAttribute = false,
-      existing = Some(element.getExpandedName)
+      existing = Some(element.getName)
     ),
     attributes,
     element.getChildren
   )
 
-  final def withAttributes(element: Element, attributes: Seq[(String, String)]): Element =
-    withExpandedAttributes(element, XmlExpandedName.attributes(attributes))
-
   final def withAttribute(element: Element, attribute: String, value: String): Element =
     val parsed: XmlExpandedName = XmlExpandedName.parseDeclared(
       attribute,
-      element.getExpandedAttributes,
+      element.getAttributes,
       isAttribute = true
     )
     val other: Seq[(XmlExpandedName, String)] =
-      element.getExpandedAttributes.filterNot((name, _) => name.sameAs(parsed))
+      element.getAttributes.filterNot((name, _) => name.sameAs(parsed))
     val attrs: Seq[(XmlExpandedName, String)] =
       if value.nonEmpty then other.appended(parsed -> value) else other
-    withExpandedAttributes(element, attrs)
+    withAttributes(element, attrs)
 
   // Concatenate only: text nodes already carry author whitespace. Joining with a space
   // puts a gap before punctuation after inline markup (`</persName>,` → "е ,").
@@ -98,8 +95,8 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     * Prefer `element.to[TO]` except on Scala XML, whose `NodeSeq.to` shadows the extension. */
   final def converted[TO](element: Element)(using dest: XmlAst[TO]): TO =
     dest.element(
-      element.getExpandedName,
-      element.getExpandedAttributes,
+      element.getName,
+      element.getAttributes,
       toNodes(element.getChildren)
     )
 
@@ -154,15 +151,15 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       .getOrElse("")
 
   extension (element: Element)
-    def getExpandedName: XmlExpandedName
+    def getName: XmlExpandedName
 
-    def qName: String = element.getExpandedName.qName
+    def qName: String = element.getName.qName
 
-    def localName: String = element.getExpandedName.localName
+    def localName: String = element.getName.localName
 
-    def getPrefix: Option[String] = element.getExpandedName.prefix
+    def getPrefix: Option[String] = element.getName.prefix
 
-    def getNamespace: Option[String] = element.getExpandedName.uri
+    def getNamespace: Option[String] = element.getName.uri
 
     // TODO name this and above consistently or remove
     def rename(name: String): Element = renamed(element, name)
@@ -191,20 +188,17 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       .flatMap(_.asElement)
       .flatMap(element => f(element))
 
-    def getExpandedAttributes: Seq[(XmlExpandedName, String)]
+    def getAttributes: Seq[(XmlExpandedName, String)]
 
-    def setExpandedAttributes(attributes: Seq[(XmlExpandedName, String)]): Element =
-      withExpandedAttributes(element, attributes)
-
-    def setAttributes(attributes: Seq[(String, String)]): Element =
+    def setAttributes(attributes: Seq[(XmlExpandedName, String)]): Element =
       withAttributes(element, attributes)
 
     def get(attribute: XmlAttribute): Option[String] =
-      element.getExpandedAttributes.collectFirst:
+      element.getAttributes.collectFirst:
         case (n, v) if n.sameAs(attribute.expanded) => v
 
     def get(attribute: String): Option[String] =
-      element.getExpandedAttributes.collectFirst:
+      element.getAttributes.collectFirst:
         case (n, v) if n.qName == attribute => v
 
     def set(attribute: XmlAttribute, value: String): Element =

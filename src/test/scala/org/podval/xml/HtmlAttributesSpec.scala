@@ -6,7 +6,7 @@ import zio.blocks.html.*
 
 final class HtmlAttributesSpec extends AnyFunSuite:
   private def qNames(el: Html.Element): Seq[(String, String)] =
-    XmlExpandedName.asPairs(el.getExpandedAttributes)
+    XmlExpandedName.asPairs(el.getAttributes)
 
   test("className += values merge into a single class attribute for XmlWriter") {
     val el: Html.Element = span(

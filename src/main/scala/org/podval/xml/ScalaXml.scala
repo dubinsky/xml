@@ -54,14 +54,14 @@ object ScalaXml extends XmlAst[Elem]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getExpandedName: XmlExpandedName = fromScope(
+    override def getName: XmlExpandedName = fromScope(
       element.scope, 
       element.prefix, 
       element.label, 
       isAttribute = false
     )
 
-    override def getExpandedAttributes: Seq[(XmlExpandedName, String)] =
+    override def getAttributes: Seq[(XmlExpandedName, String)] =
       element.attributes.iterator.map: attribute =>
         (
           fromScope(
