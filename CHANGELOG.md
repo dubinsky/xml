@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `XmlAst` node `fold` dispatches element/text/cdata/comment/PI/unknown. `converted`/`toNodes` and `XmlWriter.fromNode`/`preformat` use it.
+- `XmlWriter.chunkify` walks `Nil` / `node :: tail`.
+- Breaking: `XmlAttribute` and `XmlElement` hold `XmlExpandedName` (string auxiliary constructor remains). `get(XmlAttribute)` matches with `sameAs`. `isElement`/`isA` match local name and prefix (a default-namespace DocBook `a` is still `isA`). `xml:id` / `xml:base` / `xmlns*` are the xml/xmlns URIs.
+- Breaking: CSS class token is `CssClass`. `object HtmlClass` is only the HTML `class` attribute.
 - `XmlBuilder` stacks open elements with a child buffer and builds each element once on `endElement`. Adjacent text merges in the buffer. `result` requires a document element.
 - `XmlAst` is a mixin of core, walk, and HTML `class` helpers (public type unchanged). Record codec, field layout, and register load/store live in `XmlCodecRecord`.
 - Breaking: `given Html` and `given ScalaXml` are no longer in `org.podval.xml`. `given Xml` stays the default. Import `org.podval.xml.html.given` / `org.podval.xml.scalaxml.given`. `Html` / `ScalaXml` objects stay in `org.podval.xml`.

@@ -6,7 +6,7 @@ private[xml] trait XmlAstHtmlClass[ELEMENT]:
 
   extension (element: Element)
     def getClasses: Seq[String] = element
-      .get(HtmlClass)
+      .get(XmlAttribute.HtmlClass)
       .fold(Seq.empty): element =>
         element
           .split(' ')
@@ -15,23 +15,23 @@ private[xml] trait XmlAstHtmlClass[ELEMENT]:
           .filterNot(_.isEmpty)
 
     def setClasses(values: Seq[String]): Element =
-      element.set(HtmlClass, values.mkString(" "))
+      element.set(XmlAttribute.HtmlClass, values.mkString(" "))
 
-    def has(htmlClass: HtmlClass): Boolean = hasClass(htmlClass.name)
+    def has(cssClass: CssClass): Boolean = hasClass(cssClass.name)
 
-    def hasClass(htmlClass: String): Boolean = element.getClasses.contains(htmlClass)
+    def hasClass(cssClass: String): Boolean = element.getClasses.contains(cssClass)
 
-    def add(htmlClass: Option[HtmlClass]): Element =
-      htmlClass.fold(element)(element.add)
+    def add(cssClass: Option[CssClass]): Element =
+      cssClass.fold(element)(element.add)
 
-    def add(htmlClass: HtmlClass): Element =
-      addClass(htmlClass.name)
+    def add(cssClass: CssClass): Element =
+      addClass(cssClass.name)
 
-    def addClass(htmlClass: String): Element =
+    def addClass(cssClass: String): Element =
       val list = element.getClasses
-      if list.contains(htmlClass)
+      if list.contains(cssClass)
       then element
-      else element.setClasses(list.appended(htmlClass))
+      else element.setClasses(list.appended(cssClass))
 
     def getPrefixedClasses(prefix: String): Seq[String] = element
       .getClasses

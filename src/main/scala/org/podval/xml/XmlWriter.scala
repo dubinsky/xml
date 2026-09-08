@@ -152,23 +152,19 @@ object XmlWriter:
     flush: Boolean
   ): Seq[Seq[ast.Node]] =
     if flush then chunkify(result :+ current.reverse, Nil, nodes, flush = false) else
-      if nodes.isEmpty then
-        if current.isEmpty
-        then result
-        else chunkify(result, current, nodes, flush = true)
-      else
-        val node = nodes.head
-        val tail = nodes.tail
-        if node.isWhitespace
-        then chunkify(result, current, tail, flush = current.nonEmpty)
-        else
-          if current.isEmpty
-          then chunkify(result, node :: current, tail, flush = false)
-          else
-            val c = current.head
-            if c.isWhitespace
-            then chunkify(result, current, nodes, flush = true)
-            else
+      nodes match
+        case Nil =>
+          if current.isEmpty then result
+          else chunkify(result, current, Nil, flush = true)
+        case node :: tail =>
+          if node.isWhitespace then
+            chunkify(result, current, tail, flush = current.nonEmpty)
+          else current match
+            case Nil =>
+              chunkify(result, node :: current, tail, flush = false)
+            case c :: _ if c.isWhitespace =>
+              chunkify(result, current, nodes, flush = true)
+            case c :: _ =>
               val cling: Boolean =
                 c.asElement.isEmpty ||
                 c.asElement.nonEmpty && node.asElement.isEmpty && !node.isWhitespace ||
@@ -196,21 +192,22 @@ object XmlWriter:
     canBreakLeft: Boolean,
     canBreakRight: Boolean
   ): Doc =
-    node.asElement.map: (element: ast.Element) =>
-      val local: String = element.localName
-      if dialect.preformat.contains(local) then
-        Doc.text(preformatElement(element).mkString(XmlWriter.hiddenNewline))
-      else
-        val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
-        // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
-        if canBreakRight && dialect.break.contains(local) then result + Doc.hardLine else result
-    .orElse(node.asCData.map(value => Doc.text(cdataMarkup(value))))
-    .orElse(node.asComment.map(value => Doc.text(commentMarkup(value))))
-    .orElse(node.asProcessingInstruction.map((target, data) =>
-      Doc.text(processingInstructionMarkup(target, data))
-    ))
-    .orElse(node.asAtom.map(text => Doc.text(XmlEncode.encodeXmlSpecials(text))))
-    .getOrElse(Doc.paragraph(node.getText))
+    node.fold(
+      element = (element: ast.Element) =>
+        val local: String = element.localName
+        if dialect.preformat.contains(local) then
+          Doc.text(preformatElement(element).mkString(XmlWriter.hiddenNewline))
+        else
+          val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
+          // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
+          if canBreakRight && dialect.break.contains(local) then result + Doc.hardLine else result
+      ,
+      text = value => Doc.text(XmlEncode.encodeXmlSpecials(value)),
+      cdata = value => Doc.text(cdataMarkup(value)),
+      comment = value => Doc.text(commentMarkup(value)),
+      processingInstruction = (target, data) => Doc.text(processingInstructionMarkup(target, data)),
+      unknown = Doc.paragraph(node.getText)
+    )
 
   private def preformatElement[Element: XmlAst](element: Element): Seq[String] =
     val attributeValues: Seq[(String, String)] = writeAttributes(element)
@@ -226,16 +223,15 @@ object XmlWriter:
     else if children.length == 1 then Seq(s"<$name$attributes>${children.head}</$name>")
     else Seq(s"<$name$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$name>")
 
-  private def preformat(using ast: XmlAst[?])(node: ast.Node): Seq[String] = node
-    .asElement
-    .map(preformatElement)
-    .orElse(node.asCData.map(value => Seq(cdataMarkup(value))))
-    .orElse(node.asComment.map(value => Seq(commentMarkup(value))))
-    .orElse(node.asProcessingInstruction.map((target, data) =>
-      Seq(processingInstructionMarkup(target, data))
-    ))
-    .orElse(node.asAtom.map(preformat))
-    .getOrElse(preformat(node.getText))
+  private def preformat(using ast: XmlAst[?])(node: ast.Node): Seq[String] =
+    node.fold(
+      element = preformatElement,
+      text = preformat,
+      cdata = value => Seq(cdataMarkup(value)),
+      comment = value => Seq(commentMarkup(value)),
+      processingInstruction = (target, data) => Seq(processingInstructionMarkup(target, data)),
+      unknown = preformat(node.getText)
+    )
 
   private def commentMarkup(value: String): String =
     hideNewlines(XmlMisc.Comment(value).markup)

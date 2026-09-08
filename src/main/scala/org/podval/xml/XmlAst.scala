@@ -31,7 +31,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstHtmlClass[ELEMENT]:
   /** `None` if this AST cannot represent processing instructions (HTML). */
   def processingInstruction(target: String, data: String): Option[Node] = None
 
-  final def element(elem: XmlElement): Element = element(elem.name)
+  final def element(elem: XmlElement): Element = element(elem.expanded, Seq.empty, Seq.empty)
 
   final def element(name: String): Element = element(name, Seq.empty, Seq.empty)
 
@@ -106,15 +106,32 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstHtmlClass[ELEMENT]:
   private def toNodes[TO](children: Nodes)(using dest: XmlAst[TO]): dest.Nodes =
     val buf = List.newBuilder[dest.Node]
     children.foreach: child =>
-      child.asElement.map(converted(_))
-        .orElse(child.asCData.map(dest.cdata))
-        .orElse(child.asText.map(dest.text))
-        .orElse(child.asComment.flatMap(dest.comment))
-        .orElse(child.asProcessingInstruction.flatMap((target, data) => dest.processingInstruction(target, data)))
-        .foreach(node => buf += node)
+      child.fold(
+        element = el => Some(converted(el)),
+        text = t => Some(dest.text(t)),
+        cdata = t => Some(dest.cdata(t)),
+        comment = t => dest.comment(t),
+        processingInstruction = (target, data) => dest.processingInstruction(target, data),
+        unknown = None
+      ).foreach(node => buf += node)
     buf.result()
 
   extension (node: Node)
+    def fold[A](
+      element: Element => A,
+      text: String => A,
+      cdata: String => A,
+      comment: String => A,
+      processingInstruction: (String, String) => A,
+      unknown: => A
+    ): A =
+      node.asElement.map(element)
+        .orElse(node.asCData.map(cdata))
+        .orElse(node.asText.map(text))
+        .orElse(node.asComment.map(comment))
+        .orElse(node.asProcessingInstruction.map(processingInstruction.tupled))
+        .getOrElse(unknown)
+
     def asElement: Option[Element]
 
     def asAtom: Option[String]
@@ -149,7 +166,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstHtmlClass[ELEMENT]:
 
     def rename(name: String): Element = renamed(element, name)
 
-    def isElement(elem: XmlElement): Boolean = element.getName == elem.name
+    def isElement(elem: XmlElement): Boolean =
+      element.localName == elem.expanded.localName &&
+        element.getPrefix == elem.expanded.prefix
 
     def isA: Boolean = isElement(XmlElement.A)
 
@@ -177,7 +196,8 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstHtmlClass[ELEMENT]:
       withAttributes(element, attributes)
 
     def get(attribute: XmlAttribute): Option[String] =
-      get(attribute.name)
+      element.getExpandedAttributes.collectFirst:
+        case (n, v) if n.sameAs(attribute.expanded) => v
 
     def get(attribute: String): Option[String] =
       element.getAttributes.find(_._1 == attribute).map(_._2)

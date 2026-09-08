@@ -98,6 +98,38 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(updated.getExpandedAttributes.count((name, _) => name.localName == "id") == 1)
   }
 
+  test("fold dispatches node kinds") {
+    val xml: Xml.Element = parse("<p>a<!--c--><?pi d?><![CDATA[b]]><x/></p>")
+    val kinds: Seq[String] = xml.getChildren.map: n =>
+      n.fold(
+        element = _ => "el",
+        text = _ => "text",
+        cdata = _ => "cdata",
+        comment = _ => "comment",
+        processingInstruction = (_, _) => "pi",
+        unknown = "unknown"
+      )
+    assert(kinds == Seq("text", "comment", "pi", "cdata", "el"))
+  }
+
+  test("get(XmlAttribute) matches expanded names") {
+    val xml: Xml.Element = parse("""<p xml:id="n1" id="n2"/>""")
+    assert(xml.get(XmlAttribute.XmlId).contains("n1"))
+    assert(xml.get(XmlAttribute.Id).contains("n2"))
+    assert(!xml.isElement(XmlElement.A))
+    assert(parse("<a/>").isA)
+    assert(parse("""<a xmlns="http://docbook.org/ns/docbook"/>""").isA)
+    assert(!parse("""<tei:a xmlns:tei="http://www.tei-c.org/ns/1.0"/>""").isA)
+  }
+
+  test("CssClass is a token; HtmlClass is the class attribute") {
+    val xml: Xml.Element = Xml.element("p").add(CssClass("x")).add(CssClass("x"))
+    assert(xml.has(CssClass("x")))
+    assert(!xml.has(CssClass("y")))
+    assert(xml.get(XmlAttribute.HtmlClass).contains("x"))
+    assert(xml.getClasses == Seq("x"))
+  }
+
   test("transform stopAtCode matches local name") {
     val xml: Xml.Element = parse(
       """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""
