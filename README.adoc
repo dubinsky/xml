@@ -27,9 +27,9 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 
 == Parse and catalogs
 
-`XmlParser` loads from a string, URL, file, or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a file can round-trip through the writer.
+`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer.
 
-A catalog is a named wrapper whose children are one record type: `codec.decodeCatalog(root, name)` or `XmlParser.parseCatalog(resource, name, codec)`.
+A catalog is a named wrapper whose children are one record type: `codec.decodeCatalog(root, name)` or `XmlParser.loadCatalog(from, codec)` (`Foo` → `Foo.xml` / `<Foo>`).
 
 == XInclude
 

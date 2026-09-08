@@ -3,7 +3,6 @@ package org.podval.xml
 import Html.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
-import java.io.File
 
 final class XmlParserSpec extends AnyFunSuite:
   private def children(element: Xml.Element): Seq[Xml.Element] =
@@ -25,22 +24,9 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(children(xml).flatMap(_.get(XmlAttribute.Href)) == Seq("includee.xml"))
   }
 
-  test("parseXml from URL") {
-    val url = classOf[XmlParserSpec].getResource("includee.xml")
-    val xml: Xml.Element = XmlParser.parseXml(url).toOption.get
-    assert(xml.isNamed("includee"))
-  }
-
-  test("parseXml from File") {
-    val url = classOf[XmlParserSpec].getResource("includee.xml")
-    assert(url.getProtocol == "file")
-    val xml: Xml.Element = XmlParser.parseXml(File(url.toURI)).toOption.get
-    assert(xml.isNamed("includee"))
-  }
-
   test("missing resource is Left") {
     val result: Either[Throwable, Xml.Element] =
-      XmlParser.parseResource("/org/podval/xml/no-such.xml")
+      XmlParser.parseResource(classOf[XmlParserSpec], "no-such.xml")
     assert(result.isLeft)
     assert(result.swap.toOption.get.getMessage.contains("Resource not found"))
   }
@@ -55,14 +41,11 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(children(xml).map(_.getName.qName) == Seq("names"))
   }
 
-  test("parseHtml from URL matches string parse") {
-    val fromString: Xml.Element = XmlParser.parseHtml("<p>a<b>c</b></p>").toOption.get
-    val url = classOf[XmlParserSpec].getResource("fragment.html")
-    val fromUrl: Xml.Element = XmlParser.parseHtml(url).toOption.get
-    assert(fromUrl.getName.qName == fromString.getName.qName)
-    assert(fromUrl.isElement(XmlElement.P))
-    assert(children(fromUrl).map(_.getName.qName) == Seq("b"))
-    assert(fromUrl.getText == fromString.getText)
+  test("parseHtml parses a fragment") {
+    val xml: Xml.Element = XmlParser.parseHtml("<p>a<b>c</b></p>").toOption.get
+    assert(xml.isElement(XmlElement.P))
+    assert(children(xml).map(_.getName.qName) == Seq("b"))
+    assert(xml.getText == "ac")
   }
 
   test("keeps text on both sides of a comment") {

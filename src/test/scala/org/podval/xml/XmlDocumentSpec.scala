@@ -2,7 +2,6 @@ package org.podval.xml
 
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
-import java.io.File
 
 final class XmlDocumentSpec extends AnyFunSuite:
   private def parseDoc(content: String): XmlDocument[Xml.Element] =
@@ -116,15 +115,6 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(round.prolog == Seq(XmlMisc.Comment("\n  Each Haftarah is described by the <week> element.\n")))
     assert(dumped.startsWith("""<?xml version="1.0" encoding="UTF-8"?>"""))
     assert(dumped.contains("Each Haftarah is described"))
-  }
-
-  test("parseXmlDocument from File matches string parse") {
-    val url = classOf[XmlParserSpec].getResource("includee.xml")
-    assert(url.getProtocol == "file")
-    val fromFile: XmlDocument[Xml.Element] = XmlParser.parseXmlDocument(File(url.toURI)).toOption.get
-    val fromString: XmlDocument[Xml.Element] = parseDoc("<includee><content>Blah!</content></includee>")
-    assert(fromFile.root.getName.qName == fromString.root.getName.qName)
-    assert(fromFile.declaration.contains(XmlDeclaration()))
   }
 
   test("ScalaXml document parse keeps prolog comments") {

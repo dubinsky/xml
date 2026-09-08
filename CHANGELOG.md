@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `XmlParser` is string + classpath. Drop File/URL `parseXml` / `parseHtml` / `parseXmlDocument`, `parseResource(String)`, `parseResourceDocument`, and `parseCatalog`. Catalogs are `loadCatalog`.
 - Breaking: drop `XmlAst` element `qName` / `localName` / `getPrefix` / `getNamespace`. Compare with `isNamed` / `isElement`; read components from `getName`. Writer/error text uses `getName.qName`.
 - `XmlName.is(XmlElement)` is local+prefix (today's `isElement`). `XmlName.is(XmlAttribute)` / `sameAs(XmlAttribute)` are Clark identity. `matchesAny` / `localNameIn` / `isInclude`. Catalog `XmlElement.matches` / `XmlAttribute.matches`.
 - `set(XmlAttribute)` uses the expanded name (no stringify through `qName`). `get(String)` still matches attribute qName (`id` ≠ `xml:id`).
@@ -41,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `XmlParser` / `XmlBuilder` are abstract over `XmlAst` (same as `XmlWriter` / `XmlCodec`). Catalog helpers still pin ZIO Blocks XML.
 - `XmlAst` can represent comments and processing instructions; HTML drops them. `element.to[TO]` copies them when both sides have them. `XmlWriter` emits `<!-- -->` and `<?target data?>`.
 - Replace `Ast2Ast` with `element.to[TO]` (`converted` on the source `XmlAst`); drop `XmlUtil.xml2html`.
-- `XmlDocument` keeps the XML declaration, doctype, and prolog/epilog comments and PIs. `parseXml` still returns the root element; `parseXmlDocument` / `parseResourceDocument` return the document. `XmlWriter` emits a canonical `<?xml version="1.0" encoding="UTF-8"?>` for documents. `XmlDeclaration` / `XmlDoctype` / `XmlMisc` own their markup; `XmlDocument.prefix` / `suffix` join the envelope.
+- `XmlDocument` keeps the XML declaration, doctype, and prolog/epilogue comments and PIs. `parseXml` still returns the root element; `parseXmlDocument` returns the document. `XmlWriter` emits a canonical `<?xml version="1.0" encoding="UTF-8"?>` for documents. `XmlDeclaration` / `XmlDoctype` / `XmlMisc` own their markup; `XmlDocument.prefix` / `suffix` join the envelope.
 
 ## [0.0.2] - 2026-09-03
 - cleanup

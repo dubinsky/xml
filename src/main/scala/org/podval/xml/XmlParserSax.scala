@@ -29,10 +29,7 @@ private[xml] object XmlParserSax:
     parseDocument(xmlReader, source)
 
   def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, E] =
-    parse(reader, InputSource(StringReader(content)))
-
-  def parse[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, E] =
-    parseBuilder(reader, source).map(_.result)
+    parseBuilder(reader, InputSource(StringReader(content))).map(_.result)
 
   private def parseDocument[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlDocument[E]] =
     parseBuilder(reader, source).map: builder =>

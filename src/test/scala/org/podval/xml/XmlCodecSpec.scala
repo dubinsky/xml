@@ -167,14 +167,11 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(XmlParser.className(XmlParser.getClass) == "XmlParser")
   }
 
-  test("parseCatalog loads a classpath catalog") {
+  test("classpath catalog decodes children of the wrapper") {
     val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
-    val decoded: Seq[Language] = XmlParser.parseCatalog(
-      classOf[XmlCodecSpec],
-      "languages.xml",
-      "Languages",
-      codec
-    ).toOption.get
+    val root: Xml.Element =
+      XmlParser.parseResource(classOf[XmlCodecSpec], "languages.xml").toOption.get
+    val decoded: Seq[Language] = codec.decodeCatalog(root, "Languages").toOption.get
     assert(decoded.map(_.ident) == Seq("ru", "he"))
   }
 
