@@ -82,6 +82,13 @@ final class XmlWriterSpec extends AnyFunSuite:
     assert(dumped.contains("<?pi d?>"), dumped)
   }
 
+  test("break forces a newline after the element when a right-side break is allowed") {
+    val xml: Xml.Element = XmlParser.parseXml("<l>foo<lb/>\nbar</l>").toOption.get
+    val dumped: String = XmlWriterConfig(break = Set("lb"), cling = Set("lb")).render(xml, 120)
+    assert(dumped.contains("<lb></lb>\n"), dumped)
+    assert(!dumped.contains("<lb></lb> bar"), dumped)
+  }
+
   test("text encodes & and <") {
     val dumped: String = render(Xml.element(XmlElement.P).setText("a & b < c"))
     assert(dumped.contains("a &amp; b &lt; c"), dumped)

@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `HtmlXmlWriterConfig.break` includes `br` (hard newline after the tag when a right-side break is allowed).
 - `Xml2Html.elementName` / `attributeName` / `is` / `get` are the post-`convert` names (`Head` → `tei-head`, `Lang` → `tei-lang`). `get` prefers the prefixed attribute so HTML `class` from `renameKeepingClass` does not hide the original. `convert` rewrites expanded names in place (`setAttributes`).
 - Breaking: `XmlAst` `getName` / `getAttributes` / `setAttributes` / `withAttributes` take `XmlExpandedName` (were `getExpandedName` / `getExpandedAttributes` / `setExpandedAttributes` / `withExpandedAttributes`). Drop the string-list `getAttributes` / `setAttributes` / `withAttributes`. QName pairs are `XmlExpandedName.asPairs`. `parseDeclared` binds xmlns from expanded attributes.
 - `XmlElement` adds `Html`, `P`, `Head`, `Body`, `Title`, `Div`, `Span`, `Ul`, `Ol`, `Li`, `Img`, `Pre`, `Table`, `Tr`, `Td`, `Th`, `Dl`, `Dt`, `Dd`, `Blockquote`, `Figure`, `Figcaption`, `Br`, `Em`. `localName` is on the catalog object. `HtmlTagSoup` strips `Html`/`Body` wrappers by catalog local name.

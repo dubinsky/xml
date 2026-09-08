@@ -10,7 +10,7 @@ object HtmlXmlWriterConfig extends XmlWriterConfig(
     "sup", "time", "u", "var"
   ),
   nest = Set.empty,
-  break = Set.empty, // TODO TEI: lb; HTML: br?!
+  break = Set(XmlElement.Br.localName),
   cling = Set(XmlElement.Span.localName),
   // HTML void elements: no end tag, no content. XmlWriter emits <br/> for these
   // when empty; other empty elements become <script></script> (a self-closed

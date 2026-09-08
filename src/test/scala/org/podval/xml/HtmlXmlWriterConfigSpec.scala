@@ -45,6 +45,19 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
     assert(!dumped.contains("</tei:br>"), dumped)
   }
 
+  test("br with following whitespace forces a newline") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>foo<br/>\nbar</p>").toOption.get
+    val dumped: String = render(xml, width = 120)
+    assert(dumped.contains("<br/>\n"), dumped)
+    assert(!dumped.contains("<br/> bar"), dumped)
+  }
+
+  test("br without following whitespace stays inline") {
+    val xml: Xml.Element = XmlParser.parseXml("<p>foo<br/>bar</p>").toOption.get
+    val dumped: String = render(xml, width = 120)
+    assert(dumped.contains("foo<br/>bar"), dumped)
+  }
+
   test("span still preserves a real space before an inner element") {
     val span: Xml.Element = Xml
       .element(XmlElement.Span)
