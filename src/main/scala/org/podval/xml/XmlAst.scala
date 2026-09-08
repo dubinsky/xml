@@ -14,7 +14,7 @@ object XmlAst:
   * - ZIO Blocks HTML
   * - Scala XML
   */
-trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstHtmlClass[ELEMENT]:
+trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   final type Element = ELEMENT
 
   type Node >: Element

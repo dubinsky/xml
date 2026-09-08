@@ -46,7 +46,7 @@ object XmlAttribute:
   object Lang extends XmlAttribute("lang")
 
   /** The HTML `class` attribute. */
-  object HtmlClass extends XmlAttribute("class")
+  object CssClass extends XmlAttribute("class")
 
   object Title extends XmlAttribute("title")
 

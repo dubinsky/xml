@@ -33,7 +33,7 @@ final class XmlAstSpec extends AnyFunSuite:
     val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[Html.Element]
     assert(html.getName == "div")
     assert(html.get(XmlAttribute.XmlId).contains("x"))
-    assert(html.get(XmlAttribute.HtmlClass).contains("y"))
+    assert(html.get(XmlAttribute.CssClass).contains("y"))
     assert(html.getChildren.flatMap(_.asElement).map(_.getName) == Seq("p"))
   }
 
@@ -128,7 +128,7 @@ final class XmlAstSpec extends AnyFunSuite:
     val xml: Xml.Element = Xml.element("p").add(CssClass("x")).add(CssClass("x"))
     assert(xml.has(CssClass("x")))
     assert(!xml.has(CssClass("y")))
-    assert(xml.get(XmlAttribute.HtmlClass).contains("x"))
+    assert(xml.get(XmlAttribute.CssClass).contains("x"))
     assert(xml.getClasses == Seq("x"))
   }
 

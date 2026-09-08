@@ -10,7 +10,7 @@ object Xml2Html:
   private val reservedHtmlElements: Set[String] = Set("head", "body", "title", "p")
 
   private val reservedAttributes: Set[String] = Set(
-    XmlAttribute.HtmlClass.name,
+    XmlAttribute.CssClass.name,
     XmlAttribute.Target.name,
     XmlAttribute.Lang.name,
     "frame"

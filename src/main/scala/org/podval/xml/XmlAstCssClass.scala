@@ -1,12 +1,12 @@
 package org.podval.xml
 
-/** HTML `class` attribute helpers. */
-private[xml] trait XmlAstHtmlClass[ELEMENT]:
+/** CSS `class` attribute helpers. */
+private[xml] trait XmlAstCssClass[ELEMENT]:
   this: XmlAst[ELEMENT] =>
 
   extension (element: Element)
     def getClasses: Seq[String] = element
-      .get(XmlAttribute.HtmlClass)
+      .get(XmlAttribute.CssClass)
       .fold(Seq.empty): element =>
         element
           .split(' ')
@@ -15,7 +15,7 @@ private[xml] trait XmlAstHtmlClass[ELEMENT]:
           .filterNot(_.isEmpty)
 
     def setClasses(values: Seq[String]): Element =
-      element.set(XmlAttribute.HtmlClass, values.mkString(" "))
+      element.set(XmlAttribute.CssClass, values.mkString(" "))
 
     def has(cssClass: CssClass): Boolean = hasClass(cssClass.name)
 
