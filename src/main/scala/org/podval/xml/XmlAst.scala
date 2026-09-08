@@ -8,12 +8,13 @@ object XmlAst:
     case "false" | "no" | "0" => false
     case other => throw XmlError(s"Invalid boolean: $other")
 
-// AST that represents XML and provides operations on it;
-// abstracts over the underlying representation:
-// - ZIO Blocks XML
-// - ZIO Blocks HTML
-// - Scala XML
-trait XmlAst[ELEMENT]:
+/** AST that represents XML and provides operations on it;
+  * abstracts over the underlying representation:
+  * - ZIO Blocks XML
+  * - ZIO Blocks HTML
+  * - Scala XML
+  */
+trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstHtmlClass[ELEMENT]:
   final type Element = ELEMENT
 
   type Node >: Element
@@ -113,7 +114,6 @@ trait XmlAst[ELEMENT]:
         .foreach(node => buf += node)
     buf.result()
 
-  // Conversions
   extension (node: Node)
     def asElement: Option[Element]
 
@@ -136,7 +136,6 @@ trait XmlAst[ELEMENT]:
       .orElse(node.asElement.map(_.getChildren).map(toString))
       .getOrElse("")
 
-  // Element name
   extension (element: Element)
     def getExpandedName: XmlExpandedName
 
@@ -156,15 +155,12 @@ trait XmlAst[ELEMENT]:
 
     def to[TO: XmlAst]: TO = converted(element)
 
-  // Children
-  extension (element: Element)
     def getChildren: Nodes
 
     def setChildren(children: Nodes): Element = withChildren(element, children)
 
     def setText(text: String): Element = element.setChildren(Seq(this.text(text)))
 
-    // Remove markup
     def getTextOpt: Option[String] = Option.when(element.getChildren.nonEmpty)(element.getText)
 
     def flatMapElements[A](f: Element => Seq[A]): Seq[A] = element
@@ -172,116 +168,6 @@ trait XmlAst[ELEMENT]:
       .flatMap(_.asElement)
       .flatMap(element => f(element))
 
-    def transform(
-      transformElement: Element => Element,
-      stopAtCode: Boolean = true
-    ): Element =
-      def loop(element: Element): Element =
-        if stopAtCode && element.localName == "code" then element
-        else
-          val result: Element = transformElement(element)
-          result.setChildren(result.getChildren.map(xml => xml.asElement.fold(xml)(loop)))
-      loop(element)
-
-    def gather[A](
-      gatherElement: Element => Option[A],
-      stopAtCode: Boolean = true
-    ): Seq[A] =
-      def loop(element: Element): Seq[A] =
-        val fromElement: Option[A] = gatherElement(element)
-        val fromChildren: Seq[A] =
-          if stopAtCode && element.localName == "code" then Seq.empty
-          else element.flatMapElements(loop)
-        fromElement.toSeq ++ fromChildren
-      loop(element)
-
-    def gatherWithContext[A](
-      gatherElement: (Element, Option[Element]) => Option[A],
-      isContext: Element => Boolean,
-      stopAtCode: Boolean = true
-    ): Seq[A] =
-      def loop(element: Element, context: Option[Element]): Seq[A] =
-        val fromElement: Option[A] = gatherElement(element, context)
-        val fromChildren: Seq[A] =
-          if stopAtCode && element.localName == "code" then Seq.empty
-          else
-            val contextNew: Option[Element] = if isContext(element) then Some(element) else context
-            element.flatMapElements(loop(_, contextNew))
-        fromElement.toSeq ++ fromChildren
-      loop(element, None)
-
-    def gatherWithParent[A](
-      gatherElement: (Element, Option[Element]) => Option[A],
-      stopAtCode: Boolean = true
-    ): Seq[A] =
-      element.gatherWithContext(gatherElement, _ => true, stopAtCode)
-
-    def convertText(converter: String => Nodes): Element =
-      element.setChildren(element.getChildren.flatMapNodes(xml =>
-        xml.asText.fold(Seq(xml))(converter)
-      ))
-
-    def copyAttribute(from: String, to: String): Element =
-      element.get(from).fold(element)(element.set(to, _))
-
-    def elementById(id: String): Element = element
-      .gather(el => Option.when(el.getId.contains(id))(el))
-      .head
-
-    def isInclude: Boolean =
-      XmlNamespace.isInclude(element)(using this) && element.get("href").exists(_.trim.nonEmpty)
-
-    def childrenNamed(name: String): Seq[Element] =
-      element.getChildren.flatMap(_.asElement).filter(_.localName == name)
-
-    def requireName(name: String): Unit =
-      if element.localName != name then throw XmlError(s"Expected '$name', found '${element.getName}'")
-
-    def requireAttr(name: String): String =
-      element.get(name).map(_.trim).filter(_.nonEmpty).getOrElse:
-        throw XmlError(s"Missing attribute '$name'")
-
-    def intOpt(name: String): Option[Int] =
-      element.get(name).map(_.trim).filter(_.nonEmpty).map: raw =>
-        raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
-
-    def requireNoOther(allowed: Set[String]): Unit =
-      val extra: Seq[String] = element.getChildren.flatMap(_.asElement).map(_.localName).filterNot(allowed.contains)
-      if extra.nonEmpty then throw XmlError(s"Unparsed elements: $extra")
-
-    def intAttr(name: String): Int =
-      val raw: String = element.requireAttr(name)
-      raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
-
-    def positiveInt(name: String): Int =
-      val n: Int = element.intAttr(name)
-      if n <= 0 then throw XmlError(s"Non-positive integer: $n")
-      n
-
-    def positiveIntOpt(name: String): Option[Int] =
-      element.intOpt(name).map: n =>
-        if n <= 0 then throw XmlError(s"Non-positive integer: $n")
-        n
-
-    def booleanOpt(name: String): Option[Boolean] =
-      element.get(name).map(_.trim).filter(_.nonEmpty).map(XmlAst.parseBoolean)
-
-  // Node lists
-  // ZIO Blocks `Chunk.flatMap` / `++` take ClassTag from the first inner chunk, so a leading
-  // text node then an element (or the reverse) throws ArrayStoreException. `:+` uses an AnyRef
-  // buffer, as the SAX builder does.
-  extension (nodes: Nodes)
-    def flatMapNodes(f: Node => Nodes): Nodes =
-      nodes.foldLeft(Seq.empty[Node]): (acc, node) =>
-        f(node).foldLeft(acc)(_ :+ _)
-
-    def convertElements(converter: Element => Option[Nodes]): Nodes =
-      nodes.flatMapNodes(child =>
-        child.asElement.flatMap(converter).getOrElse(Seq(child))
-      )
-
-  // Attributes
-  extension (element: Element)
     def getExpandedAttributes: Seq[(XmlExpandedName, String)]
 
     def getAttributes: Seq[(String, String)] =
@@ -322,38 +208,3 @@ trait XmlAst[ELEMENT]:
     def getHref: Option[String] = get(XmlAttribute.Href)
 
     def setHref(value: String): Element = set(XmlAttribute.Href, value)
-
-  // HTML 'class' attribute
-  extension (element: Element)
-    def getClasses: Seq[String] = element
-      .get(HtmlClass)
-      .fold(Seq.empty): element =>
-        element
-          .split(' ')
-          .toIndexedSeq
-          .map(_.trim)
-          .filterNot(_.isEmpty)
-
-    def setClasses(values: Seq[String]): Element =
-      element.set(HtmlClass, values.mkString(" "))
-
-    def has(htmlClass: HtmlClass): Boolean = hasClass(htmlClass.name)
-
-    def hasClass(htmlClass: String): Boolean = element.getClasses.contains(htmlClass)
-
-    def add(htmlClass: Option[HtmlClass]): Element =
-      htmlClass.fold(element)(element.add)
-
-    def add(htmlClass: HtmlClass): Element =
-      addClass(htmlClass.name)
-
-    def addClass(htmlClass: String): Element =
-      val list = element.getClasses
-      if list.contains(htmlClass)
-      then element
-      else element.setClasses(list.appended(htmlClass))
-
-    def getPrefixedClasses(prefix: String): Seq[String] = element
-      .getClasses
-      .filter(_.startsWith(s"$prefix-"))
-      .map(_.drop(prefix.length + 1))

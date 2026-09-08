@@ -40,6 +40,6 @@ object XmlNamespace:
     case None if isAttribute && xmlns.prefix.contains(local) => Some(xmlns)
     case _ => None
 
-  def isInclude[E: XmlAst](element: E): Boolean =
-    element.localName == "include" &&
-      (element.getNamespace.contains(xinclude.uri) || element.getPrefix.contains("xi"))
+  def isInclude(localName: String, namespace: Option[String], prefix: Option[String]): Boolean =
+    localName == "include" &&
+      (namespace.contains(xinclude.uri) || prefix.contains("xi"))
