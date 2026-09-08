@@ -49,10 +49,10 @@ final class XmlUtilSpec extends AnyFunSuite:
     assert(html.getChildren.flatMap(_.asElement).isEmpty)
   }
 
-  test("to[Html.Element] turns CDATA into escaped HTML text") {
+  test("to[Html.Element] turns CDATA into HTML text encoded on write") {
     val xml: Xml.Element = Xml.element("p", Seq.empty, Seq(Xml.cdata("a<b")))
     val html: Html.Element = xml.to[Html.Element]
-    assert(html.getChildren.flatMap(_.asAtom) == Seq("a&lt;b"))
+    assert(html.getChildren.flatMap(_.asAtom) == Seq("a<b"))
     val dumped: String = HtmlXmlWriterConfig.render(html)
     assert(dumped.contains("a&lt;b"), dumped)
     assert(!dumped.contains("a<b"), dumped)

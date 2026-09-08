@@ -37,7 +37,7 @@ object XmlWriter:
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
       else Doc.lineOrSpace + Doc.intercalate(Doc.lineOrSpace, attributeValues.map((name, value) =>
-        Doc.text(s"$name=") + Doc.lineOrEmpty + Doc.text(XmlEncode.quote(encodeXmlSpecials(value)))
+        Doc.text(s"$name=") + Doc.lineOrEmpty + Doc.text(XmlEncode.quote(value))
       ))
 
     val nodes: ast.Nodes =
@@ -205,13 +205,13 @@ object XmlWriter:
     .orElse(node.asProcessingInstruction.map((target, data) =>
       Doc.text(processingInstructionMarkup(target, data))
     ))
-    .orElse(node.asAtom.map(text => Doc.text(encodeXmlSpecials(text))))
+    .orElse(node.asAtom.map(text => Doc.text(XmlEncode.encodeXmlSpecials(text))))
     .getOrElse(Doc.paragraph(node.getText))
 
   private def preformatElement[Element: XmlAst](element: Element): Seq[String] =
     val attributeValues: Seq[(String, String)] = element.getAttributes
     val attributes: String = if attributeValues.isEmpty then "" else attributeValues
-      .map((name, value) => s"$name=${XmlEncode.quote(value)}") // TODO escapeSpecials?
+      .map((name, value) => s"$name=${XmlEncode.quote(value)}")
       .mkString(" ", ", ", "")
 
     val children: Seq[String] =
@@ -252,14 +252,3 @@ object XmlWriter:
 
   private def preformat(string: String): Seq[String] =
     XmlEncode.encodeXmlSpecials(string).split("\n").toSeq
-
-  // TODO from Grok:
-  //- Description: For HTML dialect, `encodeXmlSpecials` is disabled (`HtmlXmlWriterConfig` default).
-  // Titles, tags, authors, and other front-matter strings rendered via the HTML DSL are written without escaping text nodes.
-  // Attribute quoting (`Strings.quote`) also does not escape `"`, so a title containing `"` can break attributes.
-  // For untrusted or multi-author content this is XSS/HTML injection risk; even for trusted content it can corrupt markup.
-  //- Suggestion: Escape text and attributes on render (use full `Strings.escape` for attributes).
-  // Prefer encoding on output always; only skip for preformatted trusted raw HTML islands if needed.
-  private def encodeXmlSpecials(using dialect: XmlWriterConfig)(string: String): String =
-    if dialect.encodeXmlSpecials then XmlEncode.encodeXmlSpecials(string) else string
-

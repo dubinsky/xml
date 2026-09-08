@@ -81,3 +81,45 @@ final class XmlWriterSpec extends AnyFunSuite:
     assert(dumped.contains("<!--c-->"), dumped)
     assert(dumped.contains("<?pi d?>"), dumped)
   }
+
+  test("text encodes & and <") {
+    val dumped: String = render(Xml.element("p").setText("a & b < c"))
+    assert(dumped.contains("a &amp; b &lt; c"), dumped)
+  }
+
+  test("text does not encode an existing entity") {
+    val dumped: String = render(Xml.element("p").setText("a&nbsp;b"))
+    assert(dumped.contains("a&nbsp;b"), dumped)
+    assert(!dumped.contains("&amp;nbsp;"), dumped)
+  }
+
+  test("parsed &amp; round-trips; parsed &lt; is decoded then encoded") {
+    val amp: String = render(XmlParser.parseXml("<p>a&amp;b</p>").toOption.get)
+    assert(amp.contains("a&amp;b"), amp)
+    val lt: Xml.Element = XmlParser.parseXml("<p>a&lt;b</p>").toOption.get
+    assert(lt.getChildren.flatMap(_.asText).mkString == "a<b")
+    assert(render(lt).contains("a&lt;b"))
+  }
+
+  test("parsed undeclared &nbsp; is written as &nbsp;") {
+    val dumped: String = render(XmlParser.parseXml("<p>a&nbsp;b</p>").toOption.get)
+    assert(dumped.contains("a&nbsp;b"), dumped)
+    assert(!dumped.contains("&amp;nbsp;"), dumped)
+  }
+
+  test("CDATA is not entity-encoded") {
+    val dumped: String = render(Xml.element("p", Seq.empty, Seq(Xml.cdata("a&b<c"))))
+    assert(dumped.contains("<![CDATA[a&b<c]]>"), dumped)
+  }
+
+  test("attribute encodes &, <, and \"") {
+    val dumped: String = render(Xml.element("p").set("title", "a & b < \"c\""))
+    assert(dumped.contains("a &amp; b &lt; &quot;c&quot;"), dumped)
+  }
+
+  test("preformat encodes & and < but not &nbsp;") {
+    val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(
+      Xml.element("pre").setText("a & b < c &nbsp; d")
+    )
+    assert(dumped.contains("a &amp; b &lt; c &nbsp; d"), dumped)
+  }

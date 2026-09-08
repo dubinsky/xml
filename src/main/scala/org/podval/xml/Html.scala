@@ -9,7 +9,8 @@ given Html: XmlAst[XML.Element]:
 
   override def text(text: String): Node = XML.text(text)
 
-  override def cdata(text: String): Node = Html.text(XmlEncode.escape(text))
+  // HTML has no CDATA; the writer encodes `&` and `<` in the text.
+  override def cdata(text: String): Node = Html.text(text)
 
   override def element(
     name: XmlExpandedName,

@@ -16,10 +16,7 @@ open class XmlWriterConfig(
   //  Some elements are mis-processed when they are empty, e.g. <script .../> ...
   //  ... except, some elements are mis-processed when they *are* non-empty (e.g., <br>),
   //  and in general, it's weird to expand the elements that are always empty...
-  val selfClose: Set[String] = Set.empty,
-
-  // TODO do not double-encode what you did not decode ;)
-  val encodeXmlSpecials: Boolean = false
+  val selfClose: Set[String] = Set.empty
 ):
   def plus(other: XmlWriterConfig): XmlWriterConfig = XmlWriterConfig(
     preformat = preformat ++ other.preformat,
@@ -28,8 +25,7 @@ open class XmlWriterConfig(
     nest = nest ++ other.nest,
     break = break ++ other.break,
     cling = cling ++ other.cling,
-    selfClose = selfClose ++ other.selfClose,
-    encodeXmlSpecials = encodeXmlSpecials || other.encodeXmlSpecials
+    selfClose = selfClose ++ other.selfClose
   )
 
   def render[Element: XmlAst](element: Element): String =

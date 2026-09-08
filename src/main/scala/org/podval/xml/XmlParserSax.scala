@@ -110,6 +110,8 @@ private final class XmlParserSax[E](builder: XmlBuilder[E]) extends DefaultHandl
   override def endEntity(name: String): Unit = ()
 
   override def skippedEntity(name: String): Unit =
+    // Undeclared `&nbsp;` stays as the characters `&nbsp;` (the writer does not
+    // encode that `&`). Not taken: map HTML names to Unicode here.
     builder.text(s"&$name;")
 
   // Undeclared entities (`&nbsp;` in Markdown HTML-as-XML): skip the SAX fatal
