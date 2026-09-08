@@ -141,7 +141,7 @@ private def fromName(
   localName: String,
   qName: String,
   isAttribute: Boolean
-): XmlExpandedName =
+): XmlName =
   val (prefix: Option[String], local: String) =
     val (pre, rest) = qName.span(_ != ':')
     if localName.nonEmpty then
@@ -149,7 +149,7 @@ private def fromName(
     else if rest.nonEmpty then (Some(pre), rest.drop(1))
     else (None, qName)
 
-  XmlExpandedName(
+  XmlName(
     localName = local,
     namespace = XmlNamespace.of(
       prefix,
@@ -162,7 +162,7 @@ private def fromName(
 
 private def fromAttributes(
   attributes: Attributes
-): Seq[(XmlExpandedName, String)] =
+): Seq[(XmlName, String)] =
   (0 until attributes.getLength).map: i =>
     (
       fromName(

@@ -1,7 +1,7 @@
 package org.podval.xml
 
-open class XmlElement(val name: XmlExpandedName):
-  def this(qName: String) = this(XmlExpandedName.parse(qName))
+open class XmlElement(val name: XmlName):
+  def this(qName: String) = this(XmlName.parse(qName))
 
   def qName: String = name.qName
 

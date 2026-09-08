@@ -18,8 +18,8 @@ object ScalaXml extends XmlAst[Elem]:
   override def processingInstruction(target: String, data: String): Option[Node] = Some(ProcInstr(target, data))
 
   override def element(
-    name: XmlExpandedName,
-    attributes: Seq[(XmlExpandedName, String)],
+    name: XmlName,
+    attributes: Seq[(XmlName, String)],
     children: Nodes
   ): Element = Elem(
     prefix = name.prefix.filter(_.nonEmpty).orNull,
@@ -54,14 +54,14 @@ object ScalaXml extends XmlAst[Elem]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getName: XmlExpandedName = fromScope(
+    override def getName: XmlName = fromScope(
       element.scope, 
       element.prefix, 
       element.label, 
       isAttribute = false
     )
 
-    override def getAttributes: Seq[(XmlExpandedName, String)] =
+    override def getAttributes: Seq[(XmlName, String)] =
       element.attributes.iterator.map: attribute =>
         (
           fromScope(
@@ -84,7 +84,7 @@ object ScalaXml extends XmlAst[Elem]:
     prefix: String,
     local: String,
     isAttribute: Boolean
-  ): XmlExpandedName =
+  ): XmlName =
     val p: Option[String] = Option(prefix).filter(_.nonEmpty)
     val namespace: Option[String] =
       XmlNamespace.wellKnown(p, local, isAttribute).map(_.uri).orElse:
@@ -92,10 +92,10 @@ object ScalaXml extends XmlAst[Elem]:
         else
           val key: String = p.orNull
           Option(scope.getURI(key)).filter(uri => uri != null && uri.nonEmpty)
-    XmlExpandedName(local, XmlNamespace.of(p, namespace))
+    XmlName(local, XmlNamespace.of(p, namespace))
 
   // scala.xml rejects prefix ""; unprefixed names use null.
-  private def toMetaData(attributes: Seq[(XmlExpandedName, String)]): MetaData =
+  private def toMetaData(attributes: Seq[(XmlName, String)]): MetaData =
     attributes.foldRight(scala.xml.Null: MetaData):
       case ((name, value), next) =>
         Attribute(name.prefix.filter(_.nonEmpty).orNull, name.localName, value, next)
@@ -103,8 +103,8 @@ object ScalaXml extends XmlAst[Elem]:
   // `xmlns*` stay attributes so the writer still emits them. Bindings also come
   // from expanded names so a child without its own xmlns keeps the URI.
   private def toScope(
-    name: XmlExpandedName,
-    attributes: Seq[(XmlExpandedName, String)]
+    name: XmlName,
+    attributes: Seq[(XmlName, String)]
   ): NamespaceBinding =
     val declared: NamespaceBinding =
       attributes.foldLeft(xmlScope):
@@ -117,7 +117,7 @@ object ScalaXml extends XmlAst[Elem]:
 
   private def bind(
     scope: NamespaceBinding,
-    name: XmlExpandedName
+    name: XmlName
   ): NamespaceBinding = name.uri match
     case None => scope
     case Some(_) if name.isXmlnsDeclaration => scope

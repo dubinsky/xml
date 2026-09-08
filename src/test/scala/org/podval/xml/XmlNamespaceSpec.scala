@@ -2,7 +2,7 @@ package org.podval.xml
 
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
-import zio.blocks.schema.xml.XmlName
+import zio.blocks.schema.xml.XmlName as ZioXmlName
 
 final class XmlNamespaceSpec extends AnyFunSuite:
   private val tei: String = "http://www.tei-c.org/ns/1.0"
@@ -14,7 +14,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   private def children(element: Xml.Element): Seq[Xml.Element] =
     element.getChildren.flatMap(_.asElement)
 
-  private def attrName(element: Xml.Element, qualified: String): XmlName =
+  private def attrName(element: Xml.Element, qualified: String): ZioXmlName =
     element.attributes.find(_._1.qualifiedName == qualified).get._1
 
   test("SAX: prefixed element and xmlns:prefix") {
@@ -28,11 +28,11 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.name.namespace.contains(tei))
     assert(xml.get(XmlAttribute.XmlId).contains("n1"))
     assert(xml.get(XmlAttribute.Xmlns("tei")).contains(tei))
-    val xmlId: XmlName = attrName(xml, "xml:id")
+    val xmlId: ZioXmlName = attrName(xml, "xml:id")
     assert(xmlId.localName == "id")
     assert(xmlId.prefix.contains("xml"))
     assert(xmlId.namespace.contains(XmlNamespace.xml.uri))
-    val xmlnsTei: XmlName = attrName(xml, "xmlns:tei")
+    val xmlnsTei: ZioXmlName = attrName(xml, "xmlns:tei")
     assert(xmlnsTei.localName == "tei")
     assert(xmlnsTei.prefix.contains("xmlns"))
     assert(xmlnsTei.namespace.contains(XmlNamespace.xmlns.uri))
@@ -66,7 +66,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
       s"""<p xmlns="$tei" n="1"/>"""
     )
     assert(xml.name.namespace.contains(tei))
-    val n: XmlName = attrName(xml, "n")
+    val n: ZioXmlName = attrName(xml, "n")
     assert(n.localName == "n")
     assert(n.prefix.isEmpty)
     assert(n.namespace.isEmpty)
@@ -76,7 +76,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: Xml.Element = parse(
       s"""<p xmlns:xlink="${XmlNamespace.xlink.uri}" xlink:href="a.xml"/>"""
     )
-    val href: XmlName = attrName(xml, "xlink:href")
+    val href: ZioXmlName = attrName(xml, "xlink:href")
     assert(href.localName == "href")
     assert(href.prefix.contains("xlink"))
     assert(href.namespace.contains(XmlNamespace.xlink.uri))
@@ -84,7 +84,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("SAX: xml: prefix is bound without an xmlns:xml declaration") {
     val xml: Xml.Element = parse("""<p xml:base="a.xml"/>""")
-    val base: XmlName = attrName(xml, "xml:base")
+    val base: ZioXmlName = attrName(xml, "xml:base")
     assert(base.namespace.contains(XmlNamespace.xml.uri))
     assert(xml.name.namespace.isEmpty)
   }
@@ -129,7 +129,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
-    assert(XmlExpandedName.asPairs(xml.getAttributes) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
+    assert(XmlName.asPairs(xml.getAttributes) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
     assert(attrName(xml, "xml:id").namespace.contains(XmlNamespace.xml.uri))
     assert(attrName(xml, "xmlns:tei").namespace.contains(XmlNamespace.xmlns.uri))
   }
@@ -164,7 +164,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(el.label == "p")
     assert(el.scope.getURI("tei") == tei)
     assert(el.scope.getURI("xml") == XmlNamespace.xml.uri)
-    assert(XmlExpandedName.asPairs(ScalaXml.getAttributes(el)) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
+    assert(XmlName.asPairs(ScalaXml.getAttributes(el)) == Seq("xmlns:tei" -> tei, "xml:id" -> "n1"))
   }
 
   test("ScalaXml default xmlns is on scope") {
@@ -199,7 +199,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
       s"""<p xmlns:xlink="${XmlNamespace.xlink.uri}"><ref xlink:href="a.xml"/></p>"""
     )
     val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
-    val href: XmlName = attrName(children(round).head, "xlink:href")
+    val href: ZioXmlName = attrName(children(round).head, "xlink:href")
     assert(href.namespace.contains(XmlNamespace.xlink.uri))
   }
 
@@ -218,17 +218,17 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(attrName(updated, "n").namespace.isEmpty)
   }
 
-  test("XmlExpandedName xmlns and xml tests") {
-    val xmlnsTei: XmlExpandedName = XmlExpandedName.parse("xmlns:tei", isAttribute = true)
+  test("XmlName xmlns and xml tests") {
+    val xmlnsTei: XmlName = XmlName.parse("xmlns:tei", isAttribute = true)
     assert(xmlnsTei.isXmlnsDeclaration)
     assert(!xmlnsTei.isDefaultXmlns)
-    val xmlnsDefault: XmlExpandedName = XmlExpandedName.parse("xmlns", isAttribute = true)
+    val xmlnsDefault: XmlName = XmlName.parse("xmlns", isAttribute = true)
     assert(xmlnsDefault.isDefaultXmlns)
     assert(xmlnsDefault.isXmlnsDeclaration)
-    val xmlId: XmlExpandedName = XmlExpandedName.parse("xml:id", isAttribute = true)
+    val xmlId: XmlName = XmlName.parse("xml:id", isAttribute = true)
     assert(xmlId.isXml)
     assert(!xmlId.isXmlnsDeclaration)
-    assert(xmlId.sameAs(XmlExpandedName("id", Some(XmlNamespace.xml))))
+    assert(xmlId.sameAs(XmlName("id", Some(XmlNamespace.xml))))
   }
 
   test("writer emits xmlns for an inherited namespace on a child written alone") {

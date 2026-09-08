@@ -1,7 +1,7 @@
 package org.podval.xml
 
 import zio.blocks.chunk.Chunk
-import zio.blocks.schema.xml.{XmlName, Xml as XML}
+import zio.blocks.schema.xml.{XmlName as ZioXmlName, Xml as XML}
 
 // XML AST for ZIO Blocks XML
 given Xml: XmlAst[XML.Element]:
@@ -16,8 +16,8 @@ given Xml: XmlAst[XML.Element]:
   override def processingInstruction(target: String, data: String): Option[Node] = Some(XML.ProcessingInstruction(target, data))
 
   override def element(
-    name: XmlExpandedName,
-    attributes: Seq[(XmlExpandedName, String)],
+    name: XmlName,
+    attributes: Seq[(XmlName, String)],
     children: Nodes
   ): Element = XML.Element(
     name = toZio(name, attributes, isAttribute = false),
@@ -49,20 +49,21 @@ given Xml: XmlAst[XML.Element]:
     override def asAtom: Option[String] = node.asText.orElse(node.asCData)
 
   extension (element: Element)
-    override def getName: XmlExpandedName = XmlExpandedName.fromZio(element.name)
+    override def getName: XmlName = XmlName.fromZio(element.name)
 
-    override def getAttributes: Seq[(XmlExpandedName, String)] =
-      element.attributes.map((name, value) => (XmlExpandedName.fromZio(name), value))
+    override def getAttributes: Seq[(XmlName, String)] =
+      element.attributes.map((name, value) => (XmlName.fromZio(name), value))
 
     override def getChildren: Nodes =
       element.children
 
+  // TODO move into XmlName
   private def toZio(
-    name: XmlExpandedName,
-    attributes: Seq[(XmlExpandedName, String)],
+    name: XmlName,
+    attributes: Seq[(XmlName, String)],
     isAttribute: Boolean
-  ): XmlName =
+  ): ZioXmlName =
     val uri: Option[String] = name.uri
       .orElse(XmlNamespace.wellKnown(name.prefix, name.localName, isAttribute).map(_.uri))
-      .orElse(XmlExpandedName.declaredUri(name.prefix, attributes, isAttribute))
-    XmlExpandedName(name.localName, XmlNamespace.of(name.prefix, uri)).toZio
+      .orElse(XmlName.declaredUri(name.prefix, attributes, isAttribute))
+    XmlName(name.localName, XmlNamespace.of(name.prefix, uri)).toZio

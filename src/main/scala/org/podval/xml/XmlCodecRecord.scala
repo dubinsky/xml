@@ -43,7 +43,7 @@ private[xml] trait XmlCodecRecord:
 
     override def unsafeDecode[E: XmlAst](element: E): A =
       val ast: XmlAst[E] = summon[XmlAst[E]]
-      val attrs: mutable.LinkedHashMap[XmlExpandedName, String] =
+      val attrs: mutable.LinkedHashMap[XmlName, String] =
         mutable.LinkedHashMap.from(element.getAttributes)
       val nodes: ast.Nodes = ast.getChildren(element)
       val available: mutable.BitSet = mutable.BitSet.empty
@@ -54,7 +54,7 @@ private[xml] trait XmlCodecRecord:
         try
           info.kind match
             case FieldKind.Tag =>
-              val name: XmlExpandedName = element.getName
+              val name: XmlName = element.getName
               xmlTag.flatMap(tag => tag.fromName(name.localName).orElse(tag.fromName(name.qName))) match
                 case Some(k) => store(regs, info.offset, info.typeTag, k)
                 case None => throw XmlError(s"Unknown element: ${name.qName}")
@@ -67,7 +67,7 @@ private[xml] trait XmlCodecRecord:
                 else info.codec.unsafeDecodeText(text)
               store(regs, info.offset, info.typeTag, value)
             case FieldKind.Attribute(attrName) =>
-              val wanted: XmlExpandedName = XmlExpandedName.parse(attrName, isAttribute = true)
+              val wanted: XmlName = XmlName.parse(attrName, isAttribute = true)
               attrs.collectFirst:
                 case (key, value) if key.sameAs(wanted) || key.matches(attrName) => (key, value)
               match
@@ -130,7 +130,7 @@ private[xml] trait XmlCodecRecord:
       val ast: XmlAst[E] = summon[XmlAst[E]]
       val regs: Registers = Registers(deconstructor.usedRegisters)
       deconstructor.deconstruct(regs, 0, value)
-      val attributes: mutable.ArrayBuffer[(XmlExpandedName, String)] = mutable.ArrayBuffer.empty
+      val attributes: mutable.ArrayBuffer[(XmlName, String)] = mutable.ArrayBuffer.empty
       val children: mutable.ArrayBuffer[ast.Node] = mutable.ArrayBuffer.empty
       fieldInfos.foreach: info =>
         info.kind match
@@ -147,7 +147,7 @@ private[xml] trait XmlCodecRecord:
               if info.optional then loaded.asInstanceOf[Option[Any]].map(info.codec.encodeText)
               else Some(info.codec.encodeText(loaded))
             raw.foreach: value =>
-              attributes += XmlExpandedName.parse(attrName, isAttribute = true) -> value
+              attributes += XmlName.parse(attrName, isAttribute = true) -> value
           case FieldKind.Child =>
             val loaded: Any = load(regs, info.offset, info.typeTag)
             def appendItem(item: Any): Unit =
@@ -166,19 +166,19 @@ private[xml] trait XmlCodecRecord:
             else if info.optional then
               loaded.asInstanceOf[Option[Any]].foreach(appendItem)
             else appendItem(loaded)
-      val nsAttrs: Seq[(XmlExpandedName, String)] = namespace match
-        case Some((uri, prefix)) if prefix.nonEmpty => Seq(XmlExpandedName.xmlnsAttribute(Some(prefix), uri))
-        case Some((uri, _)) => Seq(XmlExpandedName.xmlnsAttribute(None, uri))
+      val nsAttrs: Seq[(XmlName, String)] = namespace match
+        case Some((uri, prefix)) if prefix.nonEmpty => Seq(XmlName.xmlnsAttribute(Some(prefix), uri))
+        case Some((uri, _)) => Seq(XmlName.xmlnsAttribute(None, uri))
         case None => Seq.empty
-      val parsedName: XmlExpandedName = XmlExpandedName.parseQName(name)
-      val expandedName: XmlExpandedName = namespace match
+      val parsedName: XmlName = XmlName.parseQName(name)
+      val expandedName: XmlName = namespace match
         case Some((uri, prefix)) if prefix.nonEmpty && parsedName.prefix.isEmpty =>
-          XmlExpandedName(parsedName.localName, Some(XmlNamespace(uri, Some(prefix))))
+          XmlName(parsedName.localName, Some(XmlNamespace(uri, Some(prefix))))
         case Some((uri, _)) if parsedName.prefix.isEmpty =>
-          XmlExpandedName(parsedName.localName, Some(XmlNamespace(uri, None)))
+          XmlName(parsedName.localName, Some(XmlNamespace(uri, None)))
         case Some((uri, _)) => parsedName.copy(namespace = XmlNamespace.of(parsedName.prefix, Some(uri)))
         case None =>
-          XmlExpandedName.parseDeclared(name, nsAttrs ++ attributes.toSeq, isAttribute = false)
+          XmlName.parseDeclared(name, nsAttrs ++ attributes.toSeq, isAttribute = false)
       ast.element(expandedName, nsAttrs ++ attributes.toSeq, children.toSeq)
 
   protected def fieldInfo[F[_, _], A](recordTypeId: TypeId[A], field: Term[F, A, ?], offset: RegisterOffset)(using

@@ -6,9 +6,9 @@ object XmlWriter:
   private val indent: Int = 2
 
   private def writeAttributes[Element: XmlAst](element: Element): Seq[(String, String)] =
-    val existing: Seq[(XmlExpandedName, String)] = element.getAttributes
-    XmlExpandedName.asPairs(
-      XmlExpandedName.xmlnsDeclarations(element.getName, existing) ++ existing
+    val existing: Seq[(XmlName, String)] = element.getAttributes
+    XmlName.asPairs(
+      XmlName.xmlnsDeclarations(element.getName, existing) ++ existing
     )
 
   val widthDefault: Int = 120

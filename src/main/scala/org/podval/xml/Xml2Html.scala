@@ -54,7 +54,7 @@ final class Xml2Html(val prefix: String):
     then attributesConverted
     else attributesConverted.renameKeepingClass(withPrefix(element.localName))
 
-  private def rewriteAttribute(name: XmlExpandedName): XmlExpandedName =
+  private def rewriteAttribute(name: XmlName): XmlName =
     if name.isXml || !Xml2Html.reservedAttributes.contains(name.localName)
     then name
-    else XmlExpandedName(withPrefix(name.localName))
+    else XmlName(withPrefix(name.localName))

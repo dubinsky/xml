@@ -15,8 +15,8 @@ object Html extends XmlAst[XML.Element]:
   override def cdata(text: String): Node = Html.text(text)
 
   override def element(
-    name: XmlExpandedName,
-    attributes: Seq[(XmlExpandedName, String)],
+    name: XmlName,
+    attributes: Seq[(XmlName, String)],
     children: Nodes
   ): Element = XML.Element.Generic(
     tag = name.qName,
@@ -45,7 +45,7 @@ object Html extends XmlAst[XML.Element]:
     override def asProcessingInstruction: Option[(String, String)] = None
 
   extension (element: Element)
-    override def getName: XmlExpandedName = XmlExpandedName.parseQName(element.tag)
+    override def getName: XmlName = XmlName.parseQName(element.tag)
 
     override def getChildren: Nodes = element.children
 
@@ -54,10 +54,10 @@ object Html extends XmlAst[XML.Element]:
      * as Dom.render does: last `:=` is the base, then every `+=` in order.
      * One pair per name, sorted by name. Boolean attributes pass through.
      */
-    override def getAttributes: Seq[(XmlExpandedName, String)] =
+    override def getAttributes: Seq[(XmlName, String)] =
       Chunk.from(element.attributes.groupBy(attributeName).view.mapValues(mergeAttribute))
         .sortBy(_._1)
-        .map((name, value) => (XmlExpandedName.parse(name, isAttribute = true), value))
+        .map((name, value) => (XmlName.parse(name, isAttribute = true), value))
 
   private def mergeAttribute(attributes: Chunk[XML.Attribute]): String =
     val base: Option[String] = attributes.collect {

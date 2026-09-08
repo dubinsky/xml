@@ -104,7 +104,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         (name, codec, empty)
       val enumeration: Boolean = caseCodecs.forall(_._3.isDefined)
       val discriminator: Discriminator[A] = binding.discriminator
-      def caseByName(name: XmlExpandedName): Option[(String, XmlCodec[A], Option[A])] =
+      def caseByName(name: XmlName): Option[(String, XmlCodec[A], Option[A])] =
         caseCodecs.find((caseName, _, _) => name.matches(caseName))
       new XmlCodec[A]:
         override def elementName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
@@ -112,7 +112,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         override def isEnumeration: Boolean = enumeration
         override def caseNames: Seq[String] = caseCodecs.map(_._1)
         override def unsafeDecode[E: XmlAst](element: E): A =
-          val name: XmlExpandedName = element.getName
+          val name: XmlName = element.getName
           caseByName(name) match
             case Some((_, codec, empty)) =>
               empty.getOrElse(codec.unsafeDecode(element))

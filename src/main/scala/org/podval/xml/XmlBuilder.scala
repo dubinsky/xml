@@ -4,8 +4,8 @@ import scala.collection.mutable
 
 final class XmlBuilder[E](using ast: XmlAst[E]):
   private final class Frame(
-    val name: XmlExpandedName,
-    val attributes: Seq[(XmlExpandedName, String)],
+    val name: XmlName,
+    val attributes: Seq[(XmlName, String)],
     val children: mutable.ArrayBuffer[ast.Node]
   )
 
@@ -33,7 +33,7 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
     epilog = epilogBuf.toSeq
   )
 
-  def startElement(name: XmlExpandedName, attributes: Seq[(XmlExpandedName, String)]): Unit =
+  def startElement(name: XmlName, attributes: Seq[(XmlName, String)]): Unit =
     frames.push(Frame(name, attributes, mutable.ArrayBuffer.empty))
 
   def startElement(element: E): Unit =

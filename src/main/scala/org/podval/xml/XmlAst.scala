@@ -36,19 +36,19 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   final def element(name: String): Element = element(name, Seq.empty, Seq.empty)
 
   final def element(name: String, attributes: Seq[(String, String)], children: Nodes): Element = element(
-    XmlExpandedName.parse(name, attributes, isAttribute = false),
-    XmlExpandedName.attributes(attributes),
+    XmlName.parse(name, attributes, isAttribute = false),
+    XmlName.attributes(attributes),
     children
   )
 
   def element(
-    name: XmlExpandedName,
-    attributes: Seq[(XmlExpandedName, String)],
+    name: XmlName,
+    attributes: Seq[(XmlName, String)],
     children: Nodes
   ): Element
 
   final def renamed(element: Element, name: String): Element = this.element(
-    XmlExpandedName.parseDeclared(
+    XmlName.parseDeclared(
       name,
       element.getAttributes,
       isAttribute = false,
@@ -63,9 +63,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
 
   final def withAttributes(
     element: Element,
-    attributes: Seq[(XmlExpandedName, String)]
+    attributes: Seq[(XmlName, String)]
   ): Element = this.element(
-    XmlExpandedName.parseDeclared(
+    XmlName.parseDeclared(
       element.qName,
       attributes,
       isAttribute = false,
@@ -76,14 +76,14 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   )
 
   final def withAttribute(element: Element, attribute: String, value: String): Element =
-    val parsed: XmlExpandedName = XmlExpandedName.parseDeclared(
+    val parsed: XmlName = XmlName.parseDeclared(
       attribute,
       element.getAttributes,
       isAttribute = true
     )
-    val other: Seq[(XmlExpandedName, String)] =
+    val other: Seq[(XmlName, String)] =
       element.getAttributes.filterNot((name, _) => name.sameAs(parsed))
-    val attrs: Seq[(XmlExpandedName, String)] =
+    val attrs: Seq[(XmlName, String)] =
       if value.nonEmpty then other.appended(parsed -> value) else other
     withAttributes(element, attrs)
 
@@ -151,7 +151,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       .getOrElse("")
 
   extension (element: Element)
-    def getName: XmlExpandedName
+    def getName: XmlName
 
     def qName: String = element.getName.qName
 
@@ -188,9 +188,9 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       .flatMap(_.asElement)
       .flatMap(element => f(element))
 
-    def getAttributes: Seq[(XmlExpandedName, String)]
+    def getAttributes: Seq[(XmlName, String)]
 
-    def setAttributes(attributes: Seq[(XmlExpandedName, String)]): Element =
+    def setAttributes(attributes: Seq[(XmlName, String)]): Element =
       withAttributes(element, attributes)
 
     def get(attribute: XmlAttribute): Option[String] =
