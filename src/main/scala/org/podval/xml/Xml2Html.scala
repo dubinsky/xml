@@ -36,7 +36,7 @@ final class Xml2Html(val prefix: String):
     else elem.localName
 
   /** Attribute qName after `convert`: reserved HTML names get `$prefix-…`; `xml:*` stays. */
-  def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.expanded).qName
+  def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.name).qName
 
   def is[E: XmlAst](element: E, elem: XmlElement): Boolean =
     element.qName == elementName(elem) || element.isElement(elem)

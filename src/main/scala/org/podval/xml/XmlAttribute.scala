@@ -1,21 +1,21 @@
 package org.podval.xml
 
 // TODO remove aux constructors?
-open class XmlAttribute(val expanded: XmlExpandedName):
+open class XmlAttribute(val name: XmlExpandedName):
   def this(qName: String) = this(XmlExpandedName.parse(qName, isAttribute = true))
 
   /** Default `xmlns` is unprefixed; `xmlns:foo` is `XmlAttribute("foo", xmlns)`. */
-  def this(name: String, namespace: XmlNamespace) = this(XmlExpandedName(
-    localName = name,
+  def this(localName: String, namespace: XmlNamespace) = this(XmlExpandedName(
+    localName = localName,
     namespace = Some(
-      if namespace == XmlNamespace.xmlns && namespace.prefix.contains(name) then namespace.unprefixed
+      if namespace == XmlNamespace.xmlns && namespace.prefix.contains(localName) then namespace.unprefixed
       else namespace
     )
   ))
 
-  def qName: String = expanded.qName
+  def qName: String = name.qName
 
-  def localName: String = expanded.localName
+  def localName: String = name.localName
 
 object XmlAttribute:
   object Id extends XmlAttribute("id")

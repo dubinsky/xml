@@ -31,7 +31,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   /** `None` if this AST cannot represent processing instructions (HTML). */
   def processingInstruction(target: String, data: String): Option[Node] = None
 
-  final def element(elem: XmlElement): Element = element(elem.expanded, Seq.empty, Seq.empty)
+  final def element(elem: XmlElement): Element = element(elem.name, Seq.empty, Seq.empty)
 
   final def element(name: String): Element = element(name, Seq.empty, Seq.empty)
 
@@ -168,8 +168,8 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
       element.addClass(element.localName).rename(name)
 
     def isElement(elem: XmlElement): Boolean =
-      element.localName == elem.expanded.localName &&
-        element.getPrefix == elem.expanded.prefix
+      element.localName == elem.name.localName &&
+        element.getPrefix == elem.name.prefix
 
     def isA: Boolean = isElement(XmlElement.A)
 
@@ -195,7 +195,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
 
     def get(attribute: XmlAttribute): Option[String] =
       element.getAttributes.collectFirst:
-        case (n, v) if n.sameAs(attribute.expanded) => v
+        case (n, v) if n.sameAs(attribute.name) => v
 
     def get(attribute: String): Option[String] =
       element.getAttributes.collectFirst:
