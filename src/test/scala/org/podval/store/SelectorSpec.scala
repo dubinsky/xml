@@ -8,6 +8,7 @@ final class SelectorSpec extends AnyFunSuite:
     assert(inventory.names.hasName("inventory"))
     assert(Selector.getForName("names").title.contains("Имена"))
     assert(Selector.getForName("parsha").names.hasName("parsha"))
+    assert(Selector.getForName("lesson").names.hasName("урок"))
   }
 
   test("Selector.forName matches any language name") {

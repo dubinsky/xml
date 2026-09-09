@@ -39,6 +39,11 @@
     <name n="verse" lang="en"/>
     <name n="פסוק" lang="he"/>
   </selector>
+  <selector>
+    <name n="lesson" lang="en"/>
+    <name n="урок" lang="ru"/>
+    <name n="שיעור" lang="he"/>
+  </selector>
   <selector title="Архивы">
     <name n="архив" lang="ru"/>
     <name n="archive" lang="en"/>
