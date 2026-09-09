@@ -4,9 +4,8 @@ import org.podval.metadata.{Language, Name, Names}
 
 trait NumberedStores[+T <: NumberedStore] extends Stores[T]:
   def minNumber: Int = 1
-  // Derived types must override one of the:
+  def length: Int
   def maxNumber: Int = minNumber + length - 1
-  def length: Int = maxNumber - minNumber + 1
 
   final def contains(number: Int): Boolean = minNumber <= number && number <= maxNumber
 

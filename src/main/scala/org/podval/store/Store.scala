@@ -7,7 +7,7 @@ trait Store extends HasNames:
     * `Path.toUrl` of a result resolves from this node. */
   final def getPaths(
     include: Store => Boolean,
-    stop: Store => Boolean
+    stop: Store => Boolean = _ => false
   ): Seq[Path] =
     descendants(Path.empty, include, stop)
 

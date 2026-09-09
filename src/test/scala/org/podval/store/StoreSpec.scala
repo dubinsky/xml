@@ -22,8 +22,8 @@ final class StoreSpec extends AnyFunSuite:
     val chumash: Stores[?] = new Stores.With(Seq(By("book", Seq(genesis)))):
       override def names: Names = Names("Chumash")
 
-    val verses: By.Numbered[Num] = By.numbered("verse", 1, 3)(Num(_, _))
-    val otherVerses: By.Numbered[Num] = By.numbered("verse", 1, 3)(Num(_, _))
+    val verses: By.Numbered[Num] = By.Numbered("verse", 1, 3)(Num(_, _))
+    val otherVerses: By.Numbered[Num] = By.Numbered("verse", 1, 3)(Num(_, _))
 
     override def stores: Seq[Store] = Seq(
       books,
@@ -77,6 +77,9 @@ final class StoreSpec extends AnyFunSuite:
     assert(two.equals(Num(2, Root.verses)))
     assert(!two.equals(Root.otherVerses.get(2)))
     assert(two.hashCode == Num(2, Root.verses).hashCode)
+    assert(two.compare(Num(2, Root.verses)) == 0)
+    assert(two.compare(Root.verses.get(1)) > 0)
+    assert(two.compare(Root.otherVerses.get(2)) != 0)
   }
 
   test("indexOf next prev distance") {
@@ -114,10 +117,7 @@ final class StoreSpec extends AnyFunSuite:
   }
 
   test("getPaths omits the starting node and toUrl resolves") {
-    val paths: Seq[Path] = Root.getPaths(
-      include = _.isInstanceOf[Leaf],
-      stop = _ => false
-    )
+    val paths: Seq[Path] = Root.getPaths(include = _.isInstanceOf[Leaf])
     val names: Seq[Seq[String]] = paths.map(_.structureNames)
     assert(names.contains(Seq("book", "Genesis")))
     assert(names.contains(Seq("book", "Psalms")))
@@ -129,7 +129,7 @@ final class StoreSpec extends AnyFunSuite:
   }
 
   test("getPaths skips aliases") {
-    val urls: Seq[String] = Root.getPaths(include = _ => true, stop = _ => false).map(_.toUrl)
+    val urls: Seq[String] = Root.getPaths(include = _ => true).map(_.toUrl)
     assert(!urls.contains("/Chumash"))
     assert(!urls.contains("/Psalms"))
     assert(urls.contains("/part/Chumash"))
@@ -151,12 +151,16 @@ final class StoreSpec extends AnyFunSuite:
     intercept[IllegalArgumentException] { Cycle.resolve("/loop") }
   }
 
-  test("Path parent init tail") {
+  test("Path parent init tail lastAs") {
     val path: Path = Root.resolve("/part/Chumash/book/Genesis")
     assert(path.init.toUrl == "/part/Chumash/book")
-    assert(path.parent == path.init)
+    assert(path.parent eq path.init.last)
     assert(path.tail.toUrl == "/Chumash/book/Genesis")
-    assert(Root.resolve("/book").parent.isEmpty)
+    assert(path.lastAs[Leaf] eq Root.genesis)
+    assert(path.lastOption[Leaf].get eq Root.genesis)
+    assert(path.lastOption[Num].isEmpty)
+    intercept[NoSuchElementException] { Root.resolve("/book").parent }
+    intercept[ClassCastException] { path.lastAs[Num] }
     intercept[UnsupportedOperationException] { Path.empty.tail }
     intercept[UnsupportedOperationException] { Path.empty.init }
   }

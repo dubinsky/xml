@@ -5,11 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `By.Numbered(selector, min, max)(create)`; drop `By.numbered`. `NumberedStores.length` is abstract (`maxNumber` is derived).
+- Breaking: `Path.parent` is the parent store (`init.last`). `lastAs[T]` throws `ClassCastException`; `lastOption[T]`. `getPaths` defaults `stop` to never.
+- `NumberedStore.compare` orders by parent identity, then number.
 - Breaking: `Numbered.equals` / `hashCode` are overridable; `NumberedStore` includes `oneOf`.
-- `By.numbered(selector, min, max)(create)`.
 - Breaking: `Alias.to` is `Seq[String]`; `"/"` is illegal; aliases resolve from the resolve root; cycles fail. `getPaths` skips aliases. `Path.toUrl` encodes segments (`%20`).
 - Breaking: `getPaths` omits the starting node and drops the `path` prefix parameter; `Path.toUrl` of a result resolves from the node you called.
-- `Path.tail` / `init` / `parent` (`parent` is `init`).
+- `Path.tail` / `init`.
 - `Stores.indexOf` / `next` / `prev` / `distance`; `NumberedStores` caches children, `get(number)`, `indexOf` by parent and number.
 - Breaking: `Path` is a class (`stores`, English `structureNames` / `toUrl`), not `Seq[Store]`.
 - Breaking: drop `Terminal`; `Alias` is a `Store`.

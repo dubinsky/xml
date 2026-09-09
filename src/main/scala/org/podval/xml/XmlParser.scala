@@ -26,17 +26,31 @@ object XmlParser:
     if isXml then parseXml(content) else parseHtml(content)
 
   /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
-  def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
+  def parseXml[E: XmlAst](content: String): Either[Throwable, E] = 
     parseXmlDocument(content).map(_.root)
 
   def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
     parseXmlDocumentAndOverrideDeclaration(toInputSource(content))
+  
+  def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
+    XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
+
+  private def parseXmlDocumentAndOverrideDeclaration[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
+    XmlParserSax.parseDocument(XmlParserSax.xmlReader, source).map: document =>
+      document.copy(declaration = Some(XmlDeclaration())) // TODO why override declaration?
 
   /** Classpath resource next to `loader` (`Class.getResource`). */
   def parseResource[E: XmlAst](loader: Class[?], name: String): Either[Throwable, E] =
     Option(loader.getResource(name)) match
       case None => Left(XmlError(s"Resource not found: $name"))
-      case Some(url) => parseXmlDocument(url).map(_.root)
+      case Some(url) =>
+        Using(url.openStream()): stream =>
+          val source: InputSource = InputSource(stream)
+          source.setSystemId(url.toString)
+          parseXmlDocumentAndOverrideDeclaration(source).map(_.root)
+        .fold(Left(_), identity)
+
+  private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
 
   /** Class simple name without a trailing `$` (`Selector$` → `Selector`). */
   def className(loader: Class[?]): String = loader.getSimpleName.replace("$", "")
@@ -53,19 +67,3 @@ object XmlParser:
 
   private def unwrap[A](result: Either[Throwable, Seq[A]]): Seq[A] =
     result.fold(error => throw error, identity)
-
-  def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
-    XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
-
-  private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
-
-  private def parseXmlDocument[E: XmlAst](url: URL): Either[Throwable, XmlDocument[E]] =
-    Using(url.openStream()): stream =>
-      val source: InputSource = InputSource(stream)
-      source.setSystemId(url.toString)
-      parseXmlDocumentAndOverrideDeclaration(source)
-    .fold(Left(_), identity)
-
-  private def parseXmlDocumentAndOverrideDeclaration[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
-    XmlParserSax.parseDocument(XmlParserSax.xmlReader, source).map: document =>
-      document.copy(declaration = Some(XmlDeclaration())) // TODO why override declaration?
