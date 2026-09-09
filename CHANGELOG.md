@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `resolve` may omit a `By` hop when the name uniquely matches a child of one axis; `Path.toUrl` still includes the hop. Several matching axes fail.
 - Breaking: `By.Numbered(selector, min, max)(create)`; drop `By.numbered`. `NumberedStores.length` is abstract (`maxNumber` is derived).
 - Breaking: `Path.parent` is the parent store (`init.last`). `lastAs[T]` throws `ClassCastException`; `lastOption[T]`. `getPaths` defaults `stop` to never.
 - `NumberedStore.compare` orders by parent identity, then number.

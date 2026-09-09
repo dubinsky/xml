@@ -23,6 +23,7 @@ final class StoreSpec extends AnyFunSuite:
       override def names: Names = Names("Chumash")
 
     val verses: By.Numbered[Num] = By.Numbered("verse", 1, 3)(Num(_, _))
+    val chapters: By.Numbered[Num] = By.Numbered("chapter", 1, 3)(Num(_, _))
     val otherVerses: By.Numbered[Num] = By.Numbered("verse", 1, 3)(Num(_, _))
 
     override def stores: Seq[Store] = Seq(
@@ -30,7 +31,8 @@ final class StoreSpec extends AnyFunSuite:
       By("part", Seq(chumash)),
       Alias(chumash.names, "/part/Chumash"),
       Alias(psalms.names, "/book/Psalms"),
-      verses
+      verses,
+      chapters
     )
 
   private def roundTrip(url: String): Unit =
@@ -168,4 +170,19 @@ final class StoreSpec extends AnyFunSuite:
   test("missing name and leftover segments fail") {
     intercept[IllegalArgumentException] { Root.resolve("/book/Missing") }
     intercept[IllegalArgumentException] { Root.resolve("/book/Genesis/extra") }
+  }
+
+  test("optional By hop when the name is unique") {
+    assert(Root.resolve("/Genesis").last eq Root.genesis)
+    assert(Root.resolve("/Genesis").toUrl == "/book/Genesis")
+    assert(Root.resolve("/I%20Samuel").last eq Root.samuel)
+    assert(Root.resolve("/Chumash/Genesis").last eq Root.genesis)
+    assert(Root.resolve("/Chumash/Genesis").toUrl == "/part/Chumash/book/Genesis")
+  }
+
+  test("optional By hop is ambiguous across axes") {
+    intercept[IllegalArgumentException] { Root.resolve("/1") }
+    intercept[IllegalArgumentException] { Root.resolve("/2") }
+    assert(Root.resolve("/verse/2").last eq Root.verses.get(2))
+    assert(Root.resolve("/chapter/2").last eq Root.chapters.get(2))
   }

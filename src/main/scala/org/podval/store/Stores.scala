@@ -30,8 +30,10 @@ trait Stores[+T <: Store] extends Store:
 
   /*
   Successful `resolve()` returns a non-empty `Path`.
-  `Path.toUrl` is the English-name URL; resolving it again yields a path
-  with the same `structureNames`. Aliases resolve from this node (the resolve root).
+  `Path.toUrl` is the English-name URL (selector hops included); resolving it
+  again yields a path with the same `structureNames`. A hop may be omitted
+  when the name uniquely matches a child of one `By` at this node. Aliases
+  resolve from this node (the resolve root).
  */
   final def resolve(path: String): Path = resolve(Stores.splitAndDecodeUrl(path))
 
@@ -46,23 +48,42 @@ trait Stores[+T <: Store] extends Store:
   ): Vector[Store] = path match
     case Seq() => acc
     case head +: tail =>
-      val nextOpt: Option[Store] = findByName(head)
-      require(nextOpt.nonEmpty, s"Did not find '$head' in $this")
-      nextOpt.get match
-        case alias: Alias =>
-          require(!expanding.contains(alias), s"Alias cycle: ${alias.names}")
-          val toPath: Vector[Store] = root.resolve(alias.to, Vector.empty, root, expanding + alias)
-          require(toPath.nonEmpty, s"Alias ${alias.names} resolved empty")
-          toPath.last match
-            case stores: Stores[?] if tail.nonEmpty =>
-              stores.resolve(tail, acc ++ toPath, root, expanding + alias)
-            case next =>
-              require(tail.isEmpty, s"Can not apply '$tail' to $next")
-              acc ++ toPath
-        case stores: Stores[?] => stores.resolve(tail, acc :+ stores, root, expanding)
-        case next =>
-          require(tail.isEmpty, s"Can not apply '$tail' to $next")
-          acc :+ next
+      findByName(head) match
+        case Some(next) => continue(next, tail, acc, root, expanding)
+        case None =>
+          val hits: Seq[(By[?], Store)] = throughBy(head)
+          require(
+            hits.length <= 1,
+            s"Ambiguous '$head' in $this: ${hits.map((by, _) => by.names.name).mkString(", ")}"
+          )
+          require(hits.nonEmpty, s"Did not find '$head' in $this")
+          val (by, child) = hits.head
+          continue(child, tail, acc :+ by, root, expanding)
+
+  private def throughBy(name: String): Seq[(By[?], Store)] =
+    stores.collect { case by: By[?] => by }.flatMap(by => by.findByName(name).map(child => (by, child)))
+
+  private def continue(
+    next: Store,
+    tail: Seq[String],
+    acc: Vector[Store],
+    root: Stores[?],
+    expanding: Set[Alias]
+  ): Vector[Store] = next match
+    case alias: Alias =>
+      require(!expanding.contains(alias), s"Alias cycle: ${alias.names}")
+      val toPath: Vector[Store] = root.resolve(alias.to, Vector.empty, root, expanding + alias)
+      require(toPath.nonEmpty, s"Alias ${alias.names} resolved empty")
+      toPath.last match
+        case branch: Stores[?] if tail.nonEmpty =>
+          branch.resolve(tail, acc ++ toPath, root, expanding + alias)
+        case leaf =>
+          require(tail.isEmpty, s"Can not apply '$tail' to $leaf")
+          acc ++ toPath
+    case branch: Stores[?] => branch.resolve(tail, acc :+ branch, root, expanding)
+    case leaf =>
+      require(tail.isEmpty, s"Can not apply '$tail' to $leaf")
+      acc :+ leaf
 
 object Stores:
   trait With[+T <: Store](override val stores: Seq[T]) extends Stores[T]

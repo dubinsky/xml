@@ -23,7 +23,7 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 
 `org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name key).
-`org.podval.store`:: in-memory named tree; `resolve` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called).
+`org.podval.store`:: in-memory named tree; `resolve` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop when the name is unique).
 
 == Parse and catalogs
 

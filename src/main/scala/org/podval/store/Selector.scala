@@ -4,7 +4,7 @@ import org.podval.metadata.{HasNames, HasValues, Name, Names}
 import org.podval.xml.{XmlAst, XmlCodec, XmlParser}
 import zio.blocks.schema.{Modifier, Schema}
 
-// TODO introduce transparent (optional) selectors.
+// TODO omit optional hops from toUrl (resolve already skips a unique By hop).
 final case class Selector(
   override val names: Names,
   title: Option[String] // TODO replace with plural? Eliminate?
