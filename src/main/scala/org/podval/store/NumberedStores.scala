@@ -2,7 +2,6 @@ package org.podval.store
 
 import org.podval.metadata.{Language, Name, Names}
 
-// TODO override indexOf()
 trait NumberedStores[+T <: NumberedStore] extends Stores[T]:
   def minNumber: Int = 1
   // Derived types must override one of the:
@@ -19,9 +18,18 @@ trait NumberedStores[+T <: NumberedStore] extends Stores[T]:
     Name(Language.Hebrew.numberToString(number), Language.Hebrew.toSpec)
   ))
 
-  override def stores: Seq[T] = minNumber.to(maxNumber).map(createNumberedStore)
+  final override lazy val stores: Seq[T] = minNumber.to(maxNumber).map(createNumberedStore)
 
   protected def createNumberedStore(number: Int): T
 
+  final def get(number: Int): T =
+    require(contains(number), s"Unknown number $number in $this")
+    stores(number - minNumber)
+
   final override def findByName(name: String): Option[T] =
-    name2number(name).filter(contains).map(createNumberedStore)
+    name2number(name).filter(contains).map(get)
+
+  final override def indexOf(store: Store): Int = store match
+    case numbered: NumberedStore if (numbered.oneOf eq this) && contains(numbered.number) =>
+      numbered.number - minNumber
+    case _ => -1

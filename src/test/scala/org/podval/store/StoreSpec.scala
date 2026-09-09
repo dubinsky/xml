@@ -17,6 +17,7 @@ final class StoreSpec extends AnyFunSuite:
 
     val genesis: Store = Leaf("Genesis")
     val psalms: Store = Leaf("Psalms")
+    val books: By[Store] = By("book", Seq(genesis, psalms))
     val chumash: Stores[?] = new Stores.With(Seq(By("book", Seq(genesis)))):
       override def names: Names = Names("Chumash")
 
@@ -25,7 +26,7 @@ final class StoreSpec extends AnyFunSuite:
       override protected def createNumberedStore(number: Int): Num = Num(number, this)
 
     override def stores: Seq[Store] = Seq(
-      By("book", Seq(genesis, psalms)),
+      books,
       By("part", Seq(chumash)),
       Alias(chumash.names, "/part/Chumash"),
       Alias(psalms.names, "/book/Psalms"),
@@ -63,6 +64,38 @@ final class StoreSpec extends AnyFunSuite:
     assert(Root.resolve("/verse/ב").toUrl == "/verse/2")
   }
 
+  test("numbered stores are cached") {
+    val two: Num = Root.verses.get(2)
+    assert(Root.verses.stores(1) eq two)
+    assert(Root.resolve("/verse/2").last eq two)
+    assert(Root.resolve("/verse/ב").last eq two)
+    assert(Root.verses.findByName("2").get eq two)
+  }
+
+  test("indexOf next prev distance") {
+    assert(Root.books.indexOf(Root.genesis) == 0)
+    assert(Root.books.next(Root.genesis).get eq Root.psalms)
+    assert(Root.books.prev(Root.psalms).get eq Root.genesis)
+    assert(Root.books.prev(Root.genesis).isEmpty)
+    assert(Root.books.next(Root.psalms).isEmpty)
+    assert(Root.books.distance(Root.genesis, Root.psalms) == 1)
+    assert(Root.books.indexOf(Root.verses.get(1)) == -1)
+    intercept[IllegalArgumentException] { Root.books.distance(Root.genesis, Root.verses.get(1)) }
+
+    val two: Num = Root.verses.get(2)
+    assert(Root.verses.indexOf(two) == 1)
+    assert(Root.verses.prev(two).get eq Root.verses.get(1))
+    assert(Root.verses.next(two).get eq Root.verses.get(3))
+    assert(Root.verses.prev(Root.verses.get(1)).isEmpty)
+    assert(Root.verses.next(Root.verses.get(3)).isEmpty)
+    assert(Root.verses.distance(Root.verses.get(1), Root.verses.get(3)) == 2)
+    val dup: Num = Num(2, Root.verses)
+    assert(Root.verses.indexOf(dup) == 1)
+    assert(Root.verses.next(dup).get eq Root.verses.get(3))
+    intercept[IllegalArgumentException] { Root.verses.get(0) }
+    intercept[IllegalArgumentException] { Root.verses.get(4) }
+  }
+
   test("reconstructed English URL resolves to the same structureNames") {
     roundTrip("/book/Genesis")
     roundTrip("/part/Chumash/book/Genesis")
@@ -72,15 +105,28 @@ final class StoreSpec extends AnyFunSuite:
     roundTrip("/verse/ג")
   }
 
-  test("getPaths walks included nodes") {
+  test("getPaths omits the starting node and toUrl resolves") {
     val paths: Seq[Path] = Root.getPaths(
       include = _.isInstanceOf[Leaf],
       stop = _ => false
     )
     val names: Seq[Seq[String]] = paths.map(_.structureNames)
-    assert(names.contains(Seq("Root", "book", "Genesis")))
-    assert(names.contains(Seq("Root", "book", "Psalms")))
-    assert(names.contains(Seq("Root", "part", "Chumash", "book", "Genesis")))
+    assert(names.contains(Seq("book", "Genesis")))
+    assert(names.contains(Seq("book", "Psalms")))
+    assert(names.contains(Seq("part", "Chumash", "book", "Genesis")))
+    paths.foreach(path =>
+      assert(Root.resolve(path.toUrl).structureNames == path.structureNames, path.toUrl)
+    )
+  }
+
+  test("Path parent init tail") {
+    val path: Path = Root.resolve("/part/Chumash/book/Genesis")
+    assert(path.init.toUrl == "/part/Chumash/book")
+    assert(path.parent == path.init)
+    assert(path.tail.toUrl == "/Chumash/book/Genesis")
+    assert(Root.resolve("/book").parent.isEmpty)
+    intercept[UnsupportedOperationException] { Path.empty.tail }
+    intercept[UnsupportedOperationException] { Path.empty.init }
   }
 
   test("missing name and leftover segments fail") {

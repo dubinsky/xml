@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `getPaths` omits the starting node and drops the `path` prefix parameter; `Path.toUrl` of a result resolves from the node you called.
+- `Path.tail` / `init` / `parent` (`parent` is `init`).
+- `Stores.indexOf` / `next` / `prev` / `distance`; `NumberedStores` caches children, `get(number)`, `indexOf` by parent and number.
 - Breaking: `Path` is a class (`stores`, English `structureNames` / `toUrl`), not `Seq[Store]`.
 - Breaking: drop `Terminal`; `Alias` is a `Store`.
 - `By(selector, stores)` and `By.Numbered`.
