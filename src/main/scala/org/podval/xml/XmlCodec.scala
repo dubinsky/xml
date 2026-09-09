@@ -6,6 +6,8 @@ import zio.blocks.schema.xml.{Xml as XML}
 import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
+// TODO I'd rather not have ZIO XML as canonical...
+
 /** Canonical ZIO XML element for identity codec fields. Same type as `Xml.Element`. */
 type XmlTree = XML.Element
 

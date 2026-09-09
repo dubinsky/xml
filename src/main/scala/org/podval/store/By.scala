@@ -12,7 +12,8 @@ object By:
     new WithSelector[T](selectorName) with Stores.With[T](stores)
 
   trait WithSelector[+T <: Store](selectorName: String) extends By[T]:
-    override def selector: Selector = Selector.getForName(selectorName)
+    override def selector: Selector =
+      Selector.forName(selectorName).getOrElse(Selector(Names(selectorName), None))
 
   abstract class Numbered[+T <: NumberedStore](selectorName: String) extends WithSelector[T](selectorName), NumberedStores[T]
 

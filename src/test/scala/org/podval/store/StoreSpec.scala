@@ -44,6 +44,12 @@ final class StoreSpec extends AnyFunSuite:
     assert(Root.resolve("").last.names.hasName("Root"))
   }
 
+  test("By unknown selector uses the raw name") {
+    val by: By[Store] = By("item", Seq(Root.genesis))
+    assert(by.names.hasName("item"))
+    assert(by.findByName("Genesis").contains(Root.genesis))
+  }
+
   test("resolve selector hops") {
     assert(Root.resolve("/book/Genesis").last eq Root.genesis)
     assert(Root.resolve("/book/Psalms").last eq Root.psalms)
