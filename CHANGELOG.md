@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `XmlWriter` tokenizes mixed text instead of allocating AST text nodes; `chunkify` splits on whitespace and glues when the next element is `cling` or `unStack`. Preformat attributes are space-separated; empty preformat uses `selfClose`. Hidden newline is NUL. Attribute name and value stay one token. HTML `cling` is implied by `unStack`.
 - Breaking: `XmlParser` is string + classpath. Drop File/URL `parseXml` / `parseHtml` / `parseXmlDocument`, `parseResource(String)`, `parseResourceDocument`, and `parseCatalog`. Catalogs are `loadCatalog`.
 - Breaking: drop `XmlAst` element `qName` / `localName` / `getPrefix` / `getNamespace`. Compare with `isNamed` / `isElement`; read components from `getName`. Writer/error text uses `getName.qName`.
 - `XmlName.is(XmlElement)` is local+prefix (today's `isElement`). `XmlName.is(XmlAttribute)` / `sameAs(XmlAttribute)` are Clark identity. `matchesAny` / `localNameIn` / `isInclude`. Catalog `XmlElement.matches` / `XmlAttribute.matches`.

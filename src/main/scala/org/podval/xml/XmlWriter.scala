@@ -5,21 +5,19 @@ import org.typelevel.paiges.Doc
 object XmlWriter:
   private val indent: Int = 2
 
+  val widthDefault: Int = 120
+
+  // Paiges `Doc.text` turns real newlines into indentable `Line`s. NUL is illegal
+  // in XML 1.0, so it cannot appear in a well-formed tree.
+  private val hiddenNewline: Char = '\u0000'
+
+  private def hideNewlines(text: String): String = text.replace('\n', hiddenNewline)
+
   private def writeAttributes[Element: XmlAst](element: Element): Seq[(String, String)] =
     val existing: Seq[(XmlName, String)] = element.getAttributes
     XmlName.asPairs(
       XmlName.xmlnsDeclarations(element.getName, existing) ++ existing
     )
-
-  val widthDefault: Int = 120
-
-  // The only way I found to not let Paiges screw up indentation in the <pre><code>..</code></pre> blocks
-  // is to give it the whole block as one unbreakable text, and for that I need to hide newlines from it -
-  // and then restore them in render()...
-  // Also, element start and end tags must not be separated from the children by newlines...
-  private val hiddenNewline: String = "\\n"
-
-  private def hideNewlines(text: String) = text.replace("\n", XmlWriter.hiddenNewline)
 
   def render[Element: XmlAst](config: XmlWriterConfig, element: Element, width: Int): String =
     fromElement(
@@ -28,11 +26,16 @@ object XmlWriter:
       canBreakRight = true
     )(using config)
       .render(width)
-      .replace(XmlWriter.hiddenNewline, "\n")
+      .replace(hiddenNewline, '\n')
       .appended('\n')
 
   def render[Element: XmlAst](config: XmlWriterConfig, document: XmlDocument[Element], width: Int): String =
     document.prefix + render(config, document.root, width) + document.suffix
+
+  private enum Token[N]:
+    case Word(value: String)
+    case Space()
+    case Tree(node: N)
 
   private def fromElement[Element](
     element: Element,
@@ -42,28 +45,26 @@ object XmlWriter:
     val attributeValues: Seq[(String, String)] = writeAttributes(element)
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
-      else Doc.lineOrSpace + Doc.intercalate(Doc.lineOrSpace, attributeValues.map((name, value) =>
-        Doc.text(s"$name=") + Doc.lineOrEmpty + Doc.text(XmlEncode.quote(value))
-      ))
+      else Doc.lineOrSpace + Doc.intercalate(
+        Doc.lineOrSpace,
+        attributeValues.map((name, value) => Doc.text(s"$name=${XmlEncode.quote(value)}"))
+      )
 
-    val nodes: ast.Nodes = atomize(List.empty, element.getChildren.toList)
-    val chunks: Seq[Seq[ast.Node]] = chunkify(Seq.empty, List.empty, nodes.toList, flush = false)
-    val noText: Boolean = chunks.forall(_.forall(_.asAtom.isEmpty))
-    val whitespaceLeft: Boolean = nodes.headOption.exists(_.isWhitespace)
-    val whitespaceRight: Boolean = nodes.lastOption.exists(_.isWhitespace)
-    val charactersLeft: Boolean = nodes.headOption.exists(_.isCharacters)
-    val charactersRight: Boolean = nodes.lastOption.exists(_.isCharacters)
-    
-    val children: Seq[Doc] = if chunks.isEmpty then Seq.empty else
-      val canBreakLeft1 = canBreakLeft || whitespaceLeft
-      val canBreakRight1 = canBreakRight || whitespaceRight
-
-      if chunks.length == 1 then Seq(
-        fromChunk(chunks.head, canBreakLeft1, canBreakRight1)
-      ) else
-        fromChunk(chunks.head, canBreakLeft = canBreakLeft1, canBreakRight = true) +:
-        chunks.tail.init.map(chunk => fromChunk(chunk, canBreakLeft = true, canBreakRight = true)) :+
-        fromChunk(chunks.last, canBreakLeft = true, canBreakRight = canBreakRight1)
+    val tokens: List[Token[ast.Node]] = tokenize(element.getChildren.toList)
+    val chunks: List[List[Token[ast.Node]]] = chunkify(tokens)
+    val noText: Boolean = !tokens.exists(hasCharacters)
+    val whitespaceLeft: Boolean = tokens.headOption.exists(isSpace)
+    val whitespaceRight: Boolean = tokens.lastOption.exists(isSpace)
+    val charactersLeft: Boolean = tokens.headOption.exists(hasCharacters)
+    val charactersRight: Boolean = tokens.lastOption.exists(hasCharacters)
+    val canBreakLeft1: Boolean = canBreakLeft || whitespaceLeft
+    val canBreakRight1: Boolean = canBreakRight || whitespaceRight
+    val children: List[Doc] = mapEnds(chunks)(
+      one = fromChunk(_, canBreakLeft1, canBreakRight1),
+      first = fromChunk(_, canBreakLeft1, true),
+      middle = fromChunk(_, true, true),
+      last = fromChunk(_, true, canBreakRight1)
+    )
 
     val name: XmlName = element.getName
     val qName: String = name.qName
@@ -107,123 +108,147 @@ object XmlWriter:
           if breakAtTags && canBreakRight && !charactersRight then Doc.lineOrEmpty else Doc.empty,
           end
         ))
-  
+
   @scala.annotation.tailrec
-  private def atomize(
-    using ast: XmlAst[?]
-  )(
-    result: ast.Nodes,
-    nodes: ast.Nodes
-  ): ast.Nodes = if nodes.isEmpty then result else
-    val (texts: ast.Nodes, tail: ast.Nodes) = nodes.span(_.asText.isDefined)
-
-    val resultNew: ast.Nodes =
-      if texts.isEmpty
-      then result
-      else result ++ processText(Seq.empty, squashBigWhitespace(texts.map(_.asText.get).mkString("")))
-
-    tail match 
-      case Nil => resultNew
-      case n :: ns => atomize(resultNew :+ n, ns)
+  private def tokenize(using ast: XmlAst[?])(
+    nodes: List[ast.Node],
+    acc: List[Token[ast.Node]] = Nil
+  ): List[Token[ast.Node]] = nodes match
+    case Nil => acc.reverse
+    case n :: ns => n.asText match
+      case None => tokenize(ns, Token.Tree(n) :: acc)
+      case Some(_) =>
+        val (texts, rest) = nodes.span(_.asText.isDefined)
+        val more = words[ast.Node](squashBigWhitespace(texts.flatMap(_.asText).mkString))
+        tokenize(rest, more.reverse ::: acc)
 
   private def squashBigWhitespace(what: String): String = what
     .replace('\n', ' ')
     .replace('\t', ' ')
 
   @scala.annotation.tailrec
-  private def processText(
-    using ast: XmlAst[?]
-  )(
-    result: ast.Nodes,
-    text: String
-  ): ast.Nodes = if text.isEmpty then result else
-    val (spaces: String, tail: String) = text.span(_ == ' ')
-    val resultNew: ast.Nodes = if spaces.isEmpty then result else result :+ ast.text(" ")
-    val (word: String, tail2: String) = tail.span(_ != ' ')
-    if word.isEmpty
-    then resultNew
-    else processText(resultNew :+ ast.text(word), tail2)
+  private def words[N](text: String, acc: List[Token[N]] = Nil): List[Token[N]] =
+    if text.isEmpty then acc.reverse else
+      val (spaces, afterSpaces) = text.span(_ == ' ')
+      val acc1 = if spaces.isEmpty then acc else Token.Space() :: acc
+      val (word, afterWord) = afterSpaces.span(_ != ' ')
+      if word.isEmpty then acc1.reverse
+      else words(afterWord, Token.Word(word) :: acc1)
 
-  @scala.annotation.tailrec
-  private def chunkify(using dialect: XmlWriterConfig, ast: XmlAst[?])(
-    result: Seq[ast.Nodes],
-    current: List[ast.Node],
-    nodes: List[ast.Node],
-    flush: Boolean
-  ): Seq[Seq[ast.Node]] =
-    if flush then chunkify(result :+ current.reverse, Nil, nodes, flush = false) else
-      nodes match
-        case Nil =>
-          if current.isEmpty then result
-          else chunkify(result, current, Nil, flush = true)
-        case node :: tail =>
-          if node.isWhitespace then
-            chunkify(result, current, tail, flush = current.nonEmpty)
-          else current match
-            case Nil =>
-              chunkify(result, node :: current, tail, flush = false)
-            case c :: _ if c.isWhitespace =>
-              chunkify(result, current, nodes, flush = true)
-            case c :: _ =>
-              val cling: Boolean =
-                c.asElement.isEmpty ||
-                c.asElement.nonEmpty && node.asElement.isEmpty && !node.isWhitespace ||
-                node.asElement.exists(_.getName.localNameIn(dialect.cling))
-              if cling
-              then chunkify(result, node :: current, tail, flush = false)
-              else chunkify(result, current, nodes, flush = true)
+  private def isSpace[N](token: Token[N]): Boolean = token match
+    case Token.Space() => true
+    case _ => false
 
-  private def fromChunk(using dialect: XmlWriterConfig, ast: XmlAst[?])(
-    nodes: ast.Nodes,
+  private def hasCharacters(using ast: XmlAst[?])(token: Token[ast.Node]): Boolean = token match
+    case Token.Word(_) => true
+    case Token.Space() => false
+    case Token.Tree(node) => node.isCharacters
+
+  private def clings(using ast: XmlAst[?], config: XmlWriterConfig)(
+    prev: Token[ast.Node],
+    next: Token[ast.Node]
+  ): Boolean =
+    def elementOf(token: Token[ast.Node]): Option[ast.Element] = token match
+      case Token.Tree(node) => node.asElement
+      case _ => None
+    val nextElement: Option[ast.Element] = elementOf(next)
+    elementOf(prev).isEmpty || nextElement.isEmpty ||
+      nextElement.exists: el =>
+        val name: XmlName = el.getName
+        name.localNameIn(config.cling) || name.localNameIn(config.unStack)
+
+  private def chunkify(using ast: XmlAst[?], config: XmlWriterConfig)(
+    tokens: List[Token[ast.Node]]
+  ): List[List[Token[ast.Node]]] =
+    @scala.annotation.tailrec
+    def loop(
+      remaining: List[Token[ast.Node]],
+      acc: List[List[Token[ast.Node]]]
+    ): List[List[Token[ast.Node]]] = remaining.dropWhile(isSpace) match
+      case Nil => acc.reverse
+      case head :: tail =>
+        @scala.annotation.tailrec
+        def take(
+          prev: Token[ast.Node],
+          rest: List[Token[ast.Node]],
+          acc: List[Token[ast.Node]]
+        ): (List[Token[ast.Node]], List[Token[ast.Node]]) = rest match
+          case Nil => (acc.reverse, Nil)
+          case Token.Space() :: ns => (acc.reverse, ns)
+          case n :: ns if clings(prev, n) => take(n, ns, n :: acc)
+          case _ => (acc.reverse, rest)
+        val (chunk, after) = take(head, tail, head :: Nil)
+        loop(after, chunk :: acc)
+    loop(tokens, Nil)
+
+  private def mapEnds[A, B](xs: List[A])(
+    one: A => B,
+    first: A => B,
+    middle: A => B,
+    last: A => B
+  ): List[B] = xs match
+    case Nil => Nil
+    case x :: Nil => List(one(x))
+    case head :: tail =>
+      first(head) :: tail.dropRight(1).map(middle) ::: last(tail.last) :: Nil
+
+  private def fromChunk(using config: XmlWriterConfig, ast: XmlAst[?])(
+    tokens: List[Token[ast.Node]],
     canBreakLeft: Boolean,
     canBreakRight: Boolean
-  ): Doc =
-    require(nodes.nonEmpty)
-    if nodes.length == 1 then
-      fromNode(nodes.head, canBreakLeft, canBreakRight)
-    else Doc.cat(
-      fromNode(nodes.head, canBreakLeft, canBreakRight = false) +:
-      nodes.tail.init.map(node => fromNode(node, canBreakLeft = false, canBreakRight = false)) :+
-      fromNode(nodes.last, canBreakLeft = false, canBreakRight)
-    )
-  
-  private def fromNode(using dialect: XmlWriterConfig, ast: XmlAst[?])(
+  ): Doc = Doc.cat(mapEnds(tokens)(
+    one = token => fromToken(token, canBreakLeft, canBreakRight),
+    first = token => fromToken(token, canBreakLeft, canBreakRight = false),
+    middle = token => fromToken(token, canBreakLeft = false, canBreakRight = false),
+    last = token => fromToken(token, canBreakLeft = false, canBreakRight)
+  ))
+
+  private def fromToken(using config: XmlWriterConfig, ast: XmlAst[?])(
+    token: Token[ast.Node],
+    canBreakLeft: Boolean,
+    canBreakRight: Boolean
+  ): Doc = token match
+    case Token.Word(value) => Doc.text(XmlEncode.encodeXmlSpecials(value))
+    case Token.Space() => Doc.space
+    case Token.Tree(node) => fromNode(node, canBreakLeft, canBreakRight)
+
+  private def fromNode(using config: XmlWriterConfig, ast: XmlAst[?])(
     node: ast.Node,
     canBreakLeft: Boolean,
     canBreakRight: Boolean
-  ): Doc =
-    node.fold(
-      element = (element: ast.Element) =>
-        val name: XmlName = element.getName
-        if name.localNameIn(dialect.preformat) then
-          Doc.text(preformatElement(element).mkString(XmlWriter.hiddenNewline))
-        else
-          val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
-          // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
-          if canBreakRight && name.localNameIn(dialect.break) then result + Doc.hardLine else result
-      ,
-      text = value => Doc.text(XmlEncode.encodeXmlSpecials(value)),
-      cdata = value => Doc.text(cdataMarkup(value)),
-      comment = value => Doc.text(commentMarkup(value)),
-      processingInstruction = (target, data) => Doc.text(processingInstructionMarkup(target, data)),
-      unknown = Doc.paragraph(node.getText)
-    )
+  ): Doc = node.fold(
+    element = (element: ast.Element) =>
+      val name: XmlName = element.getName
+      if name.localNameIn(config.preformat) then
+        Doc.text(preformatElement(element).mkString(hiddenNewline.toString))
+      else
+        val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
+        // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
+        if canBreakRight && name.localNameIn(config.break) then result + Doc.hardLine else result
+    ,
+    text = value => Doc.text(XmlEncode.encodeXmlSpecials(value)),
+    cdata = value => Doc.text(cdataMarkup(value)),
+    comment = value => Doc.text(commentMarkup(value)),
+    processingInstruction = (target, data) => Doc.text(processingInstructionMarkup(target, data)),
+    unknown = Doc.text(XmlEncode.encodeXmlSpecials(node.getText))
+  )
 
-  private def preformatElement[Element: XmlAst](element: Element): Seq[String] =
-    val attributeValues: Seq[(String, String)] = writeAttributes(element)
-    val attributes: String = if attributeValues.isEmpty then "" else attributeValues
-      .map((name, value) => s"$name=${XmlEncode.quote(value)}")
-      .mkString(" ", ", ", "")
+  private def preformatElement[Element: XmlAst](element: Element)(using config: XmlWriterConfig): Seq[String] =
+    val attributes: String =
+      val pairs: Seq[(String, String)] = writeAttributes(element)
+      if pairs.isEmpty then ""
+      else pairs.map((name, value) => s"$name=${XmlEncode.quote(value)}").mkString(" ", " ", "")
 
-    val children: Seq[String] =
-      element.getChildren.flatMap(preformat)
-
+    val children: Seq[String] = element.getChildren.flatMap(preformat)
     val qName: String = element.getName.qName
-    if children.isEmpty then Seq(s"<$qName$attributes/>")
+    if children.isEmpty then
+      if element.getName.localNameIn(config.selfClose)
+      then Seq(s"<$qName$attributes/>")
+      else Seq(s"<$qName$attributes></$qName>")
     else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
     else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")
 
-  private def preformat(using ast: XmlAst[?])(node: ast.Node): Seq[String] =
+  private def preformat(using ast: XmlAst[?], config: XmlWriterConfig)(node: ast.Node): Seq[String] =
     node.fold(
       element = preformatElement,
       text = preformat,

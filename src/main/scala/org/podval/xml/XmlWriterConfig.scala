@@ -7,15 +7,13 @@ object XmlWriterConfig:
 open class XmlWriterConfig(
   val preformat: Set[String] = Set.empty,
   val stack: Set[String] = Set.empty,
+  // Phrasing: do not indent children, and glue to the previous element (same as cling).
   val unStack: Set[String] = Set.empty,
   val nest: Set[String] = Set.empty,
   val break: Set[String] = Set.empty,
+  // Glue to the previous element even when both sides are elements.
   val cling: Set[String] = Set.empty,
-
-  //  if allowEmptyElements || keepEmptyElements.contains(name.localName)
-  //  Some elements are mis-processed when they are empty, e.g. <script .../> ...
-  //  ... except, some elements are mis-processed when they *are* non-empty (e.g., <br>),
-  //  and in general, it's weird to expand the elements that are always empty...
+  // Empty tags: local names written as <br/>; others as <script></script>.
   val selfClose: Set[String] = Set.empty
 ):
   def plus(other: XmlWriterConfig): XmlWriterConfig = XmlWriterConfig(

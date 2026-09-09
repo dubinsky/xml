@@ -65,3 +65,26 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
     val rendered: String = render(span)
     assert(rendered.contains("foo <em>bar</em>"))
   }
+
+  test("adjacent phrasing children are not stacked") {
+    val dumped: String = render(
+      Xml.element(XmlElement.P).setChildren(Chunk(
+        Xml.element(XmlElement.Em).setText("a"),
+        Xml.element("strong").setText("b")
+      )),
+      width = 120
+    )
+    assert(dumped.contains("<em>a</em><strong>b</strong>"), dumped)
+  }
+
+  test("div with two paragraphs still stacks") {
+    val dumped: String = render(
+      Xml.element(XmlElement.Div).setChildren(Chunk(
+        Xml.element(XmlElement.P).setText("a"),
+        Xml.element(XmlElement.P).setText("b")
+      )),
+      width = 120
+    )
+    assert(dumped.contains("<div>\n"), dumped)
+    assert(dumped.contains("</p>\n"), dumped)
+  }

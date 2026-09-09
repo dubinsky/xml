@@ -130,3 +130,37 @@ final class XmlWriterSpec extends AnyFunSuite:
     )
     assert(dumped.contains("a &amp; b &lt; c &nbsp; d"), dumped)
   }
+
+  test("preformat attributes are space-separated") {
+    val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(
+      Xml.element(XmlElement.Pre).set("class", "x").set("id", "y").setText("a")
+    )
+    assert(
+      dumped.contains("""<pre class="x" id="y">""") || dumped.contains("""<pre id="y" class="x">"""),
+      dumped
+    )
+    assert(!dumped.contains(","), dumped)
+  }
+
+  test("preformat empty non-void keeps an end tag") {
+    val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(Xml.element("pre"))
+    assert(dumped.contains("<pre></pre>"), dumped)
+    assert(!dumped.contains("<pre/>"), dumped)
+  }
+
+  test("preformat empty void self-closes") {
+    val dumped: String = XmlWriterConfig(preformat = Set("br"), selfClose = Set("br")).render(
+      Xml.element("br")
+    )
+    assert(dumped.contains("<br/>"), dumped)
+    assert(!dumped.contains("<br></br>"), dumped)
+  }
+
+  test("preformat keeps a literal backslash-n") {
+    val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(
+      Xml.element(XmlElement.Pre).setText("a\\nb")
+    )
+    assert(dumped.contains("a\\nb"), dumped)
+    val inner: String = dumped.substring(dumped.indexOf('>') + 1, dumped.lastIndexOf('<'))
+    assert(!inner.contains('\n'), inner)
+  }
