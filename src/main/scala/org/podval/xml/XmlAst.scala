@@ -39,43 +39,46 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     children: Nodes
   ): Element
 
-  // TODO withName
+  // TODO withName?
   final def renamed(element: Element, name: String): Element = this.element(
-    XmlName.parseDeclared(
+    name = XmlName.parseDeclared(
       name,
       element.getAttributes,
       isAttribute = false,
       existing = Some(element.getName)
     ),
-    element.getAttributes,
-    element.getChildren
+    attributes = element.getAttributes,
+    children = element.getChildren
   )
 
-  final def withChildren(element: Element, children: Nodes): Element =
-    this.element(element.getName, element.getAttributes, children)
+  final def withChildren(element: Element, children: Nodes): Element = this.element(
+    name = element.getName,
+    attributes = element.getAttributes,
+    children = children
+  )
 
   final def withAttributes(
     element: Element,
     attributes: Seq[(XmlName, String)]
   ): Element = this.element(
-    XmlName.parseDeclared(element.getName, attributes, isAttribute = false),
-    attributes,
-    element.getChildren
+    name = XmlName.parseDeclared(element.getName, attributes, isAttribute = false),
+    attributes = attributes,
+    children = element.getChildren
   )
 
-  final def withAttribute(element: Element, attribute: String, value: String): Element =
-    withAttribute(
-      element,
-      XmlName.parseDeclared(attribute, element.getAttributes, isAttribute = true),
-      value
-    )
+  final def withAttribute(element: Element, attribute: String, value: String): Element = withAttribute(
+    element,
+    XmlName.parseDeclared(attribute, element.getAttributes, isAttribute = true),
+    value
+  )
 
-  final def withAttribute(element: Element, attribute: XmlName, value: String): Element =
-    val other: Seq[(XmlName, String)] =
-      element.getAttributes.filterNot((name, _) => name.sameAs(attribute))
-    val attrs: Seq[(XmlName, String)] =
+  final def withAttribute(element: Element, attribute: XmlName, value: String): Element = withAttributes(
+    element,
+    attributes =
+      val other: Seq[(XmlName, String)] =
+        element.getAttributes.filterNot((name, _) => name.sameAs(attribute))
       if value.nonEmpty then other.appended(attribute -> value) else other
-    withAttributes(element, attrs)
+  )
 
   // Concatenate only: text nodes already carry author whitespace. Joining with a space
   // puts a gap before punctuation after inline markup (`</persName>,` → "е ,").
