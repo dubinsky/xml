@@ -54,3 +54,32 @@ Publish to Maven Central (local, `USER_MANAGED`):
 ----
 
 Then release the deployment at https://central.sonatype.com/publishing/deployments .
+
+== XML processing ##
+
+=== XML generation ###
+
+In web-apps, I need to generate XML. I tried using https://com-lihaoyi.github.io/scalatags/[ScalaTags] for that,
+and they work, but there is no clean https://github.com/lihaoyi/scalatags/issues/102[interoperability] with Scala XML,
+so generating - say - HTML wrappers for XML parsed from files is not pleasant, and since ScalaTags does not (in my
+opinion) have obvious advantages over Scala XML, I decided not to bother with it.
+
+=== XML pretty-printing ###
+
+Scala XML does provide a pretty-printer, but it doesn't do what I need it to do, especially when formatting
+TEI documents. For instance, it inserts a break between `</e1>` and `<e2>` in `<e1>...</e1><e2>...</e2>` and
+between `</e1>` and `text` in `<e1>...</e1>text`, thus separating notes from what they are notes on and
+punctuation from its content by spaces. Attempts to modify the behavior of the Scala XML pretty-printer
+(or at least to fix what looks like an obvious bug in its `Print.merge`) were not successful,
+so I started looking for alternatives.
+
+https://www.lihaoyi.com/post/CompactStreamingPrettyPrintingofHierarchicalData.html[Compact, Streaming Pretty-Printing of Hierarchical Data]
+looked promising, but it looks like to fine-tune behavior of the pretty-printer, I'd have to rework the code each time:
+as with ScalaTags, https://www.lihaoyi.com[Li Haoyi's] focus seems to be performance, but I need flexibility to get
+the format I want without rewriting the whole algorithm for each experiment...
+
+I remembered a paper by http://homepages.inf.ed.ac.uk/wadler/[Phil Wadler] on  pretty-printing:
+https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf[A prettier printer],
+and almost started implementing it in Scala, but it turns out that there is an implementation already:
+https://github.com/typelevel/paiges[Typelevel Paiges]. With its declarative approach, I was able to
+tweak the output to my liking :)
