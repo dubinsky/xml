@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `Named` is `HasNames` (`HasName` stays the default-name key).
+- Breaking: drop `HasName.findByNames` (use `find`).
+- Breaking: drop `Names.checkDisjoint`, `Names.isDisjoint`, `Names.isEmpty`, `Language.Spec.languageName`, and Hebrew `MAQAF` / `PASEQ` / `SOF_PASUQ`.
+- `HasName.bind` / `mapByName` reject duplicate keys and extra metadata keys.
+- `Numbered.equals` / `hashCode` require the same non-anonymous class, not just the same number.
 - `XmlWriter` tokenizes mixed text instead of allocating AST text nodes; `chunkify` splits on whitespace and glues when the next element is `cling` or `unStack`. Preformat attributes are space-separated; empty preformat uses `selfClose`. Hidden newline is NUL. Attribute name and value stay one token. HTML `cling` is implied by `unStack`.
 - Breaking: `XmlParser` is string + classpath. Drop File/URL `parseXml` / `parseHtml` / `parseXmlDocument`, `parseResource(String)`, `parseResourceDocument`, and `parseCatalog`. Catalogs are `loadCatalog`.
 - Breaking: drop `XmlAst` element `qName` / `localName` / `getPrefix` / `getNamespace`. Compare with `isNamed` / `isElement`; read components from `getName`. Writer/error text uses `getName.qName`.

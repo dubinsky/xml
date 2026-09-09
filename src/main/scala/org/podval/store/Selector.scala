@@ -1,6 +1,6 @@
 package org.podval.store
 
-import org.podval.metadata.{HasValues, Name, Named, Names}
+import org.podval.metadata.{HasNames, HasValues, Name, Names}
 import org.podval.xml.{XmlAst, XmlCodec, XmlParser}
 import zio.blocks.schema.{Modifier, Schema}
 
@@ -8,7 +8,7 @@ import zio.blocks.schema.{Modifier, Schema}
 final case class Selector(
   override val names: Names,
   title: Option[String] // TODO replace with plural? Eliminate?
-) extends Named derives CanEqual
+) extends HasNames derives CanEqual
 
 object Selector extends HasValues.FindByName[Selector]:
   private final case class Data(

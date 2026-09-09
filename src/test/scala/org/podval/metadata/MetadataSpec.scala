@@ -51,3 +51,48 @@ final class MetadataSpec extends AnyFunSuite:
     assert(Language.Hebrew.numberFromString("הה").isEmpty)
     assert(Language.Hebrew.numberFromString("ק׳").isEmpty)
   }
+
+  test("HasName.bind rejects duplicate and extra keys") {
+    intercept[IllegalArgumentException] {
+      HasName.bind(keys = Seq(1, 2), metadatas = Seq((1, "a"), (1, "b")), getKey = _._1)
+    }
+    intercept[IllegalArgumentException] {
+      HasName.bind(keys = Seq(1), metadatas = Seq((1, "a"), (3, "c")), getKey = _._1)
+    }
+    intercept[IllegalArgumentException] {
+      HasName.bind(keys = Seq(1, 2), metadatas = Seq((1, "a")), getKey = _._1)
+    }
+    assert(HasName.bind(keys = Seq(1, 2), metadatas = Seq((1, "a"), (2, "b")), getKey = _._1) ==
+      Map(1 -> (1, "a"), 2 -> (2, "b")))
+  }
+
+  test("HasName.mapByName rejects two metadatas for one key") {
+    intercept[IllegalArgumentException] {
+      HasName.mapByName(
+        keys = Language.valuesSeq,
+        metadatas = Seq(Language.English.names, Language.English.names),
+        hasName = (names: Names, name: String) => names.hasName(name)
+      )
+    }
+  }
+
+  test("Numbered equality is per class") {
+    final class A(override val number: Int) extends Numbered[A] derives CanEqual
+    final class B(override val number: Int) extends Numbered[B] derives CanEqual
+    assert(A(1) == A(1))
+    assert(A(1) != A(2))
+    assert(!A(1).equals(B(1)))
+
+    abstract class V(override val number: Int) extends Numbered[V] derives CanEqual
+    val fiveA: V = new V(5) {}
+    val fiveB: V = new V(5) {}
+    val six: V = new V(6) {}
+    assert(fiveA == fiveB)
+    assert(fiveA != six)
+  }
+
+  test("HasNames.andNumber suffixes each language") {
+    val numbered: HasNames = Language.English.andNumber(3)
+    assert(numbered.names.hasName("English 3"))
+    assert(numbered.names.hasName("en 3"))
+  }

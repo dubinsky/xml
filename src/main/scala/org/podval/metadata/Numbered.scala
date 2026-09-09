@@ -1,15 +1,22 @@
 package org.podval.metadata
 
-// TODO move into util?
 trait Numbered[T] extends Ordered[Numbered[T]]:
   def number: Int
 
   override def compare(that: Numbered[T]): Int = this.number - that.number
 
-  final override def equals(other: Any): Boolean = other match
-    case that: Numbered[?] => this.number == that.number
-    case _ => false
+  final override def equals(other: Any): Boolean =
+    other.isInstanceOf[Numbered[?]] && {
+      val that: Numbered[?] = other.asInstanceOf[Numbered[?]]
+      (numberedClass eq that.numberedClass) && this.number == that.number
+    }
 
-  final override def hashCode: Int = number
+  final override def hashCode: Int = 31 * numberedClass.hashCode + number
 
   override def toString: String = number.toString
+
+  private def numberedClass: Class[?] =
+    Iterator.iterate[Class[?]](getClass)(_.getSuperclass)
+      .takeWhile(_ != null)
+      .find(c => !c.isAnonymousClass && !c.isSynthetic)
+      .getOrElse(getClass)

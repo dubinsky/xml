@@ -1,9 +1,7 @@
 package org.podval.metadata
 
-// TODO merge with util.WithValues
-// TODO after total ZIOfication this will get blended into Store, required etc.
 trait HasValues[+T]:
-  def valuesSeq: Seq[T] // TODO switch to values: Array[Key] and eliminate
+  def valuesSeq: Seq[T]
 
   final def numberOfValues: Int = valuesSeq.length
 
@@ -14,13 +12,11 @@ object HasValues:
 
     final def distance(from: T, to: T): Int = indexOf(to) - indexOf(from)
 
-    //final val ordering: Ordering[Key] = (x: Key, y: Key) => distance(x, y)
-
   trait FindByDefaultName[+T <: HasName] extends HasValues[T]:
     final def getForDefaultName(name: String): T = get(name, forDefaultName(name), this)
     final def forDefaultName(name: String): Option[T] = valuesSeq.find(_.name == name)
 
-  trait FindByName[+T <: Named] extends HasValues[T]:
+  trait FindByName[+T <: HasNames] extends HasValues[T]:
     final def getForName(name: String): T = get(name, forName(name), this)
     final def forName(name: String): Option[T] = find(valuesSeq, name)
 
@@ -28,4 +24,4 @@ object HasValues:
     require(result.isDefined, s"Unknown $where: $name")
     result.get
 
-  def find[T <: Named](valuesSeq: Seq[T], name: String): Option[T] = valuesSeq.find(_.names.hasName(name))
+  def find[T <: HasNames](valuesSeq: Seq[T], name: String): Option[T] = valuesSeq.find(_.names.hasName(name))

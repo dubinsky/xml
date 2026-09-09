@@ -1,7 +1,7 @@
 package org.podval.metadata
 
 enum Language(code: String) extends
-  Named.ByLoader[Language](loader = Language, nameOverride = Some(code)),
+  HasNames.ByLoader[Language](loader = Language, nameOverride = Some(code)),
   HasName.Enum derives CanEqual:
 
   final def toSpec: Language.Spec = Language.Spec(language = Some(this), isTransliterated = None, flavour = None)
@@ -14,7 +14,7 @@ enum Language(code: String) extends
   case French     extends Language("fr")
   case German     extends Language("de")
   case Lithuanian extends Language("lt")
-  case Hebrew     extends Language("he"), Language.Hebrew
+  case Hebrew     extends Language("he"), Language.Hebrew /* WTF? */
 
 object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Language], HasValues.FindByName[Language]:
   override val valuesSeq: Seq[Language] = values.toIndexedSeq
@@ -30,8 +30,6 @@ object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Lang
   ) derives CanEqual:
     def isEmpty: Boolean = language.isEmpty && isTransliterated.isEmpty && flavour.isEmpty
 
-    def languageName: String = language.get.toLanguageString(using this)
-
     def toString(number: Int): String = language.fold(number.toString)(_.numberToString(number))
 
     def dropFlavour: Spec = copy(flavour = None)
@@ -45,10 +43,6 @@ object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Lang
 
   trait Hebrew:
     self: Language =>
-
-    val MAQAF: Char       = '־'
-    val PASEQ: Char       = '׀'
-    val SOF_PASUQ: Char   = '׃'
 
     private val units: List[Char] = "אבגדהוזחט".toList
     private val decades: List[Char] = "יכלמנסעפצ".toList

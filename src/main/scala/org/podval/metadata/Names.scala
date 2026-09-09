@@ -8,8 +8,6 @@ final case class Names(names: Seq[Name]) extends Language.ToString:
   // so this check is disabled:
   // Collections.checkNoDuplicates(names.map(_.copy(name = "")), "name parameters")
 
-  def isEmpty: Boolean = names.isEmpty
-
   def getDefaultName: Option[String] =
     if (names.length == 1) && names.head.languageSpec.isEmpty then Some(names.head.name) else None
 
@@ -30,10 +28,7 @@ final case class Names(names: Seq[Name]) extends Language.ToString:
 
   override def toLanguageString(using spec: Language.Spec): String = doFind(spec).name
 
-  def isDisjoint(other: Names): Boolean = names.forall(name => !other.hasName(name.name))
-
 object Names:
-  // TODO create a mix-in for Named that overrides names as a val with this as a value?
   def apply(name: String): Names = Names(Seq(Name(name, Language.Spec.empty)))
 
   /** Parent `n` as the default name, plus child `<name>` elements (Selector / Alias). */
@@ -60,15 +55,6 @@ object Names:
       val ast: XmlAst[E] = summon[XmlAst[E]]
       ast.element(elName, Seq.empty, value.names.map(name => Name.codec.encode(name)))
 
-  def checkDisjoint(nameses: Seq[Names]): Unit =
-    for
-      one: Names <- nameses
-      other: Names <- nameses if !other.eq(one)
-    yield
-      require(one.isDisjoint(other), s"Names overlap: $one and $other")
-
-  // TODO If I ever figure out how to work with Custom using Cats typeclasses, something similar
-  // should work here too :)
   def combine(one: Names, other: Names, combiner: (Language.Spec, String, String) => String): Names =
     val specs: Set[Language.Spec] = one.names.map(_.languageSpec).toSet ++ other.names.map(_.languageSpec)
     val result: Set[Name] = specs.map(spec =>

@@ -1,40 +1,37 @@
 package org.podval.metadata
 
-// TODO rename HasNames
-trait Named:
+trait HasNames:
   def names: Names
 
-  def merge(that: Named): Named =
+  def merge(that: HasNames): HasNames =
     require(this eq that)
     this
 
   final def toLanguageString(using spec: Language.Spec): String = names.toLanguageString(using spec)
 
-  // TODO introduce NamesDecorator
-
-  final def andNumber(number: Int): Named =
-    new Named.Numbers(this, number, number):
+  final def andNumber(number: Int): HasNames =
+    new HasNames.Numbers(this, number, number):
       override protected def suffix(languageSpec: Language.Spec): String =
         languageSpec.toString(number)
 
-  final def andNumbers(from: Int, to: Int): Named = if to == from then andNumber(from) else
-    new Named.Numbers(this, from, to):
+  final def andNumbers(from: Int, to: Int): HasNames = if to == from then andNumber(from) else
+    new HasNames.Numbers(this, from, to):
       override protected def suffix(languageSpec: Language.Spec): String =
         languageSpec.toString(this.from) + "-" + languageSpec.toString(this.to)
 
-object Named:
+object HasNames:
 
   // Note: Calendar.Month is used as a Names.Loader, but this gets called during its initialization,
   // so loader parameter end up being null... Introduced thunk:
   abstract class ByLoader[Key <: ByLoader[Key]](loader: => Names.Loader[Key], nameOverride: Option[String])
-    extends Named, HasName(nameOverride):
-    final override def names: Names = loader.toNames(this.asInstanceOf[Key]) // TODO play with self-type to remove the cast...
+    extends HasNames, HasName(nameOverride):
+    final override def names: Names = loader.toNames(this.asInstanceOf[Key])
 
   private sealed abstract class Numbers(
-    val  named: Named,
+    val named: HasNames,
     val from: Int,
     val to: Int
-  ) extends Named:
+  ) extends HasNames:
     require(from > 0)
     require(to >= from)
 
@@ -45,7 +42,7 @@ object Named:
 
     protected def suffix(languageSpec: Language.Spec): String
 
-    override def merge(other: Named): Named =
+    override def merge(other: HasNames): HasNames =
       require(other.isInstanceOf[Numbers])
       val that: Numbers = other.asInstanceOf[Numbers]
       require(this.named eq that.named)

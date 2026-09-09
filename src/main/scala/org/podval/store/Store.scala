@@ -1,8 +1,8 @@
 package org.podval.store
 
-import org.podval.metadata.Named
+import org.podval.metadata.HasNames
 
-trait Store extends Named:
+trait Store extends HasNames:
   final def getPaths(
     path: Path = Seq.empty,
     include: Store => Boolean,
