@@ -4,12 +4,11 @@ import org.xml.sax.{Attributes, InputSource, XMLReader}
 import org.xml.sax.ext.LexicalHandler
 import org.xml.sax.helpers.DefaultHandler
 import javax.xml.parsers.SAXParserFactory
-import java.io.StringReader
 
 // Note: written by Grok, re-written by me ;)
 private[xml] object XmlParserSax:
   /** JDK SAX. `LexicalHandler` reports CDATA as a distinct node kind. */
-  private def xmlReader: XMLReader =
+  def xmlReader: XMLReader =
     val factory: SAXParserFactory = SAXParserFactory.newInstance
     factory.setNamespaceAware(true)
     factory.setValidating(false)
@@ -21,21 +20,11 @@ private[xml] object XmlParserSax:
     try reader.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
     catch case _: Exception => ()
     reader
-
-  def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
-    parseXmlDocument(InputSource(StringReader(content)))
-
-  def parseXmlDocument[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
-    parseBuilder(xmlReader, source).map: builder =>
-      builder.document.copy(declaration = Some(XmlDeclaration())) // TODO why override declaration?
-
-  def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, XmlBuilder[E]] =
-    parseBuilder(reader, InputSource(StringReader(content)))
   
-  private def parseBuilder[E: XmlAst](
+  def parseDocument[E: XmlAst](
     reader: XMLReader,
     source: InputSource
-  ): Either[Throwable, XmlBuilder[E]] =
+  ): Either[Throwable, XmlDocument[E]] =
     try
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
       // Include xmlns:* in the attribute list so namespace declarations become attributes
@@ -53,7 +42,7 @@ private[xml] object XmlParserSax:
       reader.setProperty("http://xml.org/sax/properties/lexical-handler", handler)
       reader.parse(source)
 
-      Right(builder)
+      Right(builder.document)
     catch
       case e: Throwable => Left(e)
 

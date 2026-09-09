@@ -3,6 +3,7 @@ package org.podval.xml
 import zio.blocks.schema.xml.Xml
 import org.xml.sax.InputSource
 import scala.util.Using
+import java.io.StringReader
 import java.net.URL
 
 /** Load XML (and HTML) into any [[XmlAst]].
@@ -28,7 +29,7 @@ object XmlParser:
     parseXmlDocument(content).map(_.root)
 
   def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
-    XmlParserSax.parseXmlDocument(content)
+    parseXmlDocumentAndOverrideDeclaration(toInputSource(content))
 
   /** Classpath resource next to `loader` (`Class.getResource`). */
   def parseResource[E: XmlAst](loader: Class[?], name: String): Either[Throwable, E] =
@@ -53,11 +54,17 @@ object XmlParser:
     result.fold(error => throw error, identity)
 
   def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
-    XmlParserSax.parse(reader = HtmlTagSoup.reader, content = content).map(_.result)
+    XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
 
+  private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
+  
   private def parseXmlDocument[E: XmlAst](url: URL): Either[Throwable, XmlDocument[E]] =
     Using(url.openStream()): stream =>
       val source: InputSource = InputSource(stream)
       source.setSystemId(url.toString)
-      XmlParserSax.parseXmlDocument(source)
+      parseXmlDocumentAndOverrideDeclaration(source)
     .fold(Left(_), identity)
+
+  private def parseXmlDocumentAndOverrideDeclaration[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
+    XmlParserSax.parseDocument(XmlParserSax.xmlReader, source).map: document =>
+      document.copy(declaration = Some(XmlDeclaration())) // TODO why override declaration?
