@@ -1,13 +1,5 @@
 package org.podval.xml
 
-object XmlAst:
-  def toId(text: String): String = text.trim.replace(' ', '-')
-
-  def parseBoolean(raw: String): Boolean = raw.trim.toLowerCase match
-    case "true" | "yes" | "1" => true
-    case "false" | "no" | "0" => false
-    case other => throw XmlError(s"Invalid boolean: $other")
-
 /** AST that represents XML and provides operations on it;
   * abstracts over the underlying representation:
   * - ZIO Blocks XML
@@ -215,3 +207,11 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     def getHref: Option[String] = get(XmlAttribute.Href)
 
     def setHref(value: String): Element = set(XmlAttribute.Href, value)
+
+object XmlAst:
+  def toId(text: String): String = text.trim.replace(' ', '-')
+
+  def parseBoolean(raw: String): Boolean = raw.trim.toLowerCase match
+    case "true" | "yes" | "1" => true
+    case "false" | "no" | "0" => false
+    case other => throw XmlError(s"Invalid boolean: $other")

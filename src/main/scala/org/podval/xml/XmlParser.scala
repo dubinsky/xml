@@ -53,7 +53,7 @@ object XmlParser:
     result.fold(error => throw error, identity)
 
   def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
-    XmlParserSax.parse(reader = HtmlTagSoup.reader, content = content)
+    XmlParserSax.parse(reader = HtmlTagSoup.reader, content = content).map(_.result)
 
   private def parseXmlDocument[E: XmlAst](url: URL): Either[Throwable, XmlDocument[E]] =
     Using(url.openStream()): stream =>

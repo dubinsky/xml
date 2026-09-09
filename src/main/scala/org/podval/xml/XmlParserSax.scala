@@ -26,15 +26,12 @@ private[xml] object XmlParserSax:
     parseXmlDocument(InputSource(StringReader(content)))
 
   def parseXmlDocument[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
-    parseDocument(xmlReader, source)
+    parseBuilder(xmlReader, source).map: builder =>
+      builder.document.copy(declaration = Some(XmlDeclaration())) // TODO why override declaration?
 
-  def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, E] =
-    parseBuilder(reader, InputSource(StringReader(content))).map(_.result)
-
-  private def parseDocument[E: XmlAst](reader: XMLReader, source: InputSource): Either[Throwable, XmlDocument[E]] =
-    parseBuilder(reader, source).map: builder =>
-      builder.document.copy(declaration = Some(XmlDeclaration()))
-
+  def parse[E: XmlAst](reader: XMLReader, content: String): Either[Throwable, XmlBuilder[E]] =
+    parseBuilder(reader, InputSource(StringReader(content)))
+  
   private def parseBuilder[E: XmlAst](
     reader: XMLReader,
     source: InputSource
@@ -151,7 +148,7 @@ private def fromName(
       XmlNamespace
         .wellKnown(prefix, local, isAttribute)
         .map(_.uri)
-        .orElse(noneIfEmpty(uri))
+        .orElse(Option.when(uri.nonEmpty)(uri))
     )
   )
 
@@ -168,6 +165,3 @@ private def fromAttributes(
       ),
       attributes.getValue(i)
     )
-
-private def noneIfEmpty(string: String): Option[String] =
-  Option.when(string.nonEmpty)(string)
