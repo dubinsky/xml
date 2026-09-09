@@ -4,13 +4,19 @@
     <name n="language" lang="en"/>
     <name n="язык" lang="ru"/>
   </selector>
-  <selector title="Имена">
+  <selector>
     <name n="names" lang="en"/>
     <name n="имена" lang="ru"/>
+    <plural>
+      <name n="Имена" lang="ru"/>
+    </plural>
   </selector>
-  <selector title="Имена">
+  <selector>
     <name n="name" lang="en"/>
     <name n="имя" lang="ru"/>
+    <plural>
+      <name n="Имена" lang="ru"/>
+    </plural>
   </selector>
   <selector>
     <name n="книга" lang="ru"/>
@@ -44,9 +50,12 @@
     <name n="урок" lang="ru"/>
     <name n="שיעור" lang="he"/>
   </selector>
-  <selector title="Архивы">
+  <selector>
     <name n="архив" lang="ru"/>
     <name n="archive" lang="en"/>
+    <plural>
+      <name n="Архивы" lang="ru"/>
+    </plural>
   </selector>
   <selector>
     <name n="фонд" lang="ru"/>
@@ -76,9 +85,12 @@
     <name n="day of the week" lang="en"/>
     <name n="день недели" lang="ru"/>
   </selector>
-  <selector title="Дела">
+  <selector>
     <name n="дело" lang="ru"/>
     <name n="case" lang="en"/>
+    <plural>
+      <name n="Дела" lang="ru"/>
+    </plural>
   </selector>
   <selector>
     <name n="author" lang="en"/>
@@ -109,8 +121,11 @@
     <name n="note" lang="en"/>
     <name n="заметка" lang="ru"/>
   </selector>
-  <selector title="Отчеты">
+  <selector>
     <name n="report" lang="en"/>
     <name n="отчет" lang="ru"/>
+    <plural>
+      <name n="Отчеты" lang="ru"/>
+    </plural>
   </selector>
 </Selector>

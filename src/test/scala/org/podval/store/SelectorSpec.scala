@@ -6,7 +6,10 @@ final class SelectorSpec extends AnyFunSuite:
   test("Selector.getForName") {
     val inventory: Selector = Selector.getForName("inventory")
     assert(inventory.names.hasName("inventory"))
-    assert(Selector.getForName("names").title.contains("Имена"))
+    assert(Selector.getForName("names").plural.exists(_.hasName("Имена")))
+    assert(Selector.getForName("names").pluralOrNames.hasName("Имена"))
+    assert(Selector.getForName("inventory").plural.isEmpty)
+    assert(Selector.getForName("inventory").pluralOrNames.hasName("inventory"))
     assert(Selector.getForName("parsha").names.hasName("parsha"))
     assert(Selector.getForName("lesson").names.hasName("урок"))
   }
