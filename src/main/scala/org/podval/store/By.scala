@@ -11,6 +11,18 @@ object By:
   def apply[T <: Store](selectorName: String, stores: Seq[T]): By[T] =
     new WithSelector[T](selectorName) with Stores.With[T](stores)
 
+  // TODO why is this in By?
+  /** `create(number, parent)`. Do not name `parent` `oneOf` inside `override def oneOf`. */
+  def numbered[T <: NumberedStore](
+    selectorName: String,
+    min: Int,
+    max: Int
+  )(create: (Int, NumberedStores[T]) => T): Numbered[T] =
+    new Numbered[T](selectorName):
+      override def minNumber: Int = min
+      override def maxNumber: Int = max
+      override protected def createNumberedStore(number: Int): T = create(number, this)
+
   trait WithSelector[+T <: Store](selectorName: String) extends By[T]:
     override def selector: Selector = Selector.getForName(selectorName)
 

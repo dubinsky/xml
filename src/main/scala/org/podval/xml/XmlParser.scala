@@ -20,6 +20,7 @@ import java.net.URL
   * need `import Html.given` / `import ScalaXml.given`.
   * Catalog helpers pin ZIO Blocks XML internally.
   */
+// TODO clean up
 object XmlParser:
   def parse[E: XmlAst](content: String, isXml: Boolean): Either[Throwable, E] =
     if isXml then parseXml(content) else parseHtml(content)
@@ -57,7 +58,7 @@ object XmlParser:
     XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
 
   private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
-  
+
   private def parseXmlDocument[E: XmlAst](url: URL): Either[Throwable, XmlDocument[E]] =
     Using(url.openStream()): stream =>
       val source: InputSource = InputSource(stream)

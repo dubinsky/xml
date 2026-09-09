@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `Numbered.equals` / `hashCode` are overridable; `NumberedStore` includes `oneOf`.
+- `By.numbered(selector, min, max)(create)`.
+- Breaking: `Alias.to` is `Seq[String]`; `"/"` is illegal; aliases resolve from the resolve root; cycles fail. `getPaths` skips aliases. `Path.toUrl` encodes segments (`%20`).
 - Breaking: `getPaths` omits the starting node and drops the `path` prefix parameter; `Path.toUrl` of a result resolves from the node you called.
 - `Path.tail` / `init` / `parent` (`parent` is `init`).
 - `Stores.indexOf` / `next` / `prev` / `distance`; `NumberedStores` caches children, `get(number)`, `indexOf` by parent and number.

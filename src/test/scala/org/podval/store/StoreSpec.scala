@@ -17,13 +17,13 @@ final class StoreSpec extends AnyFunSuite:
 
     val genesis: Store = Leaf("Genesis")
     val psalms: Store = Leaf("Psalms")
-    val books: By[Store] = By("book", Seq(genesis, psalms))
+    val samuel: Store = Leaf("I Samuel")
+    val books: By[Store] = By("book", Seq(genesis, psalms, samuel))
     val chumash: Stores[?] = new Stores.With(Seq(By("book", Seq(genesis)))):
       override def names: Names = Names("Chumash")
 
-    val verses: By.Numbered[Num] = new By.Numbered[Num]("verse"):
-      override def maxNumber: Int = 3
-      override protected def createNumberedStore(number: Int): Num = Num(number, this)
+    val verses: By.Numbered[Num] = By.numbered("verse", 1, 3)(Num(_, _))
+    val otherVerses: By.Numbered[Num] = By.numbered("verse", 1, 3)(Num(_, _))
 
     override def stores: Seq[Store] = Seq(
       books,
@@ -72,12 +72,20 @@ final class StoreSpec extends AnyFunSuite:
     assert(Root.verses.findByName("2").get eq two)
   }
 
+  test("NumberedStore equality includes parent") {
+    val two: Num = Root.verses.get(2)
+    assert(two.equals(Num(2, Root.verses)))
+    assert(!two.equals(Root.otherVerses.get(2)))
+    assert(two.hashCode == Num(2, Root.verses).hashCode)
+  }
+
   test("indexOf next prev distance") {
     assert(Root.books.indexOf(Root.genesis) == 0)
     assert(Root.books.next(Root.genesis).get eq Root.psalms)
     assert(Root.books.prev(Root.psalms).get eq Root.genesis)
     assert(Root.books.prev(Root.genesis).isEmpty)
-    assert(Root.books.next(Root.psalms).isEmpty)
+    assert(Root.books.next(Root.psalms).get eq Root.samuel)
+    assert(Root.books.next(Root.samuel).isEmpty)
     assert(Root.books.distance(Root.genesis, Root.psalms) == 1)
     assert(Root.books.indexOf(Root.verses.get(1)) == -1)
     intercept[IllegalArgumentException] { Root.books.distance(Root.genesis, Root.verses.get(1)) }
@@ -113,10 +121,34 @@ final class StoreSpec extends AnyFunSuite:
     val names: Seq[Seq[String]] = paths.map(_.structureNames)
     assert(names.contains(Seq("book", "Genesis")))
     assert(names.contains(Seq("book", "Psalms")))
+    assert(names.contains(Seq("book", "I Samuel")))
     assert(names.contains(Seq("part", "Chumash", "book", "Genesis")))
     paths.foreach(path =>
       assert(Root.resolve(path.toUrl).structureNames == path.structureNames, path.toUrl)
     )
+  }
+
+  test("getPaths skips aliases") {
+    val urls: Seq[String] = Root.getPaths(include = _ => true, stop = _ => false).map(_.toUrl)
+    assert(!urls.contains("/Chumash"))
+    assert(!urls.contains("/Psalms"))
+    assert(urls.contains("/part/Chumash"))
+    assert(urls.contains("/book/Psalms"))
+  }
+
+  test("toUrl encodes segments") {
+    assert(Root.resolve("/book/I Samuel").toUrl == "/book/I%20Samuel")
+    assert(Root.resolve("/book/I%20Samuel").last eq Root.samuel)
+    assert(Path.encodeSegment("day of the week") == "day%20of%20the%20week")
+  }
+
+  test("alias target / is illegal and cycles fail") {
+    intercept[IllegalArgumentException] { Alias(Names("x"), "/") }
+    intercept[IllegalArgumentException] { Alias(Names("x"), "") }
+    object Cycle extends Stores[?]:
+      override def names: Names = Names("Cycle")
+      override def stores: Seq[Store] = Seq(Alias(Names("loop"), "/loop"))
+    intercept[IllegalArgumentException] { Cycle.resolve("/loop") }
   }
 
   test("Path parent init tail") {

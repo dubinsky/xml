@@ -31,43 +31,45 @@ trait Stores[+T <: Store] extends Store:
   /*
   Successful `resolve()` returns a non-empty `Path`.
   `Path.toUrl` is the English-name URL; resolving it again yields a path
-  with the same `structureNames`.
+  with the same `structureNames`. Aliases resolve from this node (the resolve root).
  */
   final def resolve(path: String): Path = resolve(Stores.splitAndDecodeUrl(path))
 
-  // TODO does this work with an alias "/" - and should such alias be legal?
   final def resolve(path: Seq[String]): Path =
-    Path(if path.nonEmpty then this.resolve(path, Seq.empty) else Seq(this))
+    Path(if path.isEmpty then Seq(this) else resolve(path, Vector.empty, this, Set.empty))
 
   private def resolve(
     path: Seq[String],
-    acc: Seq[Store]
-  ): Seq[Store] = path match
-    case Seq() => acc.reverse
+    acc: Vector[Store],
+    root: Stores[?],
+    expanding: Set[Alias]
+  ): Vector[Store] = path match
+    case Seq() => acc
     case head +: tail =>
       val nextOpt: Option[Store] = findByName(head)
       require(nextOpt.nonEmpty, s"Did not find '$head' in $this")
       nextOpt.get match
         case alias: Alias =>
-          val toPath: Path = resolve(alias.to)
+          require(!expanding.contains(alias), s"Alias cycle: ${alias.names}")
+          val toPath: Vector[Store] = root.resolve(alias.to, Vector.empty, root, expanding + alias)
+          require(toPath.nonEmpty, s"Alias ${alias.names} resolved empty")
           toPath.last match
             case stores: Stores[?] if tail.nonEmpty =>
-              stores.resolve(tail, toPath.stores.reverse ++ acc)
+              stores.resolve(tail, acc ++ toPath, root, expanding + alias)
             case next =>
               require(tail.isEmpty, s"Can not apply '$tail' to $next")
-              (toPath.stores.reverse ++ acc).reverse
-        case stores: Stores[?] => stores.resolve(tail, stores +: acc)
+              acc ++ toPath
+        case stores: Stores[?] => stores.resolve(tail, acc :+ stores, root, expanding)
         case next =>
           require(tail.isEmpty, s"Can not apply '$tail' to $next")
-          (next +: acc).reverse
+          acc :+ next
 
 object Stores:
   trait With[+T <: Store](override val stores: Seq[T]) extends Stores[T]
 
   private def splitUrl(urlRaw: String): Seq[String] =
     val url: String = if urlRaw.isEmpty then "/" else urlRaw
-    // TODO? require(url.startsWith("/"))
     url.stripPrefix("/").split("/").toIndexedSeq.filterNot(_.isBlank)
 
-  private def splitAndDecodeUrl(url: String): Seq[String] =
+  private[store] def splitAndDecodeUrl(url: String): Seq[String] =
     splitUrl(url).map(segment => URLDecoder.decode(segment, StandardCharsets.UTF_8))

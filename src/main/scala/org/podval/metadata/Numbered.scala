@@ -5,17 +5,17 @@ trait Numbered[T] extends Ordered[Numbered[T]]:
 
   override def compare(that: Numbered[T]): Int = this.number - that.number
 
-  final override def equals(other: Any): Boolean =
+  override def equals(other: Any): Boolean =
     other.isInstanceOf[Numbered[?]] && {
       val that: Numbered[?] = other.asInstanceOf[Numbered[?]]
       (numberedClass eq that.numberedClass) && this.number == that.number
     }
 
-  final override def hashCode: Int = 31 * numberedClass.hashCode + number
+  override def hashCode: Int = 31 * numberedClass.hashCode + number
 
   override def toString: String = number.toString
 
-  private def numberedClass: Class[?] =
+  protected def numberedClass: Class[?] =
     Iterator.iterate[Class[?]](getClass)(_.getSuperclass)
       .takeWhile(_ != null)
       .find(c => !c.isAnonymousClass && !c.isSynthetic)

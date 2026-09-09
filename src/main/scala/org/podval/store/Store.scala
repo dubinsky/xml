@@ -24,7 +24,9 @@ trait Store extends HasNames:
     prefix: Path,
     include: Store => Boolean,
     stop: Store => Boolean
-  ): Seq[Path] =
-    val selfPath: Path = prefix :+ this
-    val self: Seq[Path] = if include(this) then Seq(selfPath) else Seq.empty
-    self ++ descendants(selfPath, include, stop)
+  ): Seq[Path] = this match
+    case _: Alias => Seq.empty
+    case _ =>
+      val selfPath: Path = prefix :+ this
+      val self: Seq[Path] = if include(this) then Seq(selfPath) else Seq.empty
+      self ++ descendants(selfPath, include, stop)

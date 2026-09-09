@@ -4,9 +4,12 @@ import org.podval.metadata.{Name, Names}
 import org.podval.xml.{XmlAst, XmlCodec}
 import zio.blocks.schema.{Modifier, Schema}
 
-final case class Alias(override val names: Names, to: String) extends Store derives CanEqual
+final case class Alias(override val names: Names, to: Seq[String]) extends Store derives CanEqual:
+  require(to.nonEmpty, "Alias target must not be empty (\"/\" is not legal)")
 
 object Alias:
+  def apply(names: Names, to: String): Alias = new Alias(names, Stores.splitAndDecodeUrl(to))
+
   private final case class Data(
     @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
     @Modifier.config(XmlCodec.Element, "name") names: Seq[Name.Data] = Seq.empty,
@@ -30,5 +33,5 @@ object Alias:
       Data.codec.encodeNamed(elName, Data(
         n = default,
         names = if default.isDefined then Seq.empty else value.names.names.map(Name.toData),
-        to = value.to
+        to = "/" + value.to.map(Path.encodeSegment).mkString("/")
       ))
