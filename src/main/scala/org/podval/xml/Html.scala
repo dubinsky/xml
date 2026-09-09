@@ -14,6 +14,10 @@ object Html extends XmlAst[XML.Element]:
   // HTML has no CDATA; the writer encodes `&` and `<` in the text.
   override def cdata(text: String): Node = Html.text(text)
 
+  override def comment(text: String): Option[Node] = None
+
+  override def processingInstruction(target: String, data: String): Option[Node] = None
+
   override def element(
     name: XmlName,
     attributes: Seq[(XmlName, String)],

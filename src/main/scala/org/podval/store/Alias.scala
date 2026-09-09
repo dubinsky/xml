@@ -4,8 +4,7 @@ import org.podval.metadata.{Name, Names}
 import org.podval.xml.{XmlAst, XmlCodec}
 import zio.blocks.schema.{Modifier, Schema}
 
-// TODO remove
-final case class Alias(override val names: Names, to: String) extends Terminal derives CanEqual
+final case class Alias(override val names: Names, to: String) extends Store derives CanEqual
 
 object Alias:
   private final case class Data(

@@ -26,10 +26,10 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   def cdata(text: String): Node
 
   /** `None` if this AST cannot represent comments (HTML). */
-  def comment(text: String): Option[Node] = None
+  def comment(text: String): Option[Node]
 
   /** `None` if this AST cannot represent processing instructions (HTML). */
-  def processingInstruction(target: String, data: String): Option[Node] = None
+  def processingInstruction(target: String, data: String): Option[Node]
 
   final def element(elem: XmlElement): Element = element(elem.name, Seq.empty, Seq.empty)
 
@@ -47,6 +47,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     children: Nodes
   ): Element
 
+  // TODO withName
   final def renamed(element: Element, name: String): Element = this.element(
     XmlName.parseDeclared(
       name,
@@ -90,12 +91,11 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
 
   /** Rebuild `element` in another `XmlAst`. Nodes the destination cannot represent are dropped.
     * Prefer `element.to[TO]` except on Scala XML, whose `NodeSeq.to` shadows the extension. */
-  final def converted[TO](element: Element)(using dest: XmlAst[TO]): TO =
-    dest.element(
-      element.getName,
-      element.getAttributes,
-      toNodes(element.getChildren)
-    )
+  final def converted[TO](element: Element)(using dest: XmlAst[TO]): TO = dest.element(
+    element.getName,
+    element.getAttributes,
+    toNodes(element.getChildren)
+  )
 
   private def toNodes[TO](children: Nodes)(using dest: XmlAst[TO]): dest.Nodes =
     val buf = List.newBuilder[dest.Node]

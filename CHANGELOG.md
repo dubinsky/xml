@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Breaking: `Path` is a class (`stores`, English `structureNames` / `toUrl`), not `Seq[Store]`.
+- Breaking: drop `Terminal`; `Alias` is a `Store`.
+- `By(selector, stores)` and `By.Numbered`.
 - Breaking: `Named` is `HasNames` (`HasName` stays the default-name key).
 - Breaking: drop `HasName.findByNames` (use `find`).
 - Breaking: drop `Names.checkDisjoint`, `Names.isDisjoint`, `Names.isEmpty`, `Language.Spec.languageName`, and Hebrew `MAQAF` / `PASEQ` / `SOF_PASUQ`.

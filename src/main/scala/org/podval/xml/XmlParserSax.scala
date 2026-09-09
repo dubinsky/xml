@@ -76,11 +76,10 @@ private final class XmlParserSax[E](
     localName: String,
     qName: String,
     attributes: Attributes
-  ): Unit =
-    builder.startElement(
-      fromName(uri, localName, qName, isAttribute = false),
-      fromAttributes(attributes)
-    )
+  ): Unit = builder.startElement(
+    fromName(uri, localName, qName, isAttribute = false),
+    fromAttributes(attributes)
+  )
 
   override def endElement(uri: String, localName: String, qName: String): Unit =
     builder.endElement()

@@ -75,6 +75,11 @@ object ScalaXml extends XmlAst[Elem]:
       NodeSeq.fromSeq(attribute.value).text
     ))
 
+  // scala.xml rejects prefix ""; unprefixed names use null.
+  private def toMetaData(attributes: Seq[(XmlName, String)]): MetaData = attributes.foldRight(scala.xml.Null: MetaData):
+    case ((name, value), next) =>
+      Attribute(name.prefix.filter(_.nonEmpty).orNull, name.localName, value, next)
+
   private def fromScope(
     scope: NamespaceBinding,
     prefix: String,
@@ -87,11 +92,6 @@ object ScalaXml extends XmlAst[Elem]:
       then None
       else Option(scope.getURI(p.orNull)).filter(uri => uri != null && uri.nonEmpty)
     XmlName(local, XmlNamespace.of(p, namespace))
-
-  // scala.xml rejects prefix ""; unprefixed names use null.
-  private def toMetaData(attributes: Seq[(XmlName, String)]): MetaData = attributes.foldRight(scala.xml.Null: MetaData):
-    case ((name, value), next) =>
-      Attribute(name.prefix.filter(_.nonEmpty).orNull, name.localName, value, next)
 
   // `xmlns*` stay attributes so the writer still emits them. Bindings also come
   // from expanded names so a child without its own xmlns keeps the URI.
@@ -121,5 +121,6 @@ object ScalaXml extends XmlAst[Elem]:
     case Some(_) if name.isXmlnsDeclaration => scope
     case Some(uri) =>
       val prefix: String = name.prefix.filter(_.nonEmpty).orNull
-      if Option(scope.getURI(prefix)).contains(uri) then scope
+      if Option(scope.getURI(prefix)).contains(uri)
+      then scope
       else NamespaceBinding(prefix, uri, scope)

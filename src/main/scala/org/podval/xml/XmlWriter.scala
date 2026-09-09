@@ -219,7 +219,8 @@ object XmlWriter:
   ): Doc = node.fold(
     element = (element: ast.Element) =>
       val name: XmlName = element.getName
-      if name.localNameIn(config.preformat) then
+      if name.localNameIn(config.preformat)
+      then
         Doc.text(preformatElement(element).mkString(hiddenNewline.toString))
       else
         val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
@@ -248,15 +249,14 @@ object XmlWriter:
     else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
     else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")
 
-  private def preformat(using ast: XmlAst[?], config: XmlWriterConfig)(node: ast.Node): Seq[String] =
-    node.fold(
-      element = preformatElement,
-      text = preformat,
-      cdata = value => Seq(cdataMarkup(value)),
-      comment = value => Seq(commentMarkup(value)),
-      processingInstruction = (target, data) => Seq(processingInstructionMarkup(target, data)),
-      unknown = preformat(node.getText)
-    )
+  private def preformat(using ast: XmlAst[?], config: XmlWriterConfig)(node: ast.Node): Seq[String] = node.fold(
+    element = preformatElement,
+    text = preformat,
+    cdata = value => Seq(cdataMarkup(value)),
+    comment = value => Seq(commentMarkup(value)),
+    processingInstruction = (target, data) => Seq(processingInstructionMarkup(target, data)),
+    unknown = preformat(node.getText)
+  )
 
   private def commentMarkup(value: String): String =
     hideNewlines(XmlMisc.Comment(value).markup)
@@ -266,12 +266,11 @@ object XmlWriter:
 
   /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
   private def cdataMarkup(value: String): String =
-    def parts(rest: String): List[String] =
-      rest.indexOf("]]>") match
-        case -1 => rest :: Nil
-        case i =>
-          val (left, right) = rest.splitAt(i + 2)
-          left :: parts(right)
+    def parts(rest: String): List[String] = rest.indexOf("]]>") match
+      case -1 => rest :: Nil
+      case i =>
+        val (left, right) = rest.splitAt(i + 2)
+        left :: parts(right)
     hideNewlines(parts(value)
       .map(part => s"<![CDATA[$part]]>")
       .mkString

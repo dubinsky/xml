@@ -25,7 +25,7 @@ object XmlDocument:
   def xml[E](
     root: E,
     prolog: Seq[XmlMisc] = Seq.empty,
-    epilog: Seq[XmlMisc] = Seq.empty,
+    epilogue: Seq[XmlMisc] = Seq.empty,
     doctype: Option[XmlDoctype] = None,
     declaration: XmlDeclaration = XmlDeclaration()
   ): XmlDocument[E] =
@@ -34,5 +34,5 @@ object XmlDocument:
       doctype = doctype,
       prolog = prolog,
       root = root,
-      epilogue = epilog
+      epilogue = epilogue
     )

@@ -14,35 +14,37 @@ trait Stores[+T <: Store] extends Store:
   // TODO add indexOf() and friends
 
   /*
-  Successful `resolve()` returns a 'path' - a sequence of `Stores`;
-  URL resolved by such a path can be reconstructed from it (in its canonical form);
-  such a reconstructed URL should resolve to the same path (TODO add tests for this ;)).
-
-  Store.Path returned is nonEmpty ;)
+  Successful `resolve()` returns a non-empty `Path`.
+  `Path.toUrl` is the English-name URL; resolving it again yields a path
+  with the same `structureNames`.
  */
   final def resolve(path: String): Path = resolve(Stores.splitAndDecodeUrl(path))
 
   // TODO does this work with an alias "/" - and should such alias be legal?
   final def resolve(path: Seq[String]): Path =
-    if path.nonEmpty then this.resolve(path, Seq.empty) else Seq(this)
+    Path(if path.nonEmpty then this.resolve(path, Seq.empty) else Seq(this))
 
   private def resolve(
     path: Seq[String],
-    acc: Path
-  ): Path = if path.isEmpty then acc.reverse else
-    val head: String = path.head
-    val tail: Seq[String] = path.tail
-    val nextOpt: Option[Store] = findByName(head)
-    require(nextOpt.nonEmpty, s"Did not find '$head' in $this")
-    nextOpt.get match
-      case alias: Alias =>
-        val toPath: Path = resolve(alias.to)
-        val stores: Stores[?] = Path.last[Stores[?]](toPath)
-        stores.resolve(tail, toPath.reverse ++ acc)
-      case stores: Stores[?] => stores.resolve(tail, stores +: acc)
-      case next =>
-        require(tail.isEmpty, s"Can not apply '$tail' to $next")
-        (next +: acc).reverse
+    acc: Seq[Store]
+  ): Seq[Store] = path match
+    case Seq() => acc.reverse
+    case head +: tail =>
+      val nextOpt: Option[Store] = findByName(head)
+      require(nextOpt.nonEmpty, s"Did not find '$head' in $this")
+      nextOpt.get match
+        case alias: Alias =>
+          val toPath: Path = resolve(alias.to)
+          toPath.last match
+            case stores: Stores[?] if tail.nonEmpty =>
+              stores.resolve(tail, toPath.stores.reverse ++ acc)
+            case next =>
+              require(tail.isEmpty, s"Can not apply '$tail' to $next")
+              (toPath.stores.reverse ++ acc).reverse
+        case stores: Stores[?] => stores.resolve(tail, stores +: acc)
+        case next =>
+          require(tail.isEmpty, s"Can not apply '$tail' to $next")
+          (next +: acc).reverse
 
 object Stores:
   trait With[+T <: Store](override val stores: Seq[T]) extends Stores[T]

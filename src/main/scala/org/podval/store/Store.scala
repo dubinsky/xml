@@ -4,7 +4,7 @@ import org.podval.metadata.HasNames
 
 trait Store extends HasNames:
   final def getPaths(
-    path: Path = Seq.empty,
+    path: Path = Path.empty,
     include: Store => Boolean,
     stop: Store => Boolean
   ): Seq[Path] =
