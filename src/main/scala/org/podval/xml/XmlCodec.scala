@@ -6,14 +6,15 @@ import zio.blocks.schema.xml.{Xml as XML}
 import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
-// TODO I'd rather not have ZIO XML as canonical...
-/** Identity codec field type. Same as `Xml.Element`. */
+/** Identity codec field type. Same as `Xml.Element`.
+ *  It has to have Schema instance, so it must be a real type... */
 type XmlTree = XML.Element
 
 object XmlTree:
   given schema: Schema[XmlTree] =
     Schema[Unit].transform(_ => XML.Element.empty, _ => ())(using TypeId.of[XML.Element])
 
+/** Same as [[XmlCodec.xmlElementSchema]]. In this package automatically. */
 given xmlElementSchema: Schema[XML.Element] = XmlTree.schema
 
 /** Document-shaped XML codec over any `XmlAst`.
@@ -33,7 +34,8 @@ given xmlElementSchema: Schema[XML.Element] = XmlTree.schema
   * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
   * name unless `@Modifier.config(XmlCodec.Element, …)` overrides it. `encode` is
   * polymorphic in the AST; pin it with a type ascription when more than one `XmlAst`
-  * is in scope. Other packages need `import org.podval.xml.given` for `Schema[Xml.Element]`.
+  * is in scope. Other packages `import XmlCodec.given` (or `import org.podval.xml.given`)
+  * for `Schema[Xml.Element]`.
   *
   * `@Modifier.config(XmlCodec.IgnoreUnknown, "")` on a record skips leftover
   * attributes, elements, and character content. `@Modifier.config(XmlCodec.Include, "")`
@@ -52,6 +54,9 @@ object XmlCodec:
   final val IgnoreUnknown = "xml.ignoreUnknown"
   /** `Seq[String]` field: `xi:include/@href` from this element and descendants. */
   final val Include = "xml.include"
+
+  /** Identity field `Schema`. `import XmlCodec.given` when deriving outside this package. */
+  given xmlElementSchema: Schema[XML.Element] = XmlTree.schema
 
   /** Identity field: copy a named child as canonical ZIO XML. Same-AST decode keeps the node. */
   val elementCodec: XmlCodec[XmlTree] = new XmlCodec[XmlTree]:

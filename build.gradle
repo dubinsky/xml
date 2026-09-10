@@ -48,16 +48,18 @@ tasks.named('jar', Jar) {
 }
 
 String zioBlocksVersion = '0.0.51'
+String scalaXmlVersion = '2.5.0'
+String tagsoupVersion = '1.2.1'
 
 dependencies {
   api "dev.zio:zio-blocks-schema_3:$zioBlocksVersion"
   api "dev.zio:zio-blocks-schema-xml_3:$zioBlocksVersion"
   compileOnlyApi "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
   testImplementation "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
-  compileOnlyApi 'org.scala-lang.modules:scala-xml_3:2.5.0'
-  testImplementation 'org.scala-lang.modules:scala-xml_3:2.5.0'
-  compileOnly 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
-  testImplementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
+  compileOnlyApi "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
+  testImplementation "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
+  compileOnly "org.ccil.cowan.tagsoup:tagsoup:$tagsoupVersion"
+  testImplementation "org.ccil.cowan.tagsoup:tagsoup:$tagsoupVersion"
   implementation 'org.typelevel:paiges-core_3:0.4.4'
   testImplementation 'org.scalatest:scalatest_3:3.2.20'
 }

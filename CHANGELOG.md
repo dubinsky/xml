@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `XmlCodec.xmlElementSchema` is a given on `XmlCodec`; `import XmlCodec.given` is enough when deriving identity fields. Package given `xmlElementSchema` remains.
 - `Numbered` has `companion`, `+` / `-` / `next` / `prev`, and `-(that)` distance.
 - Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps causes. `attemptCatalog` / `attemptResources`; `loadCatalog` / `loadResources` still throw.
 - README: one artifact, not split into modules. `checkReadmeVersion` keeps Maven coordinates equal to `project.version`.
