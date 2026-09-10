@@ -56,28 +56,24 @@ That is the usual `Selectors` object: class `Selectors`, file `Selector.xml`, wr
 
 === Selectors (store axes)
 
-`Selector` is data. This library has no `Selector.xml`. Each consumer owns a catalog:
+`Selector` is data. This library has no `Selector.xml`. Each consumer owns a catalog.
+Put `Selector.xml` next to the class (`src/main/resources/org/example/Selector.xml`).
+`forName` / `getForName` match any language name (`книга` finds `book`). `getForName` throws if missing.
+
+`By("book", stores)` and `By.Numbered("chapter", min, max)` summon `given Selectors`.
+A nested package does not see a parent-package given; keep the given on the object and `export` it
+(`export` of `given` from a *package* is not allowed):
 
 ----
 package org.example
 
 object Selectors extends org.podval.store.Selectors:
+  given org.podval.store.Selectors = this
   override lazy val valuesSeq: Seq[Selector] =
     XmlParser.loadCatalog(this, "Selector", Selector.codec)
 
-given org.podval.store.Selectors = Selectors
-----
-
-Put `Selector.xml` next to that class (`src/main/resources/org/example/Selector.xml`).
-`forName` / `getForName` match any language name on a selector (`книга` finds `book`). `getForName` throws if missing; `forName` is `Option`.
-
-`By("book", stores)` and `By.Numbered("chapter", min, max)` summon `given Selectors`.
-A nested package does not see a parent-package given; repeat it:
-
-----
-package org.example.tanach
-
-given org.podval.store.Selectors = org.example.Selectors
+package tanach:
+  export org.example.Selectors.given
 ----
 
 `By(selector, stores)` and `By.Numbered(selector, min, max)` do not use a catalog.

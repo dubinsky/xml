@@ -6,7 +6,7 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 trait Stores[+T <: Store] extends Store:
-  // TODO maybe pre-calculate a lazy map from all names to stores?
+  // Name→store map if findByName is hot (large By("name", entities)); fail on duplicate names.
   def stores: Seq[T]
 
   /** Widens `stores` to `Store` so a `By[?]` does not need a cast. */
