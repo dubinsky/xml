@@ -4,19 +4,21 @@
 
 Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
 
-Maven coordinates: `org.podval:org.podval.xml:0.1.0`
+Maven coordinates: `org.podval:org.podval.xml:0.1.1`
 
 ----
-implementation 'org.podval:org.podval.xml:0.1.0'
+implementation 'org.podval:org.podval.xml:0.1.1'
 ----
 
 `zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
 HTML and Scala XML ASTs need an extra dependency, not pulled in by default.
-Bring their givens in with `import Html.given` / `import ScalaXml.given`:
+Bring their givens in with `import Html.given` / `import ScalaXml.given`.
+`parseHtml` needs TagSoup (also not on the POM):
 
 ----
 implementation "dev.zio:zio-blocks-html_3:0.0.51"
 implementation 'org.scala-lang.modules:scala-xml_3:2.5.0'
+implementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
 ----
 
 == Packages
@@ -25,11 +27,11 @@ One artifact (`org.podval:org.podval.xml`). It will not be split into separate G
 
 `org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name key).
-`org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop when the name is unique). Numbered URL names stay digits; extra names in `number2names` still round-trip. `Selector` is data; each consumer has a `Selectors` catalog. `object Selectors extends Selectors` loads `Selector.xml` / `<Selector>` next to that class. `By(name)` and `By.Numbered(name, min, max, name2number, number2names)` need `given Selectors`; unknown names fail.
+`org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop when the name is unique). Numbered URL names stay digits; extra names in `number2names` still round-trip. `Selector` is data (`plural` / `pluralOrNames`); each consumer has a `Selectors` catalog. `object Selectors extends Selectors` loads `Selector.xml` / `<Selector>` next to that class. `By(name)` and `By.Numbered(name, min, max, name2number, number2names)` need `given Selectors`; unknown names fail.
 
 == Parse
 
-`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. Convert with `import Html.toHtml` then `element.toHtml` (does not need `Html.given`). `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer. Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps the cause. `loadCatalog` / `loadResources` throw (programmer catalogs); `attemptCatalog` / `attemptResources` stay in `Either`. Unknown `By` names and unmatched catalog keys throw.
+`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML ASTs, import `Html.given` / `ScalaXml.given`. Convert with `import Html.toHtml` then `element.toHtml` (does not need `Html.given`). `parseHtml` uses TagSoup (HTML only: no namespaces, names are lower-cased; not for TEI). `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer. Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps the cause. `loadCatalog` / `loadResources` throw (programmer catalogs); `attemptCatalog` / `attemptResources` stay in `Either`. Unknown `By` names and unmatched catalog keys throw.
 
 == Catalogs
 
@@ -55,6 +57,7 @@ When the Scala object is not named after the file, pass the name (`loadCatalog(t
 `Selector` is data. This library has no `Selector.xml`. Each consumer owns a catalog.
 Put `Selector.xml` next to the class (`src/main/resources/org/example/Selector.xml`).
 `forName` / `getForName` match any language name (`книга` finds `book`). `getForName` throws if missing.
+Optional `<plural>` children are `Selector.plural`; `pluralOrNames` is that plural, or singular `names` when absent.
 
 `By("book", stores)` and `By.Numbered("chapter", min, max)` summon `given Selectors`.
 A nested package does not see a parent-package given; keep the given on the object and `export` it
@@ -90,9 +93,11 @@ This library does not expand `xi:include`. JDK SAX is XInclude-unaware. Publishe
 
 == Codec
 
-`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes on leaf records). Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`) for `Schema[Xml.Element]`. Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`. `@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`. Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`). `Name` / `Names` / `Language` / `Language.Spec` have `Schema` givens; catalog DTOs use `Seq[Name]`. `XmlCodec.derived[A, K](tagField, tag)` is picked up when `A` is nested; pass `Child.codec` to `XmlCodec.derived(nested)` so the child codec is initialized (`Schema.derived` inlines nested records). `XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources` decodes one document per `name.xml`. `transform` / `gather` walk the whole tree; pass `stopAtCode = true` to leave `<code>` subtrees unchanged (publisher IR).
+`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes on leaf records). Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`) for `Schema[Xml.Element]`. Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`. `@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`. Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`, `XmlCodec.NamespaceUri`, `XmlCodec.NamespacePrefix`). `Name` / `Language` / `Language.Spec` have `Schema` givens (`Names` has `XmlCodec` only); catalog DTOs use `Seq[Name]`. `XmlCodec.derived[A, K](tagField, tag)` is picked up when `A` is nested; pass `Child.codec` to `XmlCodec.derived(nested)` so the child codec is initialized (`Schema.derived` inlines nested records). `XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources` decodes one document per `name.xml`. `transform` / `gather` skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
 
 == Build
+
+Scala 3.9, JDK 25 (`-release:25`).
 
 ----
 ./gradlew build
@@ -108,16 +113,16 @@ Publish to Maven Central (local, `USER_MANAGED`):
 
 Then release the deployment at https://central.sonatype.com/publishing/deployments .
 
-== XML processing ##
+== XML processing
 
-=== XML generation ###
+=== XML generation
 
 In web-apps, I need to generate XML. I tried using https://com-lihaoyi.github.io/scalatags/[ScalaTags] for that,
 and they work, but there is no clean https://github.com/lihaoyi/scalatags/issues/102[interoperability] with Scala XML,
 so generating - say - HTML wrappers for XML parsed from files is not pleasant, and since ScalaTags does not (in my
 opinion) have obvious advantages over Scala XML, I decided not to bother with it.
 
-=== XML pretty-printing ###
+=== XML pretty-printing
 
 Scala XML does provide a pretty-printer, but it doesn't do what I need it to do, especially when formatting
 TEI documents. For instance, it inserts a break between `</e1>` and `<e2>` in `<e1>...</e1><e2>...</e2>` and
