@@ -2,6 +2,7 @@ package org.podval.metadata
 
 import org.podval.xml.{XmlAst, XmlCodec, XmlError}
 import zio.blocks.schema.{Modifier, Schema}
+import zio.blocks.typeid.TypeId
 
 final case class Name(name: String, languageSpec: Language.Spec) derives CanEqual:
   def satisfies(spec: Language.Spec): Boolean =
@@ -9,9 +10,9 @@ final case class Name(name: String, languageSpec: Language.Spec) derives CanEqua
     satisfies(_.language) && satisfies(_.isTransliterated) && satisfies(_.flavour)
 
 object Name:
-  /** XML shape of `<name>` (`n` xor text). Domain `Name` is not this record
-    * because `Language.Spec` cannot be `Schema.derived`. */
-  final case class Data(
+  /** XML shape of `<name>` (`n` xor text, spec as attributes). Domain `Name`
+    * is not this record: a derived `Language.Spec` would nest. */
+  private final case class Data(
     @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
     @Modifier.config(XmlCodec.Text, "") text: Option[String] = None,
     @Modifier.config(XmlCodec.Attribute, "lang") lang: Option[String] = None,
@@ -19,11 +20,11 @@ object Name:
     @Modifier.config(XmlCodec.Attribute, "") flavour: Option[String] = None
   ) derives CanEqual
 
-  object Data:
+  private object Data:
     given schema: Schema[Data] = Schema.derived
     val codec: XmlCodec[Data] = XmlCodec.derived
 
-  def fromData(data: Data): Name =
+  private def fromData(data: Data): Name =
     val fromN: Option[String] = data.n.map(_.trim)
     val fromText: Option[String] = data.text.map(_.trim).filter(_.nonEmpty)
     if fromN.isEmpty && fromText.isEmpty then throw XmlError("Both 'n' attribute and text are absent.")
@@ -37,13 +38,15 @@ object Name:
       )
     )
 
-  def toData(value: Name): Data = Data(
+  private def toData(value: Name): Data = Data(
     n = Some(value.name),
     text = None,
     lang = value.languageSpec.language.map(_.name),
     transliterated = value.languageSpec.isTransliterated,
     flavour = value.languageSpec.flavour
   )
+
+  given schema: Schema[Name] = Data.schema.transform(fromData, toData)(using TypeId.of[Name])
 
   val codec: XmlCodec[Name] = new XmlCodec[Name]:
     override def elementName: String = "name"

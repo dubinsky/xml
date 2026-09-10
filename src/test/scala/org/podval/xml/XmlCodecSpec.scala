@@ -63,7 +63,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(result.swap.toOption.get.getMessage.contains("Unparsed attributes"))
   }
 
-  test("identity XmlTree round-trips mixed content") {
+  test("identity Xml.Element round-trips mixed content; child tag is the field name") {
     val codec: XmlCodec[Text] = XmlCodec.derived(using Text.schema)
     val xml: String = """<Text lang="ru"><body><!--n--><p>a<hi>b</hi></p></body></Text>"""
     val decoded: Text = codec.decode(parse(xml)).toOption.get
@@ -77,6 +77,24 @@ final class XmlCodecSpec extends AnyFunSuite:
     val scalaEl: ScalaXml.Element = codec.encode(decoded)
     assert(scalaEl.getName.qName == "Text")
     assert(codec.decode(scalaEl).toOption.get.body.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
+  }
+
+  test("IgnoreUnknown skips leftover attributes, elements, and text") {
+    val codec: XmlCodec[OpenDoc] = XmlCodec.derived(using OpenDoc.schema)
+    val xml: String =
+      """<OpenDoc n="1" extra="x"><title>Go</title><noise>z</noise> leftover <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="a.xml"/></OpenDoc>"""
+    val decoded: OpenDoc = codec.decode(parse(xml)).toOption.get
+    assert(decoded.n == "1")
+    assert(decoded.title.exists(_.getText.contains("Go")))
+    assert(decoded.hrefs == Seq("a.xml"))
+  }
+
+  test("Include gathers nested xi:include hrefs") {
+    val codec: XmlCodec[OpenDoc] = XmlCodec.derived(using OpenDoc.schema)
+    val xml: String =
+      """<OpenDoc n="1"><by><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="nested.xml"/></by></OpenDoc>"""
+    val decoded: OpenDoc = codec.decode(parse(xml)).toOption.get
+    assert(decoded.hrefs == Seq("nested.xml"))
   }
 
   test("sealed trait sequence uses case element names") {
@@ -218,7 +236,7 @@ object Box:
 
 final case class Text(
   @Modifier.config(XmlCodec.Attribute, "") lang: Option[String],
-  @Modifier.config(XmlCodec.Element, "body") body: XmlTree
+  body: Xml.Element
 ) derives CanEqual
 object Text:
   given schema: Schema[Text] = Schema.derived
@@ -257,6 +275,15 @@ object Title:
 final case class Book(title: Option[Title]) derives CanEqual
 object Book:
   given schema: Schema[Book] = Schema.derived
+
+@Modifier.config(XmlCodec.IgnoreUnknown, "")
+final case class OpenDoc(
+  @Modifier.config(XmlCodec.Attribute, "") n: String,
+  title: Option[Xml.Element] = None,
+  @Modifier.config(XmlCodec.Include, "") hrefs: Seq[String] = Seq.empty
+) derives CanEqual
+object OpenDoc:
+  given schema: Schema[OpenDoc] = Schema.derived
 
 @Modifier.config(XmlCodec.Element, "node")
 final case class Node(

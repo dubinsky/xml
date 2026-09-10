@@ -1,7 +1,8 @@
 package org.podval.metadata
 
-import org.podval.xml.{XmlAttribute, XmlParser, Xml as ZioXml}
+import org.podval.xml.{XmlAttribute, XmlCodec, XmlParser, Xml as ZioXml}
 import org.scalatest.funsuite.AnyFunSuite
+import zio.blocks.schema.{Modifier, Schema}
 
 final class MetadataSpec extends AnyFunSuite:
   test("Language names") {
@@ -25,6 +26,13 @@ final class MetadataSpec extends AnyFunSuite:
     assert(decode("""<name n="x">y</name>""").isLeft)
     assert(decode("""<name lang="en"/>""").isLeft)
     assert(decode("""<name lang="en" n="" transliterated="yes"/>""").toOption.get.name == "")
+
+    val entryCodec: XmlCodec[NamedEntry] = XmlCodec.derived(using NamedEntry.schema)
+    val entry = entryCodec.decode(XmlParser.parseXml(
+      """<NamedEntry><name lang="en" n="English"/></NamedEntry>"""
+    ).toOption.get)(using ZioXml).toOption.get
+    assert(entry.names.head.name == "English")
+    assert(entry.names.head.languageSpec.language.contains(Language.English))
 
     val encoded = Name.codec.encode(fromN)(using ZioXml)
     assert(encoded.get("n").contains("English"))
@@ -96,3 +104,9 @@ final class MetadataSpec extends AnyFunSuite:
     assert(numbered.names.hasName("English 3"))
     assert(numbered.names.hasName("en 3"))
   }
+
+private final case class NamedEntry(
+  @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty
+) derives CanEqual
+private object NamedEntry:
+  given schema: Schema[NamedEntry] = Schema.derived

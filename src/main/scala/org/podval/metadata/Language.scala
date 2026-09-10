@@ -1,5 +1,8 @@
 package org.podval.metadata
 
+import zio.blocks.schema.Schema
+import zio.blocks.typeid.TypeId
+
 enum Language(code: String) extends
   HasNames.ByLoader[Language](loader = Language, nameOverride = Some(code)),
   HasName.Enum derives CanEqual:
@@ -18,6 +21,9 @@ enum Language(code: String) extends
 
 object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Language], HasValues.FindByName[Language]:
   override val valuesSeq: Seq[Language] = values.toIndexedSeq
+
+  given schema: Schema[Language] =
+    Schema[String].transform(getForDefaultName, _.name)(using TypeId.of[Language])
 
   trait ToString:
     final override def toString: String = toLanguageString(using Language.Spec.empty)
@@ -40,6 +46,7 @@ object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Lang
 
   object Spec:
     val empty: Spec = Spec(None, None, None)
+    given schema: Schema[Spec] = Schema.derived
 
   trait Hebrew:
     self: Language =>

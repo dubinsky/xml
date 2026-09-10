@@ -90,6 +90,18 @@ final class StoreSpec extends AnyFunSuite:
     assert(Root.resolve("/verse/ב").toUrl == "/verse/2")
   }
 
+  test("By.Numbered name overload takes name2number / number2names") {
+    val days: By.Numbered[Num] = By.Numbered(
+      "verse",
+      1,
+      2,
+      name2number = name => if name == "one" then Some(1) else NumberedStores.parseNumber(name),
+      number2names = n => Names(if n == 1 then "one" else n.toString)
+    )(Num(_, _))
+    assert(days.findByName("one").exists(_.number == 1))
+    assert(days.get(1).names.hasName("one"))
+  }
+
   test("numbered stores are cached") {
     val two: Num = Root.verses.get(2)
     assert(Root.verses.stores(1) eq two)

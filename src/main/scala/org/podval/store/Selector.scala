@@ -13,7 +13,7 @@ final case class Selector(
 
 object Selector:
   private final case class PluralData(
-    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name.Data] = Seq.empty
+    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty
   ) derives CanEqual
 
   private object PluralData:
@@ -22,7 +22,7 @@ object Selector:
 
   private final case class Data(
     @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
-    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name.Data] = Seq.empty,
+    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty,
     @Modifier.config(XmlCodec.Element, "plural") plural: Option[PluralData] = None
   ) derives CanEqual
 
@@ -36,14 +36,13 @@ object Selector:
 
     override def unsafeDecode[E: XmlAst](element: E): Selector =
       val data: Data = Data.codec.unsafeDecode(element)
-      val pluralNames: Option[Names] =
-        data.plural.map(_.names.map(Name.fromData)).filter(_.nonEmpty).map(Names(_))
-      Selector(Names.fromDefaultName(data.n, data.names.map(Name.fromData)), pluralNames)
+      val pluralNames: Option[Names] = data.plural.map(_.names).filter(_.nonEmpty).map(Names(_))
+      Selector(Names.fromDefaultName(data.n, data.names), pluralNames)
 
     override def encodeNamed[E: XmlAst](elName: String, value: Selector): E =
       val default: Option[String] = value.names.getDefaultName
       Data.codec.encodeNamed(elName, Data(
         n = default,
-        names = if default.isDefined then Seq.empty else value.names.names.map(Name.toData),
-        plural = value.plural.map(n => PluralData(n.names.map(Name.toData)))
+        names = if default.isDefined then Seq.empty else value.names.names,
+        plural = value.plural.map(n => PluralData(n.names))
       ))

@@ -14,7 +14,7 @@ object Alias:
 
   private final case class Data(
     @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
-    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name.Data] = Seq.empty,
+    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty,
     @Modifier.config(XmlCodec.Attribute, "") to: String
   ) derives CanEqual
 
@@ -28,12 +28,12 @@ object Alias:
 
     override def unsafeDecode[E: XmlAst](element: E): Alias =
       val data: Data = Data.codec.unsafeDecode(element)
-      Alias(Names.fromDefaultName(data.n, data.names.map(Name.fromData)), data.to)
+      Alias(Names.fromDefaultName(data.n, data.names), data.to)
 
     override def encodeNamed[E: XmlAst](elName: String, value: Alias): E =
       val default: Option[String] = value.names.getDefaultName
       Data.codec.encodeNamed(elName, Data(
         n = default,
-        names = if default.isDefined then Seq.empty else value.names.names.map(Name.toData),
+        names = if default.isDefined then Seq.empty else value.names.names,
         to = "/" + value.to.map(Path.encodeSegment).mkString("/")
       ))

@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `Name`, `Language`, and `Language.Spec` have `Schema` givens. Catalog DTOs use `Seq[Name]` (`Name.Data` is private).
+- `XmlCodec.IgnoreUnknown` skips leftover attributes/elements/text. `XmlCodec.Include` on `Seq[String]` gathers `xi:include/@href`. Identity fields (`Xml.Element`) use the Scala field name as the child tag.
+- `element.toHtml` (`import Html.toHtml`). `HtmlXmlWriterConfig.render` takes `Html.Element` without `Html.given`.
+- `By.Numbered(name, min, max, name2number, number2names)` with catalog summon.
+- `object Selectors extends Selectors` loads `Selector.xml` / `<Selector>` by default.
 - Breaking: `By.Numbered` constructor params are `name2number` / `number2names` (were `fromName` / `toNames`).
 - Breaking: `Selector` is data; catalogs are `Selectors` (`forName` / `loadCatalog`). Drop library `Selector.xml`. `By(name)` / `By.Numbered(name, …)` need `given Selectors`; unknown name fails. `By(selector, stores)` does not.
 - `Stores.asStores` / `axes` / `storeAliases`; `Alias(names, Path)` uses `structureNames`.

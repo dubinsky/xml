@@ -7,8 +7,7 @@ import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
 // TODO I'd rather not have ZIO XML as canonical...
-
-/** Canonical ZIO XML element for identity codec fields. Same type as `Xml.Element`. */
+/** Identity codec field type. Same as `Xml.Element`. */
 type XmlTree = XML.Element
 
 object XmlTree:
@@ -31,8 +30,14 @@ given xmlElementSchema: Schema[XML.Element] = XmlTree.schema
   * val el: Xml.Element = codec.encode(Language("ru"))
   * }}}
   *
-  * Identity fields use [[XmlTree]]. `encode` is polymorphic in the AST; pin it with a
-  * type ascription when more than one `XmlAst` is in scope.
+  * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
+  * name unless `@Modifier.config(XmlCodec.Element, …)` overrides it. `encode` is
+  * polymorphic in the AST; pin it with a type ascription when more than one `XmlAst`
+  * is in scope. Other packages need `import org.podval.xml.given` for `Schema[Xml.Element]`.
+  *
+  * `@Modifier.config(XmlCodec.IgnoreUnknown, "")` on a record skips leftover
+  * attributes, elements, and character content. `@Modifier.config(XmlCodec.Include, "")`
+  * on a `Seq[String]` gathers `xi:include/@href` from the subtree.
   */
 object XmlCodec:
   /** `@Modifier.config(XmlCodec.Attribute, "")` or `@Modifier.config(XmlCodec.Attribute, "xml:id")`. */
@@ -43,11 +48,16 @@ object XmlCodec:
   final val Text = "xml.text"
   final val NamespaceUri = "xml.namespace.uri"
   final val NamespacePrefix = "xml.namespace.prefix"
+  /** Record: do not fail on leftover attributes, elements, or character content. */
+  final val IgnoreUnknown = "xml.ignoreUnknown"
+  /** `Seq[String]` field: `xi:include/@href` from this element and descendants. */
+  final val Include = "xml.include"
 
   /** Identity field: copy a named child as canonical ZIO XML. Same-AST decode keeps the node. */
   val elementCodec: XmlCodec[XmlTree] = new XmlCodec[XmlTree]:
     override def elementName: String = "element"
     override def isRecordLike: Boolean = true
+    override def isIdentity: Boolean = true
     override def unsafeDecode[E: XmlAst](element: E): XmlTree = toZioElement(element)
     override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E = fromZioElement(Xml.withName(value, name))
     override def encode[E: XmlAst](value: XmlTree): E = fromZioElement(value)
@@ -125,3 +135,6 @@ trait XmlCodec[A]:
 
   /** Nested record/identity: child name comes from the type (or an override), not from a primitive wrapper. */
   def isRecordLike: Boolean = false
+
+  /** Identity `Xml.Element` field: child tag is the Scala field name unless overridden. */
+  def isIdentity: Boolean = false

@@ -1,6 +1,7 @@
 package org.podval.xml
 
 import Html.given
+import Html.toHtml
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
 
@@ -23,14 +24,14 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("to[Html.Element] keeps mixed text and elements") {
-    val dumped: String = HtmlXmlWriterConfig.render(parse("<p>a<x/>b</p>").to[Html.Element])
+    val dumped: String = HtmlXmlWriterConfig.render(parse("<p>a<x/>b</p>").toHtml)
     assert(dumped.contains("a"), dumped)
     assert(dumped.contains("b"), dumped)
     assert(dumped.contains("<x"), dumped)
   }
 
   test("to[Html.Element] keeps attributes and nesting") {
-    val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[Html.Element]
+    val html: Html.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").toHtml
     assert(html.isElement(XmlElement.Div))
     assert(html.get(XmlAttribute.XmlId).contains("x"))
     assert(html.get(XmlAttribute.CssClass).contains("y"))
@@ -38,20 +39,20 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("to[Html.Element] keeps empty elements") {
-    val html: Html.Element = parse("<x/>").to[Html.Element]
+    val html: Html.Element = parse("<x/>").toHtml
     assert(html.isNamed("x"))
     assert(html.getChildren.isEmpty)
   }
 
   test("to[Html.Element] drops comments and processing instructions") {
-    val html: Html.Element = parse("<p>a<!--c--><?pi d?>b</p>").to[Html.Element]
+    val html: Html.Element = parse("<p>a<!--c--><?pi d?>b</p>").toHtml
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a", "b"))
     assert(html.getChildren.flatMap(_.asElement).isEmpty)
   }
 
   test("to[Html.Element] turns CDATA into HTML text encoded on write") {
     val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
-    val html: Html.Element = xml.to[Html.Element]
+    val html: Html.Element = xml.toHtml
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a<b"))
     val dumped: String = HtmlXmlWriterConfig.render(html)
     assert(dumped.contains("a&lt;b"), dumped)

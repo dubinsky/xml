@@ -26,6 +26,7 @@ private[xml] trait XmlCodecRecord:
   ) extends XmlCodec[A]:
     private val recordName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
     private val namespace: Option[(String, String)] = namespaceOf(modifiers)
+    private val ignoreUnknown: Boolean = configValue(modifiers, XmlCodec.IgnoreUnknown).isDefined
     // Recursive records cache this array before every slot is filled; look up after derivation.
     private lazy val tagField: Option[FieldInfo] = fieldInfos.find(_.kind == FieldKind.Tag)
 
@@ -80,6 +81,21 @@ private[xml] trait XmlCodecRecord:
                   else info.defaultValue match
                     case Some(dv) => store(regs, info.offset, info.typeTag, dv)
                     case None => throw XmlError(s"Missing required attribute: $attrName")
+            case FieldKind.Include =>
+              val hrefs: Seq[String] = element.gather(
+                el =>
+                  if el.isInclude then el.get(XmlAttribute.Href).map(_.trim).filter(_.nonEmpty)
+                  else None,
+                stopAtCode = false
+              )
+              nodes.zipWithIndex.foreach: (node, nodeIdx) =>
+                if available.contains(nodeIdx) && node.asElement.exists(_.isInclude) then available -= nodeIdx
+              val seqValue: Any = buildSeq(info, hrefs)
+              val stored: Any =
+                if info.optional then
+                  if hrefs.isEmpty then None else Some(seqValue)
+                else seqValue
+              store(regs, info.offset, info.typeTag, stored)
             case FieldKind.Child =>
               val matched: Seq[(E, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
                 if !available.contains(nodeIdx) then None
@@ -112,18 +128,19 @@ private[xml] trait XmlCodecRecord:
         catch
           case e: XmlError => throw XmlError(s"${info.fieldName}: ${e.getMessage}")
 
-      val leftoverAttrs: Seq[String] =
-        attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qName).toSeq
-      if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
-      val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
-        if available.contains(nodeIdx) then node.asElement.map(_.getName.localName) else None
-      if leftoverElements.nonEmpty then throw XmlError(s"Unparsed elements: ${leftoverElements.mkString(", ")}")
-      val leftoverText: Boolean = nodes.zipWithIndex.exists: (node, nodeIdx) =>
-        !available.contains(nodeIdx) &&
-          node.asElement.isEmpty &&
-          node.asAtom.exists(_.trim.nonEmpty) &&
-          !fieldInfos.exists(_.kind == FieldKind.Text)
-      if leftoverText then throw XmlError("Unparsed character content")
+      if !ignoreUnknown then
+        val leftoverAttrs: Seq[String] =
+          attrs.keys.iterator.filterNot(_.isXmlnsDeclaration).map(_.qName).toSeq
+        if leftoverAttrs.nonEmpty then throw XmlError(s"Unparsed attributes: ${leftoverAttrs.mkString(", ")}")
+        val leftoverElements: Seq[String] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
+          if available.contains(nodeIdx) then node.asElement.map(_.getName.localName) else None
+        if leftoverElements.nonEmpty then throw XmlError(s"Unparsed elements: ${leftoverElements.mkString(", ")}")
+        val leftoverText: Boolean = nodes.zipWithIndex.exists: (node, nodeIdx) =>
+          !available.contains(nodeIdx) &&
+            node.asElement.isEmpty &&
+            node.asAtom.exists(_.trim.nonEmpty) &&
+            !fieldInfos.exists(_.kind == FieldKind.Text)
+        if leftoverText then throw XmlError("Unparsed character content")
       constructor.construct(regs, 0)
 
     override def encodeNamed[E: XmlAst](name: String, value: A): E =
@@ -148,6 +165,21 @@ private[xml] trait XmlCodecRecord:
               else Some(info.codec.encodeText(loaded))
             raw.foreach: value =>
               attributes += XmlName.parse(attrName, isAttribute = true) -> value
+          case FieldKind.Include =>
+            val loaded: Any = load(regs, info.offset, info.typeTag)
+            val hrefs: Iterator[String] =
+              if info.optional then
+                loaded.asInstanceOf[Option[Any]] match
+                  case Some(seq) => deconstructSeq(info, seq).map(_.asInstanceOf[String])
+                  case None => Iterator.empty
+              else if info.sequence then deconstructSeq(info, loaded).map(_.asInstanceOf[String])
+              else Iterator(loaded.asInstanceOf[String])
+            hrefs.filter(_.nonEmpty).foreach: href =>
+              children += ast.element(
+                XmlName("include", Some(XmlNamespace.xinclude)),
+                Seq(XmlName.parse("href", isAttribute = true) -> href),
+                Seq.empty
+              )
           case FieldKind.Child =>
             val loaded: Any = load(regs, info.offset, info.typeTag)
             def appendItem(item: Any): Unit =
@@ -195,6 +227,7 @@ private[xml] trait XmlCodecRecord:
     val codec: XmlCodec[Any] = D.instance(itemReflect.metadata).force.asInstanceOf[XmlCodec[Any]]
     val kind: FieldKind =
       if tagBinding(recordTypeId).exists(_._1 == field.name) then FieldKind.Tag
+      else if configValue(field.modifiers, XmlCodec.Include).isDefined then FieldKind.Include
       else configValue(field.modifiers, XmlCodec.Attribute) match
         case Some(attr) => FieldKind.Attribute(if attr.isEmpty then field.name else attr)
         case None if configValue(field.modifiers, XmlCodec.Text).isDefined => FieldKind.Text
@@ -204,6 +237,7 @@ private[xml] trait XmlCodecRecord:
         .orElse(renameOf(field.modifiers))
         .getOrElse:
           if codec.caseNames.nonEmpty then field.name
+          else if codec.isIdentity then field.name
           else if codec.isRecordLike then codec.elementName
           else field.name
     val aliases: Seq[String] = field.modifiers.collect { case Modifier.alias(name) => name }
@@ -323,6 +357,7 @@ private[xml] trait XmlCodecRecord:
     case Text
     case Child
     case Tag
+    case Include
 
   protected final class FieldInfo(
     val fieldName: String,

@@ -40,11 +40,20 @@ object By:
         override def length: Int = max - min + 1
         override protected def createNumberedStore(number: Int): T = create(number, this)
 
-    /** Looks up `selectorName` in the catalog in scope. Unknown name throws.
-      * Custom `number2names` / `name2number` take a `Selector`, not this overload. */
+    /** Looks up `selectorName` in the catalog in scope. Unknown name throws. */
     def apply[T <: NumberedStore](
       selectorName: String,
       min: Int,
       max: Int
     )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
       apply(summon[Selectors].getForName(selectorName), min, max)(create)
+
+    /** Looks up `selectorName` in the catalog in scope. Unknown name throws. */
+    def apply[T <: NumberedStore](
+      selectorName: String,
+      min: Int,
+      max: Int,
+      name2number: String => Option[Int],
+      number2names: Int => Names
+    )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
+      apply(summon[Selectors].getForName(selectorName), min, max, name2number, number2names)(create)

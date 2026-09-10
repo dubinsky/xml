@@ -23,11 +23,11 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 
 `org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name key).
-`org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop when the name is unique). Numbered URL names stay digits; extra names in `number2names` still round-trip. `Selector` is data; each consumer has a `Selectors` catalog (`Selector.xml` via `loadCatalog`). `By(name)` needs `given Selectors`; unknown names fail.
+`org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop when the name is unique). Numbered URL names stay digits; extra names in `number2names` still round-trip. `Selector` is data; each consumer has a `Selectors` catalog. `object Selectors extends Selectors` loads `Selector.xml` / `<Selector>` next to that class. `By(name)` and `By.Numbered(name, min, max, name2number, number2names)` need `given Selectors`; unknown names fail.
 
 == Parse
 
-`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer.
+`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. Convert with `import Html.toHtml` then `element.toHtml` (does not need `Html.given`). `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer.
 
 == Catalogs
 
@@ -43,14 +43,8 @@ A catalog is a wrapper element whose children are one record type (`XmlCodec.dec
 
 So `object Foo` looks for `Foo.xml` with root `<Foo>`. Child tags come from the codec (`Selector.codec` → `<selector>`, `Names.codec` → `<names>`). Comments and whitespace between children are ignored; leftover character content is an error.
 
-When the Scala object is not named after the file, pass the name:
-
-----
-XmlParser.loadCatalog(this, "Selector", Selector.codec)
-----
-
-That is the usual `Selectors` object: class `Selectors`, file `Selector.xml`, wrapper `<Selector>`.
-`loadCatalog(this, Selector.codec)` would look for `Selectors.xml` / `<Selectors>` and fail.
+When the Scala object is not named after the file, pass the name (`loadCatalog(this, "Selector", codec)`).
+`object Selectors extends Selectors` does that by default. `loadCatalog(this, Selector.codec)` from `object Selectors` would look for `Selectors.xml` / `<Selectors>` and fail.
 
 `loadCatalog` is `parseResource` plus `decodeCatalog`. Use `decodeCatalog(root, name)` when the tree is already in hand.
 
@@ -69,15 +63,13 @@ package org.example
 
 object Selectors extends org.podval.store.Selectors:
   given org.podval.store.Selectors = this
-  override lazy val valuesSeq: Seq[Selector] =
-    XmlParser.loadCatalog(this, "Selector", Selector.codec)
 
 package tanach:
   export org.example.Selectors.given
 ----
 
 `By(selector, stores)` and `By.Numbered(selector, min, max)` do not use a catalog.
-`By.Numbered(name, min, max, number2names = …)` is not an overload; look the selector up, then pass it.
+`By.Numbered(name, min, max, name2number, number2names)` looks the selector up, then passes custom names.
 
 Tests can skip XML: `given Selectors = Selectors(Selector(Names("book")), Selector(Names("part")))`.
 
@@ -96,7 +88,7 @@ This library does not expand `xi:include`. JDK SAX is XInclude-unaware. Publishe
 
 == Codec
 
-`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes on leaf records). Identity fields are canonical `XmlTree` (`Xml.Element`); leftover parent content is an error. Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`).
+`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes on leaf records). Identity fields are `Xml.Element` (child tag = field name). Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`. `@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`. Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`). `Name` / `Names` / `Language` / `Language.Spec` have `Schema` givens; catalog DTOs use `Seq[Name]`.
 
 == Build
 
