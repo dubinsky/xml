@@ -90,12 +90,7 @@ private[xml] trait XmlCodecRecord:
               )
               nodes.zipWithIndex.foreach: (node, nodeIdx) =>
                 if available.contains(nodeIdx) && node.asElement.exists(_.isInclude) then available -= nodeIdx
-              val seqValue: Any = buildSeq(info, hrefs)
-              val stored: Any =
-                if info.optional then
-                  if hrefs.isEmpty then None else Some(seqValue)
-                else seqValue
-              store(regs, info.offset, info.typeTag, stored)
+              storeSeq(regs, info, hrefs)
             case FieldKind.Child =>
               val matched: Seq[(E, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
                 if !available.contains(nodeIdx) then None
@@ -104,12 +99,7 @@ private[xml] trait XmlCodecRecord:
                 val decodedItems: Seq[Any] = matched.map: (el, nodeIdx) =>
                   available -= nodeIdx
                   info.codec.unsafeDecode(el)
-                val seqValue: Any = buildSeq(info, decodedItems)
-                val stored: Any =
-                  if info.optional then
-                    if decodedItems.isEmpty then None else Some(seqValue)
-                  else seqValue
-                store(regs, info.offset, info.typeTag, stored)
+                storeSeq(regs, info, decodedItems)
               else if info.optional then
                 matched.headOption match
                   case Some((el, nodeIdx)) =>
@@ -153,51 +143,24 @@ private[xml] trait XmlCodecRecord:
         info.kind match
           case FieldKind.Tag => ()
           case FieldKind.Text =>
-            val loaded: Any = load(regs, info.offset, info.typeTag)
-            val textOpt: Option[String] =
-              if info.optional then loaded.asInstanceOf[Option[Any]].map(info.codec.encodeText)
-              else Some(info.codec.encodeText(loaded))
-            textOpt.filter(_.nonEmpty).foreach(text => children += ast.text(text))
+            encodedText(regs, info).filter(_.nonEmpty).foreach(text => children += ast.text(text))
           case FieldKind.Attribute(attrName) =>
-            val loaded: Any = load(regs, info.offset, info.typeTag)
-            val raw: Option[String] =
-              if info.optional then loaded.asInstanceOf[Option[Any]].map(info.codec.encodeText)
-              else Some(info.codec.encodeText(loaded))
-            raw.foreach: value =>
+            encodedText(regs, info).foreach: value =>
               attributes += XmlName.parse(attrName, isAttribute = true) -> value
           case FieldKind.Include =>
-            val loaded: Any = load(regs, info.offset, info.typeTag)
-            val hrefs: Iterator[String] =
-              if info.optional then
-                loaded.asInstanceOf[Option[Any]] match
-                  case Some(seq) => deconstructSeq(info, seq).map(_.asInstanceOf[String])
-                  case None => Iterator.empty
-              else if info.sequence then deconstructSeq(info, loaded).map(_.asInstanceOf[String])
-              else Iterator(loaded.asInstanceOf[String])
-            hrefs.filter(_.nonEmpty).foreach: href =>
+            loadItems(regs, info).map(_.asInstanceOf[String]).filter(_.nonEmpty).foreach: href =>
               children += ast.element(
                 XmlName("include", Some(XmlNamespace.xinclude)),
                 Seq(XmlName.parse("href", isAttribute = true) -> href),
                 Seq.empty
               )
           case FieldKind.Child =>
-            val loaded: Any = load(regs, info.offset, info.typeTag)
             def appendItem(item: Any): Unit =
               val encoded: E =
                 if info.codec.caseNames.nonEmpty then info.codec.encode(item)
                 else info.codec.encodeNamed(info.itemNames.head, item)
               children += encoded
-            if info.sequence then
-              val items: Iterator[Any] =
-                if info.optional then
-                  loaded.asInstanceOf[Option[Any]] match
-                    case Some(seq) => deconstructSeq(info, seq)
-                    case None => Iterator.empty
-                else deconstructSeq(info, loaded)
-              items.foreach(appendItem)
-            else if info.optional then
-              loaded.asInstanceOf[Option[Any]].foreach(appendItem)
-            else appendItem(loaded)
+            loadItems(regs, info).foreach(appendItem)
       val nsAttrs: Seq[(XmlName, String)] = namespace match
         case Some((uri, prefix)) if prefix.nonEmpty => Seq(XmlName.xmlnsAttribute(Some(prefix), uri))
         case Some((uri, _)) => Seq(XmlName.xmlnsAttribute(None, uri))
@@ -210,7 +173,7 @@ private[xml] trait XmlCodecRecord:
           XmlName(parsedName.localName, Some(XmlNamespace(uri, None)))
         case Some((uri, _)) => parsedName.copy(namespace = XmlNamespace.of(parsedName.prefix, Some(uri)))
         case None =>
-          XmlName.parseDeclared(name, nsAttrs ++ attributes.toSeq, isAttribute = false)
+          XmlName.parseDeclared(name, nsAttrs ++ attributes.toSeq)
       ast.element(expandedName, nsAttrs ++ attributes.toSeq, children.toSeq)
 
   protected def fieldInfo[F[_, _], A](recordTypeId: TypeId[A], field: Term[F, A, ?], offset: RegisterOffset)(using
@@ -275,6 +238,32 @@ private[xml] trait XmlCodecRecord:
 
   protected def deconstructSeq(info: FieldInfo, value: Any): Iterator[Any] =
     info.seqParts.get.toItems(value)
+
+  protected def storeSeq(regs: Registers, info: FieldInfo, items: Seq[Any]): Unit =
+    val seqValue: Any = buildSeq(info, items)
+    store(
+      regs,
+      info.offset,
+      info.typeTag,
+      if info.optional then
+        if items.isEmpty then None else Some(seqValue)
+      else seqValue
+    )
+
+  protected def encodedText(regs: Registers, info: FieldInfo): Option[String] =
+    val loaded: Any = load(regs, info.offset, info.typeTag)
+    if info.optional then loaded.asInstanceOf[Option[Any]].map(info.codec.encodeText)
+    else Some(info.codec.encodeText(loaded))
+
+  protected def loadItems(regs: Registers, info: FieldInfo): Iterator[Any] =
+    val loaded: Any = load(regs, info.offset, info.typeTag)
+    if info.optional then
+      loaded.asInstanceOf[Option[Any]] match
+        case Some(value) =>
+          if info.sequence then deconstructSeq(info, value) else Iterator(value)
+        case None => Iterator.empty
+    else if info.sequence then deconstructSeq(info, loaded)
+    else Iterator(loaded)
 
   protected def characterData[E: XmlAst](element: E): String =
     val ast: XmlAst[E] = summon[XmlAst[E]]

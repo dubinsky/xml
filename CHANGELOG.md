@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `XmlCodec` record encode/decode shares seq and text helpers.
 - `Language.Latin` (`la`).
 - `zio-blocks-html` and `scala-xml` are `compileOnly` (not on the published POM); consumers that use `Html` / `ScalaXml` add them themselves.
 - `XmlCodec.xmlElementSchema` is a given on `XmlCodec`; `import XmlCodec.given` is enough when deriving identity fields. Package given `xmlElementSchema` remains.
