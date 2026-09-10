@@ -13,12 +13,10 @@ trait NumberedStore extends Store, Numbered[NumberedStore]:
 
   override def hashCode: Int = 31 * super.hashCode + System.identityHashCode(oneOf)
 
-  override def compare(that: Numbered[NumberedStore]): Int =
-    that match
-      case other: NumberedStore =>
-        val byParent: Int = Integer.compare(
-          System.identityHashCode(oneOf),
-          System.identityHashCode(other.oneOf)
-        )
-        if byParent != 0 then byParent else this.number - other.number
-      case _ => super.compare(that)
+  override def compare(that: Numbered[NumberedStore]): Int = that match
+    case other: NumberedStore =>
+      if oneOf eq other.oneOf
+      then this.number - other.number
+      else Integer.compare(oneOf.parentId, other.oneOf.parentId)
+    case _ => super.compare(that)
+      

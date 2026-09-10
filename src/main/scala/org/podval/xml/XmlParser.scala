@@ -19,24 +19,19 @@ import java.io.StringReader
   * need `import Html.given` / `import ScalaXml.given`.
   * Catalog helpers pin ZIO Blocks XML internally.
   */
-// TODO clean up
 object XmlParser:
   def parse[E: XmlAst](content: String, isXml: Boolean): Either[Throwable, E] =
     if isXml then parseXml(content) else parseHtml(content)
+
+  def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
+    XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
 
   /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
   def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
     parseXmlDocument(content).map(_.root)
 
   def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
-    parseXmlDocumentAndOverrideDeclaration(toInputSource(content))
-
-  def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
-    XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
-
-  private def parseXmlDocumentAndOverrideDeclaration[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] =
-    XmlParserSax.parseDocument(XmlParserSax.xmlReader, source).map: document =>
-      document.copy(declaration = Some(XmlDeclaration())) // TODO why override declaration?
+    parseXmlDocument(toInputSource(content))
 
   /** Classpath resource next to `loader` (`Class.getResource`). */
   def parseResource[E: XmlAst](loader: Class[?], name: String): Either[Throwable, E] =
@@ -46,8 +41,12 @@ object XmlParser:
         Using(url.openStream()): stream =>
           val source: InputSource = InputSource(stream)
           source.setSystemId(url.toString)
-          parseXmlDocumentAndOverrideDeclaration(source).map(_.root)
+          parseXmlDocument(source).map(_.root)
         .fold(Left(_), identity)
+
+  private def parseXmlDocument[E: XmlAst](source: InputSource): Either[Throwable, XmlDocument[E]] = XmlParserSax
+    .parseDocument(XmlParserSax.xmlReader, source)
+    .map(_.copy(declaration = Some(XmlDeclaration())))
 
   private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
 

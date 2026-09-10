@@ -113,6 +113,10 @@ final class StoreSpec extends AnyFunSuite:
     assert(Root.verses.next(dup).get eq Root.verses.get(3))
     intercept[IllegalArgumentException] { Root.verses.get(0) }
     intercept[IllegalArgumentException] { Root.verses.get(4) }
+
+    val fromOther: Num = Root.otherVerses.get(2)
+    assert(two.compare(fromOther) != 0)
+    assert(two.compare(fromOther) == -fromOther.compare(two))
   }
 
   test("reconstructed English URL resolves to the same structureNames") {
@@ -191,4 +195,49 @@ final class StoreSpec extends AnyFunSuite:
     intercept[IllegalArgumentException] { Root.resolve("/2") }
     assert(Root.resolve("/verse/2").last eq Root.verses.get(2))
     assert(Root.resolve("/chapter/2").last eq Root.chapters.get(2))
+  }
+
+  test("attempt and resolveOption") {
+    assert(Root.resolveOption("/book/Genesis").map(_.last).contains(Root.genesis))
+    assert(Root.resolveOption("/book/Missing").isEmpty)
+    assert(Root.attempt("/book/Genesis").exists(_.last eq Root.genesis))
+    assert(Root.attempt("/book/Missing") match
+      case Left(ResolveError.NotFound("Missing", _)) => true
+      case other => fail(other.toString)
+    )
+    Root.attempt("/2") match
+      case Left(err: ResolveError.Ambiguous) =>
+        assert(err.name == "2")
+        assert(err.axes.length == 2)
+      case other => fail(other.toString)
+    Root.attempt("/book/Genesis/extra") match
+      case Left(ResolveError.Leftover(Seq("extra"), leaf)) => assert(leaf eq Root.genesis)
+      case other => fail(other.toString)
+    object Cycle extends Stores[?]:
+      override def names: Names = Names("Cycle")
+      override def stores: Seq[Store] = Seq(Alias(Names("loop"), "/loop"))
+    assert(Cycle.attempt("/loop") match
+      case Left(_: ResolveError.Cycle) => true
+      case other => fail(other.toString)
+    )
+  }
+
+  test("number2names extra names round-trip toUrl") {
+    object NamedNumbers extends Stores[?]:
+      override def names: Names = Names("NamedNumbers")
+      val nums: By.Numbered[Num] = By.Numbered(
+        "verse",
+        1,
+        3,
+        number2names = n => Names(s"n$n")
+      )(Num(_, _))
+      override def stores: Seq[Store] = Seq(nums)
+
+    val viaDigit: Path = NamedNumbers.resolve("/verse/2")
+    assert(viaDigit.lastAs[Num].number == 2)
+    assert(viaDigit.toUrl == "/verse/n2")
+    assert(NamedNumbers.resolve(viaDigit.toUrl).structureNames == viaDigit.structureNames)
+    assert(NamedNumbers.resolve("/verse/n2").last eq NamedNumbers.nums.get(2))
+    assert(NamedNumbers.resolve("/verse/ב").last eq NamedNumbers.nums.get(2))
+    assert(NamedNumbers.resolve("/verse/ב").toUrl == "/verse/n2")
   }

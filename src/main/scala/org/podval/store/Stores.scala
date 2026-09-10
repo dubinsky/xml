@@ -29,36 +29,43 @@ trait Stores[+T <: Store] extends Store:
     toI - fromI
 
   /*
-  Successful `resolve()` returns a non-empty `Path`.
+  Successful `resolve` returns a non-empty `Path`. `attempt` is the same
+  without throwing; `resolveOption` is `attempt.toOption`.
   `Path.toUrl` is the English-name URL (selector hops included); resolving it
   again yields a path with the same `structureNames`. A hop may be omitted
   when the name uniquely matches a child of one `By` at this node. Aliases
   resolve from this node (the resolve root).
  */
-  final def resolve(path: String): Path = resolve(Stores.splitAndDecodeUrl(path))
+  final def resolve(path: String): Path = attempt(path).fold(err => throw err, identity)
 
-  final def resolve(path: Seq[String]): Path =
-    Path(if path.isEmpty then Seq(this) else resolve(path, Vector.empty, this, Set.empty))
+  final def resolve(path: Seq[String]): Path = attempt(path).fold(err => throw err, identity)
 
-  private def resolve(
+  final def resolveOption(path: String): Option[Path] = attempt(path).toOption
+
+  final def resolveOption(path: Seq[String]): Option[Path] = attempt(path).toOption
+
+  final def attempt(path: String): Either[ResolveError, Path] = attempt(Stores.splitAndDecodeUrl(path))
+
+  final def attempt(path: Seq[String]): Either[ResolveError, Path] =
+    if path.isEmpty then Right(Path(Seq(this)))
+    else walk(path, Vector.empty, this, Set.empty).map(Path(_))
+
+  private def walk(
     path: Seq[String],
     acc: Vector[Store],
     root: Stores[?],
     expanding: Set[Alias]
-  ): Vector[Store] = path match
-    case Seq() => acc
+  ): Either[ResolveError, Vector[Store]] = path match
+    case Seq() => Right(acc)
     case head +: tail =>
       findByName(head) match
         case Some(next) => continue(next, tail, acc, root, expanding)
         case None =>
           val hits: Seq[(By[?], Store)] = throughBy(head)
-          require(
-            hits.length <= 1,
-            s"Ambiguous '$head' in $this: ${hits.map((by, _) => by.names.name).mkString(", ")}"
-          )
-          require(hits.nonEmpty, s"Did not find '$head' in $this")
-          val (by, child) = hits.head
-          continue(child, tail, acc :+ by, root, expanding)
+          hits match
+            case Seq() => Left(ResolveError.NotFound(head, this))
+            case Seq((by, child)) => continue(child, tail, acc :+ by, root, expanding)
+            case many => Left(ResolveError.Ambiguous(head, this, many.map(_._1)))
 
   private def throughBy(name: String): Seq[(By[?], Store)] =
     stores.collect { case by: By[?] => by }.flatMap(by => by.findByName(name).map(child => (by, child)))
@@ -69,21 +76,19 @@ trait Stores[+T <: Store] extends Store:
     acc: Vector[Store],
     root: Stores[?],
     expanding: Set[Alias]
-  ): Vector[Store] = next match
+  ): Either[ResolveError, Vector[Store]] = next match
     case alias: Alias =>
-      require(!expanding.contains(alias), s"Alias cycle: ${alias.names}")
-      val toPath: Vector[Store] = root.resolve(alias.to, Vector.empty, root, expanding + alias)
-      require(toPath.nonEmpty, s"Alias ${alias.names} resolved empty")
-      toPath.last match
-        case branch: Stores[?] if tail.nonEmpty =>
-          branch.resolve(tail, acc ++ toPath, root, expanding + alias)
-        case leaf =>
-          require(tail.isEmpty, s"Can not apply '$tail' to $leaf")
-          acc ++ toPath
-    case branch: Stores[?] => branch.resolve(tail, acc :+ branch, root, expanding)
+      if expanding.contains(alias) then Left(ResolveError.Cycle(alias))
+      else
+        root.walk(alias.to, Vector.empty, root, expanding + alias).flatMap: toPath =>
+          toPath.last match
+            case branch: Stores[?] if tail.nonEmpty =>
+              branch.walk(tail, acc ++ toPath, root, expanding + alias)
+            case leaf =>
+              if tail.isEmpty then Right(acc ++ toPath) else Left(ResolveError.Leftover(tail, leaf))
+    case branch: Stores[?] => branch.walk(tail, acc :+ branch, root, expanding)
     case leaf =>
-      require(tail.isEmpty, s"Can not apply '$tail' to $leaf")
-      acc :+ leaf
+      if tail.isEmpty then Right(acc :+ leaf) else Left(ResolveError.Leftover(tail, leaf))
 
 object Stores:
   trait With[+T <: Store](override val stores: Seq[T]) extends Stores[T]
