@@ -24,6 +24,12 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(children(xml).flatMap(_.get(XmlAttribute.Href)) == Seq("includee.xml"))
   }
 
+  test("loadCatalog resource name and wrapper can differ") {
+    val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
+    val decoded: Seq[Language] = XmlParser.loadCatalog(this, "languages", codec, "Languages")
+    assert(decoded.map(_.ident) == Seq("ru", "he"))
+  }
+
   test("missing resource is Left") {
     val result: Either[Throwable, Xml.Element] =
       XmlParser.parseResource(classOf[XmlParserSpec], "no-such.xml")

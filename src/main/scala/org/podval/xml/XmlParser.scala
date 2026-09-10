@@ -63,6 +63,17 @@ object XmlParser:
 
   /** Like `loadCatalog(from, codec)` with an explicit resource and wrapper `name`. */
   def loadCatalog[A](from: AnyRef, name: String, codec: XmlCodec[A]): Seq[A] =
+    loadCatalog(from, name, codec, name)
+
+  /** Resource `name.xml` next to `from`; catalog wrapper `wrapperName`. */
+  def loadCatalog[A](from: AnyRef, name: String, codec: XmlCodec[A], wrapperName: String): Seq[A] =
+    parseResource[Xml.Element](from.getClass, s"$name.xml")
+      .flatMap(root => codec.decodeCatalog(root, wrapperName).left.map(e => e: Throwable))
+      .fold(error => throw error, identity)
+
+  /** Each `name.xml` next to `from` decoded as one document (the root element). Throws. */
+  def loadResources[A](from: AnyRef, codec: XmlCodec[A], names: String*): Seq[A] =
+    names.map: name =>
       parseResource[Xml.Element](from.getClass, s"$name.xml")
-        .flatMap(root => codec.decodeCatalog(root, name).left.map(e => e: Throwable))
+        .flatMap(codec.decode)
         .fold(error => throw error, identity)

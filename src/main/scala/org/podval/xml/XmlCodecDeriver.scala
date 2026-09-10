@@ -7,9 +7,16 @@ import zio.blocks.schema.binding.*
 import zio.blocks.schema.binding.RegisterOffset.RegisterOffset
 import zio.blocks.schema.derive.{BindingInstance, Deriver, InstanceOverride, InstanceOverrideByType}
 import zio.blocks.typeid.TypeId
+import java.util.concurrent.ConcurrentHashMap
+import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
 object XmlCodecDeriver extends XmlCodecDeriver:
+  private val taggedCodecs: ConcurrentHashMap[TypeId[?], Lazy[XmlCodec[?]]] = ConcurrentHashMap()
+
+  private[xml] def registerTagged[A](typeId: TypeId[A], codec: XmlCodec[A]): Unit =
+    taggedCodecs.put(typeId, Lazy(codec))
+
   def tagged[A, K](tagField: String, tag: XmlTag[K])(using typeId: TypeId[A]): XmlCodecDeriver =
     val target: String = typeId.fullName
     val xmlTag: XmlTag[Any] = tag.erased
@@ -229,9 +236,12 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
 
   override def instanceOverrides: IndexedSeq[InstanceOverride] =
     recursiveRecordCache.remove()
+    val tagged: List[InstanceOverride] =
+      XmlCodecDeriver.taggedCodecs.asScala.toList.map: (id, codec) =>
+        InstanceOverrideByType(id.asInstanceOf[TypeId[Any]], codec.asInstanceOf[Lazy[XmlCodec[Any]]])
     Chunk(
       InstanceOverrideByType(TypeId.of[zio.blocks.schema.xml.Xml.Element], Lazy(XmlCodec.elementCodec))
-    )
+    ) ++ Chunk.from(tagged)
 
   private def primitiveCodec[A](primitiveType: PrimitiveType[A]): XmlCodec[A] =
     primitiveType match

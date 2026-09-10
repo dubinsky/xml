@@ -97,6 +97,29 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.hrefs == Seq("nested.xml"))
   }
 
+  test("nested tagged codec is used without TypeId.instance") {
+    assert(TaggedItem.codec.caseNames == Seq("person", "place"))
+    val xml: String = """<TaggedIndex><person n="a"/><place n="b"/></TaggedIndex>"""
+    val result: Either[XmlError, TaggedIndex] = TaggedIndex.codec.decode(parse(xml))
+    assert(result.isRight, result.swap.toOption.map(_.getMessage).getOrElse(""))
+    val decoded: TaggedIndex = result.toOption.get
+    assert(decoded.items.map(_.n) == Seq("a", "b"))
+    assert(decoded.items.map(_.kind) == Seq(TaggedKind.person, TaggedKind.place))
+    val encoded: Xml.Element = TaggedIndex.codec.encode(decoded)
+    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("person", "place"))
+  }
+
+  test("identity sequence fields collect mixed sibling tags") {
+    val codec: XmlCodec[DayDoc] = XmlCodec.derived(using DayDoc.schema)
+    val xml: String =
+      """<DayDoc n="x"><torah id="t"/><haftarah id="h1"/><maftir id="m"/><haftarah id="h2"/></DayDoc>"""
+    val decoded: DayDoc = codec.decode(parse(xml)).toOption.get
+    assert(decoded.n == "x")
+    assert(decoded.torah.flatMap(_.getId) == Seq("t"))
+    assert(decoded.maftir.flatMap(_.getId) == Seq("m"))
+    assert(decoded.haftarah.flatMap(_.getId) == Seq("h1", "h2"))
+  }
+
   test("sealed trait sequence uses case element names") {
     val codec: XmlCodec[Lesson] = XmlCodec.derived(using Lesson.schema)
     val xml: String = """<Lesson><positive n="1"/><negative n="2"/></Lesson>"""
@@ -284,6 +307,39 @@ final case class OpenDoc(
 ) derives CanEqual
 object OpenDoc:
   given schema: Schema[OpenDoc] = Schema.derived
+
+enum TaggedKind derives CanEqual:
+  case person, place
+object TaggedKind:
+  given schema: Schema[TaggedKind] = Schema.derived
+  val asList: XmlTag[TaggedKind] = XmlTag(
+    _.toString,
+    name => TaggedKind.values.find(_.toString == name),
+    TaggedKind.values.map(_.toString).toSeq
+  )
+
+final case class TaggedItem(
+  kind: TaggedKind,
+  @Modifier.config(XmlCodec.Attribute, "") n: String
+) derives CanEqual
+object TaggedItem:
+  given schema: Schema[TaggedItem] = Schema.derived
+  val codec: XmlCodec[TaggedItem] = XmlCodec.derived[TaggedItem, TaggedKind]("kind", TaggedKind.asList)
+
+final case class TaggedIndex(items: Seq[TaggedItem] = Seq.empty) derives CanEqual
+object TaggedIndex:
+  given schema: Schema[TaggedIndex] = Schema.derived
+  val codec: XmlCodec[TaggedIndex] = XmlCodec.derived(TaggedItem.codec)
+
+@Modifier.config(XmlCodec.IgnoreUnknown, "")
+final case class DayDoc(
+  @Modifier.config(XmlCodec.Attribute, "") n: String,
+  torah: Seq[Xml.Element] = Seq.empty,
+  maftir: Seq[Xml.Element] = Seq.empty,
+  haftarah: Seq[Xml.Element] = Seq.empty
+) derives CanEqual
+object DayDoc:
+  given schema: Schema[DayDoc] = Schema.derived
 
 @Modifier.config(XmlCodec.Element, "node")
 final case class Node(

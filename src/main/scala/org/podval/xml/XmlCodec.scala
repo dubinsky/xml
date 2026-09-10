@@ -74,10 +74,18 @@ object XmlCodec:
 
   def derived[A](using schema: Schema[A]): XmlCodec[A] = schema.derive(deriver)
 
+  /** Like `derived`, after nested tagged codecs have been initialized.
+    * `Schema.derived` inlines nested records and does not run `Child.codec`. */
+  def derived[A](nested: XmlCodec[?], rest: XmlCodec[?]*)(using schema: Schema[A]): XmlCodec[A] =
+    derived(using schema)
+
   /** Derive a record whose XML tag comes from `tagField` via `tag`.
-    * Nested records that also tag this way need `.instance(TypeId.of[Nested], Nested.codec)`. */
+    * Nested records of this type in a later `XmlCodec.derived` pick up the tagged codec
+    * once this method has run (pass `Child.codec` to `XmlCodec.derived(nested)`). */
   def derived[A, K](tagField: String, tag: XmlTag[K])(using schema: Schema[A], typeId: TypeId[A]): XmlCodec[A] =
-    schema.derive(XmlCodecDeriver.tagged(tagField, tag))
+    val codec: XmlCodec[A] = schema.derive(XmlCodecDeriver.tagged(tagField, tag))
+    XmlCodecDeriver.registerTagged(typeId, codec)
+    codec
 
   extension [A](codec: XmlCodec[A])
     /** Decode each element child of `root`. Whitespace and comments are ignored;
