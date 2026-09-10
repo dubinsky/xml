@@ -17,7 +17,7 @@ enum Language(code: String) extends
   case French     extends Language("fr")
   case German     extends Language("de")
   case Lithuanian extends Language("lt")
-  case Hebrew     extends Language("he"), Language.Hebrew /* WTF? */
+  case Hebrew     extends Language("he") with Language.Hebrew
   case Latin      extends Language("la")
 
 object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Language], HasValues.FindByName[Language]:
