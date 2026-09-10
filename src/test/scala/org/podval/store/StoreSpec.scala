@@ -21,6 +21,7 @@ final class StoreSpec extends AnyFunSuite:
     val books: By[Store] = By("book", Seq(genesis, psalms, samuel))
     val chumash: Stores[?] = new Stores.With(Seq(By("book", Seq(genesis)))):
       override def names: Names = Names("Chumash")
+    val parts: By[Store] = By("part", Seq(chumash))
 
     val verses: By.Numbered[Num] = By.Numbered("verse", 1, 3)(Num(_, _))
     val chapters: By.Numbered[Num] = By.Numbered("chapter", 1, 3)(Num(_, _))
@@ -28,9 +29,9 @@ final class StoreSpec extends AnyFunSuite:
 
     override def stores: Seq[Store] = Seq(
       books,
-      By("part", Seq(chumash)),
-      Alias(chumash.names, "/part/Chumash"),
-      Alias(psalms.names, "/book/Psalms"),
+      parts,
+      Alias(chumash.names, Path(Seq(parts, chumash))),
+      Alias(psalms.names, Path(Seq(books, psalms))),
       verses,
       chapters
     )
@@ -64,6 +65,15 @@ final class StoreSpec extends AnyFunSuite:
     assert(viaAlias.toUrl == "/part/Chumash")
     assert(Root.resolve("/Psalms").toUrl == "/book/Psalms")
     assert(Root.resolve("/Chumash/book/Genesis").last eq Root.genesis)
+  }
+
+  test("asStores axes storeAliases") {
+    assert(Root.asStores.length == 6)
+    assert(Root.axes.length == 4)
+    assert(Root.storeAliases.length == 2)
+    assert(Root.books.asStores.corresponds(Root.books.stores)(_ eq _))
+    intercept[IllegalArgumentException] { Alias(Names("x"), Path.empty) }
+    assert(Alias(Names("x"), Path(Seq(Root.books, Root.genesis))).to == Seq("book", "Genesis"))
   }
 
   test("numbered stores resolve decimal and Hebrew") {

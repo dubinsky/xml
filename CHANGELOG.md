@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `Stores.asStores` / `axes` / `storeAliases`; `Alias(names, Path)` uses `structureNames`.
 - `Stores.attempt` / `resolveOption`; `resolve` throws `ResolveError` (`NotFound`, `Ambiguous`, `Leftover`, `Cycle`).
 - `NumberedStores.findByName` also matches `number2names`; `By.Numbered(..., name2number, number2names)`.
 - `NumberedStore.compare` never returns 0 for different parents.

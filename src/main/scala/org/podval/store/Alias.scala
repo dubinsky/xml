@@ -10,6 +10,8 @@ final case class Alias(override val names: Names, to: Seq[String]) extends Store
 object Alias:
   def apply(names: Names, to: String): Alias = new Alias(names, Stores.splitAndDecodeUrl(to))
 
+  def apply(names: Names, to: Path): Alias = new Alias(names, to.structureNames)
+
   private final case class Data(
     @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
     @Modifier.config(XmlCodec.Element, "name") names: Seq[Name.Data] = Seq.empty,

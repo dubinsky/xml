@@ -9,6 +9,13 @@ trait Stores[+T <: Store] extends Store:
   // TODO maybe pre-calculate a lazy map from all names to stores?
   def stores: Seq[T]
 
+  /** Widens `stores` to `Store` so a `By[?]` does not need a cast. */
+  final def asStores: Seq[Store] = stores
+
+  final def axes: Seq[By[Store]] = asStores.collect { case by: By[?] => by.asInstanceOf[By[Store]] }
+
+  final def storeAliases: Seq[Alias] = asStores.collect { case alias: Alias => alias }
+
   def findByName(name: String): Option[T] = HasValues.find(stores, name)
 
   def indexOf(store: Store): Int = stores.indexWhere(_ eq store)
@@ -67,8 +74,8 @@ trait Stores[+T <: Store] extends Store:
             case Seq((by, child)) => continue(child, tail, acc :+ by, root, expanding)
             case many => Left(ResolveError.Ambiguous(head, this, many.map(_._1)))
 
-  private def throughBy(name: String): Seq[(By[?], Store)] =
-    stores.collect { case by: By[?] => by }.flatMap(by => by.findByName(name).map(child => (by, child)))
+  private def throughBy(name: String): Seq[(By[Store], Store)] =
+    axes.flatMap(by => by.findByName(name).map(child => (by, child)))
 
   private def continue(
     next: Store,
