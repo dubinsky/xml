@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+
+## [0.1.0] - 2026-09-10
 - `XmlCodec` record encode/decode shares seq and text helpers.
 - `Language.Latin` (`la`).
 - `zio-blocks-html` and `scala-xml` are `compileOnly` (not on the published POM); consumers that use `Html` / `ScalaXml` add them themselves.
