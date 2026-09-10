@@ -19,11 +19,13 @@ object By:
 
   abstract class Numbered[+T <: NumberedStore](
     override val selector: Selector,
-    fromName: String => Option[Int] = NumberedStores.parseNumber,
-    toNames: Int => Names = NumberedStores.namesForNumber
+    name2number: String => Option[Int] = NumberedStores.parseNumber,
+    number2names: Int => Names = NumberedStores.namesForNumber
   ) extends By[T], NumberedStores[T]:
-    override def name2number(name: String): Option[Int] = fromName(name)
-    override def number2names(number: Int): Names = toNames(number)
+    private val parseName: String => Option[Int] = name2number
+    private val namesOf: Int => Names = number2names
+    override def name2number(name: String): Option[Int] = parseName(name)
+    override def number2names(number: Int): Names = namesOf(number)
 
   object Numbered:
     def apply[T <: NumberedStore](

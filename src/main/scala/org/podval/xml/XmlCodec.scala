@@ -49,8 +49,7 @@ object XmlCodec:
     override def elementName: String = "element"
     override def isRecordLike: Boolean = true
     override def unsafeDecode[E: XmlAst](element: E): XmlTree = toZioElement(element)
-    override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E =
-      fromZioElement(Xml.renamed(value, name))
+    override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E = fromZioElement(Xml.withName(value, name))
     override def encode[E: XmlAst](value: XmlTree): E = fromZioElement(value)
 
   private def toZioElement[E: XmlAst](element: E): XmlTree =

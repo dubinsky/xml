@@ -39,8 +39,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
     children: Nodes
   ): Element
 
-  // TODO withName?
-  final def renamed(element: Element, name: String): Element = this.element(
+  final def withName(element: Element, name: String): Element = this.element(
     name = XmlName.parseDeclared(
       name,
       element.getAttributes,
@@ -145,7 +144,7 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   extension (element: Element)
     def getName: XmlName
 
-    def rename(name: String): Element = renamed(element, name)
+    def rename(name: String): Element = withName(element, name)
 
     def renameKeepingClass(name: String): Element =
       element.addClass(element.getName.localName).rename(name)
