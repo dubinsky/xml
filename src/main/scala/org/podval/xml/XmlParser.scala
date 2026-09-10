@@ -50,14 +50,18 @@ object XmlParser:
 
   private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
 
-  /** Class simple name without a trailing `$` (`Selector$` → `Selector`). */
+  /** Class simple name without a trailing `$` (`Selectors$` → `Selectors`). */
   def className(loader: Class[?]): String = loader.getSimpleName.replace("$", "")
 
   /** Catalog of `codec` children. File and wrapper name come from
-    * `from.getClass` (`Foo` → `Foo.xml` / `<Foo>`). Throws on error. */
+    * `from.getClass` (`object Foo` → `Foo.xml` / `<Foo>` next to that class).
+    * Throws on a missing resource or decode error.
+    * When the object is not named after the file, pass the name:
+    * `loadCatalog(from, "Selector", codec)` (`object Selectors` → `Selector.xml`). */
   def loadCatalog[A](from: AnyRef, codec: XmlCodec[A]): Seq[A] =
     loadCatalog(from, className(from.getClass), codec)
 
+  /** Like `loadCatalog(from, codec)` with an explicit resource and wrapper `name`. */
   def loadCatalog[A](from: AnyRef, name: String, codec: XmlCodec[A]): Seq[A] =
       parseResource[Xml.Element](from.getClass, s"$name.xml")
         .flatMap(root => codec.decodeCatalog(root, name).left.map(e => e: Throwable))

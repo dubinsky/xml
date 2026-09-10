@@ -90,7 +90,8 @@ object XmlCodec:
           yield items :+ item
         .map(_.toSeq)
 
-    /** `wrappedSeq(name)`: require wrapper `name`, then [[decodeChildren]]. */
+    /** Require wrapper element `name`, then [[decodeChildren]].
+      * `XmlParser.loadCatalog` uses this after loading `name.xml`. */
     def decodeCatalog[E: XmlAst](root: E, name: String): Either[XmlError, Seq[A]] =
       if !root.isNamed(name) then
         Left(XmlError(s"Expected catalog '$name', found '${root.getName.qName}'"))

@@ -65,6 +65,8 @@ object Names:
     val duplicates: Set[T] = seq.groupBy(t => t).filter((_, ts) => ts.length > 1).keySet
     require(duplicates.isEmpty, s"Duplicate $what: $duplicates")
 
+  /** Catalog of `<names>` bound to `valuesSeq` (`HasName.mapByName`).
+    * Default file is this loader's class name (`object Language` → `Language.xml` / `<Language>`). */
   abstract class Loader[Key <: HasName](resourceNameOverride: Option[String] = None) extends HasValues[Key]:
     /** Catalog of `Names` for `valuesSeq`. Override to load names from a richer document. */
     protected def loadNames: Seq[Names] =

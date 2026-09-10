@@ -25,11 +25,74 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name key).
 `org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop when the name is unique). Numbered URL names stay digits; extra names in `number2names` still round-trip. `Selector` is data; each consumer has a `Selectors` catalog (`Selector.xml` via `loadCatalog`). `By(name)` needs `given Selectors`; unknown names fail.
 
-== Parse and catalogs
+== Parse
 
 `XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer.
 
-A catalog is a named wrapper whose children are one record type: `codec.decodeCatalog(root, name)` or `XmlParser.loadCatalog(from, codec)` (`Foo` → `Foo.xml` / `<Foo>`).
+== Catalogs
+
+A catalog is a wrapper element whose children are one record type (`XmlCodec.decodeCatalog`).
+`XmlParser.loadCatalog` reads that file from the classpath and *throws* on a missing resource or a decode error (unlike `parseXml`, which returns `Either`). Catalog helpers pin ZIO Blocks XML.
+
+=== File and wrapper name
+
+`loadCatalog(from, codec)` takes the name from `XmlParser.className(from.getClass)` (trailing `$` stripped: `Selectors$` → `Selectors`):
+
+* resource: `from.getClass.getResource(name + ".xml")` — next to *that class*, not a library-wide path
+* wrapper: element named `name` (local name / qName)
+
+So `object Foo` looks for `Foo.xml` with root `<Foo>`. Child tags come from the codec (`Selector.codec` → `<selector>`, `Names.codec` → `<names>`). Comments and whitespace between children are ignored; leftover character content is an error.
+
+When the Scala object is not named after the file, pass the name:
+
+----
+XmlParser.loadCatalog(this, "Selector", Selector.codec)
+----
+
+That is the usual `Selectors` object: class `Selectors`, file `Selector.xml`, wrapper `<Selector>`.
+`loadCatalog(this, Selector.codec)` would look for `Selectors.xml` / `<Selectors>` and fail.
+
+`loadCatalog` is `parseResource` plus `decodeCatalog`. Use `decodeCatalog(root, name)` when the tree is already in hand.
+
+=== Selectors (store axes)
+
+`Selector` is data. This library has no `Selector.xml`. Each consumer owns a catalog:
+
+----
+package org.example
+
+object Selectors extends org.podval.store.Selectors:
+  override lazy val valuesSeq: Seq[Selector] =
+    XmlParser.loadCatalog(this, "Selector", Selector.codec)
+
+given org.podval.store.Selectors = Selectors
+----
+
+Put `Selector.xml` next to that class (`src/main/resources/org/example/Selector.xml`).
+`forName` / `getForName` match any language name on a selector (`книга` finds `book`). `getForName` throws if missing; `forName` is `Option`.
+
+`By("book", stores)` and `By.Numbered("chapter", min, max)` summon `given Selectors`.
+A nested package does not see a parent-package given; repeat it:
+
+----
+package org.example.tanach
+
+given org.podval.store.Selectors = org.example.Selectors
+----
+
+`By(selector, stores)` and `By.Numbered(selector, min, max)` do not use a catalog.
+`By.Numbered(name, min, max, number2names = …)` is not an overload; look the selector up, then pass it.
+
+Tests can skip XML: `given Selectors = Selectors(Selector(Names("book")), Selector(Names("part")))`.
+
+=== Names catalogs
+
+`Names.Loader[Key]` loads `<names>` children and binds them to `valuesSeq` with `HasName.mapByName`
+(each `<names>` must uniquely match a key's `.name`; every key must match).
+Default file is the loader's class name: `object Language` → `Language.xml` / `<Language>`.
+Pass `resourceNameOverride` for a different file. `toNames` is lazy so a catalog can mention values of the same loader.
+
+`HasNames.ByLoader` is the per-value hook (`Language.English.names`).
 
 == XInclude
 

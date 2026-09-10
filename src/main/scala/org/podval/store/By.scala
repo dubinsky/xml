@@ -13,6 +13,7 @@ object By:
     new Stores.With[T](stores) with By[T]:
       override def selector: Selector = sel
 
+  /** Looks up `selectorName` in the catalog in scope. Unknown name throws. */
   def apply[T <: Store](selectorName: String, stores: Seq[T])(using Selectors): By[T] =
     apply(summon[Selectors].getForName(selectorName), stores)
 
@@ -37,6 +38,8 @@ object By:
         override def length: Int = max - min + 1
         override protected def createNumberedStore(number: Int): T = create(number, this)
 
+    /** Looks up `selectorName` in the catalog in scope. Unknown name throws.
+      * Custom `number2names` / `name2number` take a `Selector`, not this overload. */
     def apply[T <: NumberedStore](
       selectorName: String,
       min: Int,
