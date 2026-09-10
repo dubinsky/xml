@@ -85,18 +85,31 @@ final class MetadataSpec extends AnyFunSuite:
   }
 
   test("Numbered equality is per class") {
-    final class A(override val number: Int) extends Numbered[A] derives CanEqual
-    final class B(override val number: Int) extends Numbered[B] derives CanEqual
+    final class A(override val number: Int) extends Numbered[A] derives CanEqual:
+      override def companion: Numbered.Companion[A] = A(_)
+    final class B(override val number: Int) extends Numbered[B] derives CanEqual:
+      override def companion: Numbered.Companion[B] = B(_)
     assert(A(1) == A(1))
     assert(A(1) != A(2))
     assert(!A(1).equals(B(1)))
 
-    abstract class V(override val number: Int) extends Numbered[V] derives CanEqual
+    abstract class V(override val number: Int) extends Numbered[V] derives CanEqual:
+      override def companion: Numbered.Companion[V] = n => new V(n) {}
     val fiveA: V = new V(5) {}
     val fiveB: V = new V(5) {}
     val six: V = new V(6) {}
     assert(fiveA == fiveB)
     assert(fiveA != six)
+  }
+
+  test("Numbered + - next prev use companion") {
+    final class N(override val number: Int) extends Numbered[N] derives CanEqual:
+      override def companion: Numbered.Companion[N] = N(_)
+    assert((N(2) + 3).number == 5)
+    assert((N(2) - 1).number == 1)
+    assert(N(2).next.number == 3)
+    assert(N(2).prev.number == 1)
+    assert(N(5) - N(2) == 3)
   }
 
   test("HasNames.andNumber suffixes each language") {

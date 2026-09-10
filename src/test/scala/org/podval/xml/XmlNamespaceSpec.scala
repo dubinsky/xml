@@ -102,7 +102,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   }
 
   test("SAX: undeclared prefix is an error") {
-    val result: Either[Throwable, Xml.Element] = XmlParser.parseXml("<tei:p/>")
+    val result: Either[XmlError, Xml.Element] = XmlParser.parseXml("<tei:p/>")
     assert(result.isLeft)
   }
 

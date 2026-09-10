@@ -31,8 +31,15 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("missing resource is Left") {
-    val result: Either[Throwable, Xml.Element] =
+    val result: Either[XmlError, Xml.Element] =
       XmlParser.parseResource(classOf[XmlParserSpec], "no-such.xml")
+    assert(result.isLeft)
+    assert(result.swap.toOption.get.getMessage.contains("Resource not found"))
+  }
+
+  test("attemptCatalog is Left on a missing resource") {
+    val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
+    val result: Either[XmlError, Seq[Language]] = XmlParser.attemptCatalog(this, "no-such", codec)
     assert(result.isLeft)
     assert(result.swap.toOption.get.getMessage.contains("Resource not found"))
   }

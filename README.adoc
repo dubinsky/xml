@@ -16,7 +16,7 @@ Bring their givens in with `import Html.given` / `import ScalaXml.given`:
 
 ----
 implementation "dev.zio:zio-blocks-html_3:0.0.51"
-implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
+implementation 'org.scala-lang.modules:scala-xml_3:2.5.0'
 ----
 
 == Packages
@@ -29,12 +29,12 @@ One artifact (`org.podval:org.podval.xml`). It will not be split into separate G
 
 == Parse
 
-`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. Convert with `import Html.toHtml` then `element.toHtml` (does not need `Html.given`). `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer.
+`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`). `parseXml(s)` infers ZIO Blocks XML. For HTML or Scala XML, import `Html.given` / `ScalaXml.given`. Convert with `import Html.toHtml` then `element.toHtml` (does not need `Html.given`). `xi:include` is not expanded (`xi:include/@href` stays a page ref). `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and after the root so a document can round-trip through the writer. Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps the cause. `loadCatalog` / `loadResources` throw (programmer catalogs); `attemptCatalog` / `attemptResources` stay in `Either`. Unknown `By` names and unmatched catalog keys throw.
 
 == Catalogs
 
 A catalog is a wrapper element whose children are one record type (`XmlCodec.decodeCatalog`).
-`XmlParser.loadCatalog` reads that file from the classpath and *throws* on a missing resource or a decode error (unlike `parseXml`, which returns `Either`). Catalog helpers pin ZIO Blocks XML.
+`XmlParser.loadCatalog` reads that file from the classpath and *throws* on a missing resource or a decode error (`attemptCatalog` returns `Either`). Catalog helpers pin ZIO Blocks XML.
 
 === File and wrapper name
 

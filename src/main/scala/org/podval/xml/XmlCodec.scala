@@ -121,7 +121,7 @@ trait XmlCodec[A]:
     try Right(unsafeDecode(element))
     catch
       case e: XmlError => Left(e)
-      case e if NonFatal(e) => Left(XmlError(Option(e.getMessage).getOrElse(e.toString)))
+      case e if NonFatal(e) => Left(XmlError(Option(e.getMessage).getOrElse(e.toString), e))
 
   def elementNameOf(value: A): String = elementName
 

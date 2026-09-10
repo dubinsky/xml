@@ -287,8 +287,8 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         try parse(text)
         catch
           case e: XmlError => throw e
-          case _: NumberFormatException => throw XmlError(s"Invalid $name: $text")
-          case _: IllegalArgumentException => throw XmlError(s"Invalid $name: $text")
+          case e: NumberFormatException => throw XmlError(s"Invalid $name: $text", e)
+          case e: IllegalArgumentException => throw XmlError(s"Invalid $name: $text", e)
       override def encodeText(value: A): String = format(value)
 
   private def unsupported[A](what: String): XmlCodec[A] = new XmlCodec[A]:

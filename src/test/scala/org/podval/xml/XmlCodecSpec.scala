@@ -49,6 +49,13 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(encodedFalse.get("on").contains("false"))
   }
 
+  test("invalid int attribute wraps NumberFormatException") {
+    val codec: XmlCodec[Count] = XmlCodec.derived(using Count.schema)
+    val err: XmlError = codec.decode(parse("""<Count n="x"/>""")).swap.toOption.get
+    assert(err.getMessage.contains("Invalid"))
+    assert(err.getCause != null)
+  }
+
   test("unparsed children are an error") {
     val codec: XmlCodec[Box] = XmlCodec.derived(using Box.schema)
     val result: Either[XmlError, Box] = codec.decode(parse("""<Box n="1"><extra/></Box>"""))
@@ -256,6 +263,12 @@ final case class Box(
 ) derives CanEqual
 object Box:
   given schema: Schema[Box] = Schema.derived
+
+final case class Count(
+  @Modifier.config(XmlCodec.Attribute, "") n: Int
+) derives CanEqual
+object Count:
+  given schema: Schema[Count] = Schema.derived
 
 final case class Text(
   @Modifier.config(XmlCodec.Attribute, "") lang: Option[String],

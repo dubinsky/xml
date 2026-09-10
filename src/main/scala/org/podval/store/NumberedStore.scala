@@ -2,8 +2,10 @@ package org.podval.store
 
 import org.podval.metadata.{Names, Numbered}
 
-trait NumberedStore extends Store, Numbered[NumberedStore]:
+trait NumberedStore extends Store with Numbered[NumberedStore]:
   def oneOf: NumberedStores[NumberedStore]
+
+  final override def companion: Numbered.Companion[NumberedStore] = oneOf.get(_)
 
   final override def names: Names = oneOf.number2names(number)
 

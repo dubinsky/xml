@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `Numbered` has `companion`, `+` / `-` / `next` / `prev`, and `-(that)` distance.
+- Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps causes. `attemptCatalog` / `attemptResources`; `loadCatalog` / `loadResources` still throw.
 - README: one artifact, not split into modules. `checkReadmeVersion` keeps Maven coordinates equal to `project.version`.
 - `XmlCodec.derived[A, K](tagField, tag)` is used for nested `A` without `.instance(TypeId.of[A], …)`.
 - `XmlParser.loadCatalog(from, name, codec, wrapperName)`; `loadResources(from, codec, names*)` for one document per file.
