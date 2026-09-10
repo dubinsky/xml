@@ -9,6 +9,10 @@ final class MetadataSpec extends AnyFunSuite:
     assert(Language.English.names.names.length == 4)
     assert(Language.Hebrew.names.hasName("he"))
     assert(Language.Hebrew.names.hasName("иврит"))
+    assert(Language.Latin.names.names.length == 4)
+    assert(Language.Latin.names.hasName("la"))
+    assert(Language.Latin.names.hasName("Latin"))
+    assert(Language.getForDefaultName("la") == Language.Latin)
   }
 
   test("Name codec accepts n or text but not both") {

@@ -42,4 +42,10 @@
         <name lang="ru" n="немецкий"/>
         <name lang="he" n="גֶרמָנִיָת"/>
     </names>
+    <names>
+        <name lang="en" n="Latin"/>
+        <name lang="en" n="la"/>
+        <name lang="ru" n="латинский"/>
+        <name lang="he" n="לטינית"/>
+    </names>
 </Language>
