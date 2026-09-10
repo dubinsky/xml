@@ -23,7 +23,7 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
     assert(rendered.contains("(<span"))
     assert(!rendered.contains("( <"))
     assert(inner.contains("</a><span"))
-    assert(!""">\s+<a""".r.findFirstIn(inner).isDefined)
+    assert(""">\s+<a""".r.findFirstIn(inner).isEmpty)
   }
 
   test("void elements self-close; empty non-void elements do not") {

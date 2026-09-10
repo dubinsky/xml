@@ -2,7 +2,7 @@ package org.podval.xml
 
 import zio.blocks.schema.Schema
 import zio.blocks.schema.derive.Deriver
-import zio.blocks.schema.xml.{Xml as XML}
+import zio.blocks.schema.xml.Xml as XML
 import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
