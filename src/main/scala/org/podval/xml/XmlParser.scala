@@ -4,7 +4,6 @@ import zio.blocks.schema.xml.Xml
 import org.xml.sax.InputSource
 import scala.util.Using
 import java.io.StringReader
-import java.net.URL
 
 /** Load XML (and HTML) into any [[XmlAst]].
   *
@@ -26,12 +25,12 @@ object XmlParser:
     if isXml then parseXml(content) else parseHtml(content)
 
   /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
-  def parseXml[E: XmlAst](content: String): Either[Throwable, E] = 
+  def parseXml[E: XmlAst](content: String): Either[Throwable, E] =
     parseXmlDocument(content).map(_.root)
 
   def parseXmlDocument[E: XmlAst](content: String): Either[Throwable, XmlDocument[E]] =
     parseXmlDocumentAndOverrideDeclaration(toInputSource(content))
-  
+
   def parseHtml[E: XmlAst](content: String): Either[Throwable, E] =
     XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root)
 
@@ -61,9 +60,6 @@ object XmlParser:
     loadCatalog(from, className(from.getClass), codec)
 
   def loadCatalog[A](from: AnyRef, name: String, codec: XmlCodec[A]): Seq[A] =
-    unwrap:
-      parseResource[Xml.Element](from.getClass, s"$name.xml").flatMap: root =>
-        codec.decodeCatalog(root, name).left.map(e => e: Throwable)
-
-  private def unwrap[A](result: Either[Throwable, Seq[A]]): Seq[A] =
-    result.fold(error => throw error, identity)
+      parseResource[Xml.Element](from.getClass, s"$name.xml")
+        .flatMap(root => codec.decodeCatalog(root, name).left.map(e => e: Throwable))
+        .fold(error => throw error, identity)
