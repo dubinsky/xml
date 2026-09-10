@@ -91,6 +91,21 @@ tasks.withType(ScalaCompile).configureEach {
   }
 }
 
+// GitHub renders README.adoc as committed; Gradle cannot substitute at view time.
+// Fail check if the Maven snippet drifts from project.version.
+tasks.register('checkReadmeVersion') {
+  def readmeFile = file('README.adoc')
+  inputs.file(readmeFile)
+  doLast {
+    def expected = "org.podval:org.podval.xml:${project.version}"
+    def found = (readmeFile.getText('UTF-8') =~ /org\.podval:org\.podval\.xml:[0-9][0-9A-Za-z._-]*/).findAll().toSet()
+    if (found != [expected] as Set) {
+      throw new GradleException("README.adoc Maven coordinates ${found} must all be ${expected}")
+    }
+  }
+}
+tasks.named('check').configure { dependsOn('checkReadmeVersion') }
+
 publishing {
   publications {
     library(MavenPublication) {

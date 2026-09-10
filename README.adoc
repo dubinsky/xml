@@ -4,10 +4,10 @@
 
 Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
 
-Maven coordinates: `org.podval:org.podval.xml:0.0.2`
+Maven coordinates: `org.podval:org.podval.xml:0.0.3`
 
 ----
-implementation 'org.podval:org.podval.xml:0.0.2'
+implementation 'org.podval:org.podval.xml:0.0.3'
 ----
 
 `zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
@@ -20,6 +20,8 @@ implementation 'org.scala-lang.modules:scala-xml_3:2.4.0'
 ----
 
 == Packages
+
+One artifact (`org.podval:org.podval.xml`). It will not be split into separate Gradle or Maven modules; consumers depend on this coordinate and import the packages they need.
 
 `org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name key).
