@@ -165,9 +165,9 @@ publishing {
 }
 
 signing {
-  useInMemoryPgpKeys(
-    findProperty('signingKey') as String,
-    findProperty('signingPassword') as String
-  )
+  def key = providers.gradleProperty('signingKey')
+  def password = providers.gradleProperty('signingPassword')
+  required = key.isPresent()
+  useInMemoryPgpKeys(key.getOrNull(), password.getOrNull())
   sign publishing.publications.library
 }
