@@ -1,7 +1,7 @@
 package org.podval.store
 
-import org.podval.metadata.{HasNames, HasValues, Name, Names}
-import org.podval.xml.{XmlAst, XmlCodec, XmlParser}
+import org.podval.metadata.{HasNames, Name, Names}
+import org.podval.xml.{XmlAst, XmlCodec}
 import zio.blocks.schema.{Modifier, Schema}
 
 final case class Selector(
@@ -11,7 +11,7 @@ final case class Selector(
   /** Catalogued plural of the axis; when absent, the singular `names`. */
   def pluralOrNames: Names = plural.getOrElse(names)
 
-object Selector extends HasValues.FindByName[Selector]:
+object Selector:
   private final case class PluralData(
     @Modifier.config(XmlCodec.Element, "name") names: Seq[Name.Data] = Seq.empty
   ) derives CanEqual
@@ -47,7 +47,3 @@ object Selector extends HasValues.FindByName[Selector]:
         names = if default.isDefined then Seq.empty else value.names.names.map(Name.toData),
         plural = value.plural.map(n => PluralData(n.names.map(Name.toData)))
       ))
-
-  def valuesSeq: Seq[Selector] = values.toIndexedSeq
-
-  lazy val values: Seq[Selector] = XmlParser.loadCatalog(this, codec)

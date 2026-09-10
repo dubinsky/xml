@@ -8,30 +8,38 @@ trait By[+T <: Store] extends Stores[T]:
   final override def names: Names = selector.names
 
 object By:
-  def apply[T <: Store](selectorName: String, stores: Seq[T]): By[T] =
-    new WithSelector[T](selectorName) with Stores.With[T](stores)
+  def apply[T <: Store](selector: Selector, stores: Seq[T]): By[T] =
+    val sel: Selector = selector
+    new Stores.With[T](stores) with By[T]:
+      override def selector: Selector = sel
 
-  trait WithSelector[+T <: Store](selectorName: String) extends By[T]:
-    override def selector: Selector =
-      Selector.forName(selectorName).getOrElse(Selector(Names(selectorName), None))
+  def apply[T <: Store](selectorName: String, stores: Seq[T])(using Selectors): By[T] =
+    apply(summon[Selectors].getForName(selectorName), stores)
 
   abstract class Numbered[+T <: NumberedStore](
-    selectorName: String,
+    override val selector: Selector,
     fromName: String => Option[Int] = NumberedStores.parseNumber,
     toNames: Int => Names = NumberedStores.namesForNumber
-  ) extends WithSelector[T](selectorName), NumberedStores[T]:
+  ) extends By[T], NumberedStores[T]:
     override def name2number(name: String): Option[Int] = fromName(name)
     override def number2names(number: Int): Names = toNames(number)
 
   object Numbered:
     def apply[T <: NumberedStore](
-      selectorName: String,
+      selector: Selector,
       min: Int,
       max: Int,
       name2number: String => Option[Int] = NumberedStores.parseNumber,
       number2names: Int => Names = NumberedStores.namesForNumber
     )(create: (Int, NumberedStores[T]) => T): Numbered[T] =
-      new Numbered[T](selectorName, name2number, number2names):
+      new Numbered[T](selector, name2number, number2names):
         override def minNumber: Int = min
         override def length: Int = max - min + 1
         override protected def createNumberedStore(number: Int): T = create(number, this)
+
+    def apply[T <: NumberedStore](
+      selectorName: String,
+      min: Int,
+      max: Int
+    )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
+      apply(summon[Selectors].getForName(selectorName), min, max)(create)

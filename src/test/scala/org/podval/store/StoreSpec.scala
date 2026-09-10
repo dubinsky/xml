@@ -3,6 +3,13 @@ package org.podval.store
 import org.podval.metadata.Names
 import org.scalatest.funsuite.AnyFunSuite
 
+given Selectors = Selectors(
+  Selector(Names("book")),
+  Selector(Names("part")),
+  Selector(Names("verse")),
+  Selector(Names("chapter"))
+)
+
 final class StoreSpec extends AnyFunSuite:
   private final class Leaf(n: String) extends Store:
     override def names: Names = Names(n)
@@ -45,8 +52,9 @@ final class StoreSpec extends AnyFunSuite:
     assert(Root.resolve("").last.names.hasName("Root"))
   }
 
-  test("By unknown selector uses the raw name") {
-    val by: By[Store] = By("item", Seq(Root.genesis))
+  test("By unknown selector fails; Selector instance does not need a catalog") {
+    intercept[IllegalArgumentException] { By("item", Seq(Root.genesis)) }
+    val by: By[Store] = By(Selector(Names("item")), Seq(Root.genesis))
     assert(by.names.hasName("item"))
     assert(by.findByName("Genesis").contains(Root.genesis))
   }
@@ -236,7 +244,7 @@ final class StoreSpec extends AnyFunSuite:
     object NamedNumbers extends Stores[?]:
       override def names: Names = Names("NamedNumbers")
       val nums: By.Numbered[Num] = By.Numbered(
-        "verse",
+        summon[Selectors].getForName("verse"),
         1,
         3,
         number2names = n => Names(s"n$n")

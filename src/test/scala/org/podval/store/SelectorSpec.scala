@@ -1,28 +1,39 @@
 package org.podval.store
 
+import org.podval.metadata.{Name, Names}
+import org.podval.xml.{XmlParser, Xml as ZioXml}
 import org.scalatest.funsuite.AnyFunSuite
 
 final class SelectorSpec extends AnyFunSuite:
-  test("Selector.getForName") {
-    val inventory: Selector = Selector.getForName("inventory")
-    assert(inventory.names.hasName("inventory"))
-    assert(Selector.getForName("names").plural.exists(_.hasName("Имена")))
-    assert(Selector.getForName("names").pluralOrNames.hasName("Имена"))
-    assert(Selector.getForName("inventory").plural.isEmpty)
-    assert(Selector.getForName("inventory").pluralOrNames.hasName("inventory"))
-    assert(Selector.getForName("parsha").names.hasName("parsha"))
-    assert(Selector.getForName("lesson").names.hasName("урок"))
+  private val catalog: Selectors = Selectors(
+    Selector(Names("book")),
+    Selector(
+      Names(Seq(
+        Name("names", org.podval.metadata.Language.English.toSpec),
+        Name("имена", org.podval.metadata.Language.Russian.toSpec)
+      )),
+      plural = Some(Names(Seq(Name("Имена", org.podval.metadata.Language.Russian.toSpec))))
+    ),
+    Selector(Names("inventory"))
+  )
+
+  test("Selectors.forName and getForName") {
+    assert(catalog.forName("book").isDefined)
+    assert(catalog.getForName("inventory").names.hasName("inventory"))
+    assert(catalog.getForName("names").plural.exists(_.hasName("Имена")))
+    assert(catalog.getForName("names").pluralOrNames.hasName("Имена"))
+    assert(catalog.getForName("inventory").plural.isEmpty)
+    assert(catalog.getForName("inventory").pluralOrNames.hasName("inventory"))
+    assert(catalog.forName("item").isEmpty)
+    intercept[IllegalArgumentException] { catalog.getForName("item") }
   }
 
-  test("Selector.forName matches any language name") {
-    assert(Selector.forName("разряд").isDefined)
-    assert(Selector.forName("category").isDefined)
-    assert(Selector.forName("книга").isDefined)
-    assert(Selector.forName("item").isEmpty)
-  }
+  test("Selector codec") {
+    def decode(xml: String) =
+      Selector.codec.decode(XmlParser.parseXml(xml).toOption.get)(using ZioXml)
 
-  test("catalog has a single day selector") {
-    val days: Seq[Seq[String]] =
-      Selector.values.filter(_.names.hasName("day")).map(_.names.names.map(_.name))
-    assert(days.length == 1, days)
+    val book = decode("""<selector><name lang="en" n="book"/></selector>""").toOption.get
+    assert(book.names.hasName("book"))
+    val encoded = Selector.codec.encode(book)(using ZioXml)
+    assert(Selector.codec.decode(encoded)(using ZioXml).toOption.get.names.hasName("book"))
   }
