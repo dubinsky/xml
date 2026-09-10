@@ -9,17 +9,20 @@ plugins {
 
 description = 'XML AST, codecs, named catalogs, and store path model'
 group = 'org.podval'
-version = '0.0.3'
 
 final String gitHubRepository = 'dubinsky/xml'
 final String gitHubRepositoryUrl = "https://github.com/$gitHubRepository"
 final String orgName = 'Podval Group'
 final String orgUrl = 'https://www.podval.org'
 
-scala.scalaVersion = '3.9.0'
+scala.scalaVersion = providers.gradleProperty('scalaVersion').get()
 
-// Maven Central wants a -javadoc jar; this project is Scala-only, so package scaladoc.
+// Register before `withJavadocJar()` so that call reuses this task (it will not
+// overwrite `from`). Maven Central requires a -javadoc jar; this project is
+// Scala-only, so the classifier carries ScalaDoc.
 tasks.register('javadocJar', Jar) {
+  group = 'build'
+  description = 'Assembles a jar archive containing the ScalaDoc (Maven Central -javadoc classifier).'
   from scaladoc
   archiveClassifier = 'javadoc'
 }
@@ -54,9 +57,9 @@ String tagsoupVersion = '1.2.1'
 dependencies {
   api "dev.zio:zio-blocks-schema_3:$zioBlocksVersion"
   api "dev.zio:zio-blocks-schema-xml_3:$zioBlocksVersion"
-  compileOnlyApi "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
+  compileOnly "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
   testImplementation "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
-  compileOnlyApi "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
+  compileOnly "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
   testImplementation "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
   compileOnly "org.ccil.cowan.tagsoup:tagsoup:$tagsoupVersion"
   testImplementation "org.ccil.cowan.tagsoup:tagsoup:$tagsoupVersion"
@@ -85,6 +88,8 @@ tasks.named("dependencyUpdates").configure {
 tasks.withType(ScalaCompile).configureEach {
   scalaCompileOptions.with {
     additionalParameters = [
+      // Scala 3.9 requires JDK 17+; emit 25 to match the Java toolchain.
+      '-release:25',
       '-new-syntax',
       '-feature',
       '-language:strictEquality',
@@ -94,19 +99,21 @@ tasks.withType(ScalaCompile).configureEach {
 }
 
 // GitHub renders README.adoc as committed; Gradle cannot substitute at view time.
-// Fail check if the Maven snippet drifts from project.version.
-tasks.register('checkReadmeVersion') {
+def expectedReadmeCoordinate = "org.podval:org.podval.xml:${version}"
+def checkReadmeVersion = tasks.register('checkReadmeVersion') {
+  group = 'verification'
+  description = 'Fails if README.adoc Maven coordinates do not match project.version.'
   def readmeFile = file('README.adoc')
   inputs.file(readmeFile)
+  inputs.property('expected', expectedReadmeCoordinate)
   doLast {
-    def expected = "org.podval:org.podval.xml:${project.version}"
     def found = (readmeFile.getText('UTF-8') =~ /org\.podval:org\.podval\.xml:[0-9][0-9A-Za-z._-]*/).findAll().toSet()
-    if (found != [expected] as Set) {
-      throw new GradleException("README.adoc Maven coordinates ${found} must all be ${expected}")
+    if (found != [expectedReadmeCoordinate] as Set) {
+      throw new GradleException("README.adoc Maven coordinates ${found} must all be ${expectedReadmeCoordinate}")
     }
   }
 }
-tasks.named('check').configure { dependsOn('checkReadmeVersion') }
+tasks.named('check') { dependsOn(checkReadmeVersion) }
 
 publishing {
   publications {
@@ -126,6 +133,10 @@ publishing {
         issueManagement {
           system = 'GitHub'
           url = "$gitHubRepositoryUrl/issues"
+        }
+        ciManagement {
+          system = 'GitHub Actions'
+          url = "$gitHubRepositoryUrl/actions"
         }
         licenses {
           license {
