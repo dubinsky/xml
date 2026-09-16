@@ -1,18 +1,24 @@
+pluginManagement {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+  // Pass a String to pluginManagement.includeBuild. A File hits Settings.includeBuild
+  // (regular composite) and settings plugins are not visible.
+  final String conventionsDir = providers.gradleProperty('podvalGradleDir').getOrElse('../podval-gradle')
+  if (file(conventionsDir).isDirectory() && file("${conventionsDir}/settings.gradle").isFile()) {
+    includeBuild conventionsDir
+  }
+}
+
 plugins {
-  // Auto-provision JDKs for the Java toolchain (e.g. 25 when only 21 is installed).
-  id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+  id 'org.podval.conventions.settings'
   // Applies com.gradleup.nmcp to maven-publish projects and aggregation on the root.
   // https://gradleup.com/nmcp/
   id 'com.gradleup.nmcp.settings' version '1.6.2'
 }
 
 rootProject.name = 'org.podval.xml'
-
-dependencyResolutionManagement {
-  repositories {
-    mavenCentral()
-  }
-}
 
 // ./gradlew nmcpZipAggregation — inspect the zip
 // ./gradlew publishAggregationToCentralPortal — upload (USER_MANAGED)
