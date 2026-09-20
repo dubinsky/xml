@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.3.0] - 2026-09-20
+- Construction DSL on `XmlAst`: tag functions, `:=` / `+=`, `ToXmlMod` flattening, `.when`, `inlineJs` / `externalJs`.
+  Inspired by ZIO Blocks HTML.
+- `import org.podval.xml.dsl.{*, given}` re-exports Xml-backed tags, keys, and `ToXmlMod` / `Conversion` givens.
+- Drop `Html.toHtml`; convert with `element.to[Html.Element]` (`import Html.given`).
+
 ## [0.2.0] - 2026-09-19
 - `XmlWriterConfig.rawText`: HTML raw-text elements keep newlines, skip `encodeXmlSpecials`, and break `</` via
   `XmlEncode.protectHtmlRawText`.

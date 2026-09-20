@@ -4,10 +4,10 @@
 
 Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
 
-Maven coordinates: `org.podval:org.podval.xml:0.2.0`
+Maven coordinates: `org.podval:org.podval.xml:0.3.0`
 
 ----
-implementation 'org.podval:org.podval.xml:0.2.0'
+implementation 'org.podval:org.podval.xml:0.3.0'
 ----
 
 `zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
@@ -27,8 +27,9 @@ One artifact (`org.podval:org.podval.xml`).
 It will not be split into separate Gradle or Maven modules; consumers depend on this coordinate and import the
 packages they need.
 
-`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; SAX parser (CDATA preserved) and builder,
-both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder (`XmlCodec`).
+`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; construction DSL (`org.podval.xml.dsl`); SAX
+parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder
+(`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
 key).
 `org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the
@@ -44,7 +45,7 @@ Numbered URL names stay digits; extra names in `number2names` still round-trip.
 `XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`).
 `parseXml(s)` infers ZIO Blocks XML.
 For HTML or Scala XML ASTs, import `Html.given` / `ScalaXml.given`.
-Convert with `import Html.toHtml` then `element.toHtml` (does not need `Html.given`).
+Convert with `element.to[TO]` (HTML: `element.to[Html.Element]` after `import Html.given`).
 `parseHtml` uses TagSoup (HTML only: no namespaces, names are lower-cased; not for TEI).
 `xi:include` is not expanded (`xi:include/@href` stays a page ref).
 `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and
@@ -166,11 +167,24 @@ Then release the deployment at https://central.sonatype.com/publishing/deploymen
 
 === XML generation
 
-In web-apps, I need to generate XML.
-I tried using https://com-lihaoyi.github.io/scalatags/[ScalaTags] for that, and they work, but there is no clean
-https://github.com/lihaoyi/scalatags/issues/102[interoperability] with Scala XML, so generating - say - HTML wrappers
-for XML parsed from files is not pleasant, and since ScalaTags does not (in my opinion) have obvious advantages over
-Scala XML, I decided not to bother with it.
+Construction of wrappers around parsed XML lives on `XmlAst` (default `given Xml`).
+The DSL was inspired by https://github.com/zio/zio-blocks[ZIO Blocks HTML] (`zio-blocks-html` 0.0.51:
+tag functions, `:=` / `+=`, `ToModifier` flattening, `.when`, `inlineJs` / `externalJs`).
+`import org.podval.xml.dsl.{*, given}` (or `Xml.div` / `Html.div`) builds the same tree as parsed markup.
+
+----
+div(className := "toc", h3("Table of Contents"), ul(items))
+script(typeAttr := "module").inlineJs(code)
+element("urlset", xmlns := ns, urls)
+----
+
+I tried https://com-lihaoyi.github.io/scalatags/[ScalaTags] for generation, and they work, but there is no clean
+https://github.com/lihaoyi/scalatags/issues/102[interoperability] with parsed XML, so generating HTML wrappers for XML
+parsed from files is not pleasant.
+A second HTML AST (including zio-blocks-html as a construction-only tree) has the same problem.
+This DSL builds `Xml.Element` (or any `XmlAst`) instead.
+
+Convert another AST with `element.to[TO]` (HTML: `element.to[Html.Element]` after `import Html.given`).
 
 === XML pretty-printing
 

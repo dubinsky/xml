@@ -6,7 +6,7 @@ package org.podval.xml
   * - ZIO Blocks HTML
   * - Scala XML
   */
-trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
+trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT], XmlAstDsl[ELEMENT]:
   final type Element = ELEMENT
 
   type Node >: Element
