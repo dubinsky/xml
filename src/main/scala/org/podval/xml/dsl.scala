@@ -81,12 +81,6 @@ object dsl:
     datetime,
     xmlns,
     aria,
-    attr,
-    dataAttr
+    attr
   }
-  given xmlMod: Xml.ToXmlMod[Xml.XmlMod] = Xml.ToXmlMod.xmlMod
-  given string: Xml.ToXmlMod[String] = Xml.ToXmlMod.string
-  given node: Xml.ToXmlMod[Xml.Node] = Xml.ToXmlMod.node
-  given option: [A] => Xml.ToXmlMod[A] => Xml.ToXmlMod[Option[A]] = Xml.ToXmlMod.option
-  given seq: [A] => Xml.ToXmlMod[A] => Xml.ToXmlMod[Seq[A]] = Xml.ToXmlMod.seq
-  given conversion: [A] => Xml.ToXmlMod[A] => Conversion[A, Xml.XmlMod] = Xml.ToXmlMod.conversion
+  export Xml.ToXmlMod.given

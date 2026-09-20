@@ -16,12 +16,7 @@ private[xml] trait XmlAstDsl[ELEMENT]:
   trait ToXmlMod[-A]:
     def toMod(a: A): XmlMod
 
-  trait LowPriorityToXmlMod:
-    given iterable: [A] => ToXmlMod[A] => ToXmlMod[Iterable[A]]:
-      def toMod(as: Iterable[A]): XmlMod =
-        XmlMod.Many(as.iterator.map(summon[ToXmlMod[A]].toMod).toSeq)
-
-  object ToXmlMod extends LowPriorityToXmlMod:
+  object ToXmlMod:
     given xmlMod: ToXmlMod[XmlMod]:
       def toMod(a: XmlMod): XmlMod = a
     given string: ToXmlMod[String]:
@@ -40,8 +35,7 @@ private[xml] trait XmlAstDsl[ELEMENT]:
   final class Attr(val name: XmlName):
     def :=(value: String): XmlMod = XmlMod.SetAttr(name, value)
     def :=(value: Boolean): XmlMod =
-      if value then XmlMod.SetAttr(name, "true") else XmlMod.Empty
-    def :=(value: Int): XmlMod = XmlMod.SetAttr(name, value.toString)
+      XmlMod.SetAttr(name, if value then "true" else "")
 
   final class MultiAttr(name: XmlName, separator: String = " "):
     def :=(value: String): XmlMod = XmlMod.SetAttr(name, value)
@@ -79,8 +73,6 @@ private[xml] trait XmlAstDsl[ELEMENT]:
   extension (element: Element)
     def when(condition: Boolean)(mods: Conversion.into[XmlMod]*): Element =
       if condition then applyMods(element, mods) else element
-    def whenSome[T](option: Option[T])(f: T => Seq[XmlMod]): Element =
-      option.fold(element)(v => applyMods(element, f(v)))
     def inlineJs(code: String): Element =
       applyMods(element, Seq(XmlMod.Child(text(code))))
     def externalJs(url: String): Element =
@@ -114,7 +106,6 @@ private[xml] trait XmlAstDsl[ELEMENT]:
 
   def aria(name: String): Attr = Attr(attrName(s"aria-$name"))
   def attr(qName: String): Attr = Attr(attrName(qName))
-  def dataAttr(name: String): Attr = Attr(attrName(s"data-$name"))
 
   def a(mods: Conversion.into[XmlMod]*): Element = tagged("a", mods)
   def article(mods: Conversion.into[XmlMod]*): Element = tagged("article", mods)

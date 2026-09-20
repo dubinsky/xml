@@ -46,6 +46,9 @@ final class XmlDslSpec extends AnyFunSuite:
     assert(hiddenFalse.contains("""id="x""""), hiddenFalse)
     val hiddenTrue: String = render(div(hidden := true))
     assert(hiddenTrue.contains("""hidden="true""""), hiddenTrue)
+    val unset: String = render(div(hidden := true, hidden := false, id := "x"))
+    assert(!unset.contains("hidden"), unset)
+    assert(unset.contains("""id="x""""), unset)
   }
 
   test("attributes stay in insertion order, not alphabetical") {
