@@ -112,13 +112,12 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT], XmlA
       comment: String => A,
       processingInstruction: (String, String) => A,
       unknown: => A
-    ): A =
-      node.asElement.map(element)
-        .orElse(node.asCData.map(cdata))
-        .orElse(node.asText.map(text))
-        .orElse(node.asComment.map(comment))
-        .orElse(node.asProcessingInstruction.map(processingInstruction.tupled))
-        .getOrElse(unknown)
+    ): A = node.asElement.map(element)
+      .orElse(node.asCData.map(cdata))
+      .orElse(node.asText.map(text))
+      .orElse(node.asComment.map(comment))
+      .orElse(node.asProcessingInstruction.map(processingInstruction.tupled))
+      .getOrElse(unknown)
 
     def asElement: Option[Element]
 

@@ -143,14 +143,13 @@ private def fromName(
 
 private def fromAttributes(
   attributes: Attributes
-): Seq[(XmlName, String)] =
-  (0 until attributes.getLength).map: i =>
-    (
-      fromName(
-        uri = attributes.getURI(i),
-        localName = attributes.getLocalName(i),
-        qName = attributes.getQName(i),
-        isAttribute = true
-      ),
-      attributes.getValue(i)
-    )
+): Seq[(XmlName, String)] = (0 until attributes.getLength).map: i =>
+  (
+    fromName(
+      uri = attributes.getURI(i),
+      localName = attributes.getLocalName(i),
+      qName = attributes.getQName(i),
+      isAttribute = true
+    ),
+    attributes.getValue(i)
+  )
