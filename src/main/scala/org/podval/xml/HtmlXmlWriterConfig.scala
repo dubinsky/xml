@@ -2,6 +2,7 @@ package org.podval.xml
 
 object HtmlXmlWriterConfig extends XmlWriterConfig(
   preformat = Set(XmlElement.Pre.localName),
+  rawText = Set(XmlElement.Script.localName, XmlElement.Style.localName),
   stack = Set("nav", "header", "main", XmlElement.Div.localName),
   // Phrasing wrappers: never indent children (that would become a visible HTML space),
   // and glue to the previous element so `<em>a</em><strong>b</strong>` stays inline.

@@ -164,3 +164,50 @@ final class XmlWriterSpec extends AnyFunSuite:
     val inner: String = dumped.substring(dumped.indexOf('>') + 1, dumped.lastIndexOf('<'))
     assert(!inner.contains('\n'), inner)
   }
+
+  test("plain writer still encodes <script> text") {
+    val dumped: String = render(Xml.element(XmlElement.Script).setText("a < b && c"))
+    assert(dumped.contains("a &lt; b &amp;&amp; c"), dumped)
+    assert(!dumped.contains("a < b"), dumped)
+  }
+
+  test("custom rawText does not encode script text") {
+    val dumped: String = XmlWriterConfig(rawText = Set("script")).render(
+      Xml.element(XmlElement.Script).setText("a < b && c")
+    )
+    assert(dumped.contains("a < b && c"), dumped)
+    assert(!dumped.contains("&lt;"), dumped)
+    assert(!dumped.contains("&amp;"), dumped)
+  }
+
+  test("rawText wins dual membership with preformat") {
+    val dumped: String = XmlWriterConfig(
+      preformat = Set("script"),
+      rawText = Set("script")
+    ).render(Xml.element(XmlElement.Script).setText("a < b"))
+    assert(dumped.contains("a < b"), dumped)
+    assert(!dumped.contains("&lt;"), dumped)
+  }
+
+  test("plus unions rawText") {
+    val combined: XmlWriterConfig = HtmlXmlWriterConfig.plus(XmlWriterConfig.Plain)
+    assert(combined.rawText.contains(XmlElement.Script.localName))
+    assert(combined.rawText.contains(XmlElement.Style.localName))
+    val fromPlain: XmlWriterConfig = XmlWriterConfig.Plain.plus(HtmlXmlWriterConfig)
+    assert(fromPlain.rawText.contains(XmlElement.Script.localName))
+  }
+
+  test("preformat concatenates adjacent text") {
+    val dumped: String = XmlWriterConfig(preformat = Set("pre")).render(
+      Xml.element(XmlElement.Pre).setChildren(Seq(Xml.text("a"), Xml.text("b")))
+    )
+    assert(dumped.contains(">ab<"), dumped)
+    assert(!dumped.contains("a\nb"), dumped)
+  }
+
+  test("plain CDATA in script stays a CDATA section") {
+    val dumped: String = render(
+      Xml.element(XmlElement.Script.qName, Seq.empty, Seq(Xml.cdata("a < b")))
+    )
+    assert(dumped.contains("<![CDATA[a < b]]>"), dumped)
+  }

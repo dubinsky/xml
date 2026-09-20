@@ -6,6 +6,8 @@ object XmlWriterConfig:
 // Describes how to write an XML dialect. Element-name sets match local names.
 open class XmlWriterConfig(
   val preformat: Set[String] = Set.empty,
+  // HTML raw-text: preserve layout like preformat, do not entity-encode text, break `</`.
+  val rawText: Set[String] = Set.empty,
   val stack: Set[String] = Set.empty,
   // Phrasing: do not indent children, and glue to the previous element (same as cling).
   val unStack: Set[String] = Set.empty,
@@ -18,6 +20,7 @@ open class XmlWriterConfig(
 ):
   def plus(other: XmlWriterConfig): XmlWriterConfig = XmlWriterConfig(
     preformat = preformat ++ other.preformat,
+    rawText = rawText ++ other.rawText,
     stack = stack ++ other.stack,
     unStack = unStack ++ other.unStack,
     nest = nest ++ other.nest,

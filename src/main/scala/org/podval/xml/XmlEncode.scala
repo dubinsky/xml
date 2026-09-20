@@ -14,6 +14,10 @@ object XmlEncode:
   def encodeXmlSpecials(string: String): String =
     encodeAmpersands(string).replace("<", "&lt;")
 
+  /** HTML raw-text body: no entity encoding; break `</` so the parser does not close the element. */
+  def protectHtmlRawText(string: String): String =
+    string.replace("</", "<\\/")
+
   // Note: maybe use single quotes if the value contains double quote?
   def quote(value: String): String =
     "\"" + encodeXmlSpecials(value).replace("\"", "&quot;") + "\""

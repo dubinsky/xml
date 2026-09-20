@@ -42,6 +42,19 @@ object XmlWriter:
     canBreakLeft: Boolean,
     canBreakRight: Boolean
   )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
+    val name: XmlName = element.getName
+    if name.localNameIn(config.rawText) then
+      Doc.text(rawTextElement(element).mkString(hiddenNewline.toString))
+    else if name.localNameIn(config.preformat) then
+      Doc.text(preformatElement(element).mkString(hiddenNewline.toString))
+    else
+      fromMixedElement(element, canBreakLeft, canBreakRight)
+
+  private def fromMixedElement[Element](
+    element: Element,
+    canBreakLeft: Boolean,
+    canBreakRight: Boolean
+  )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
     val attributeValues: Seq[(String, String)] = writeAttributes(element)
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
@@ -218,14 +231,9 @@ object XmlWriter:
     canBreakRight: Boolean
   ): Doc = node.fold(
     element = (element: ast.Element) =>
-      val name: XmlName = element.getName
-      if name.localNameIn(config.preformat)
-      then
-        Doc.text(preformatElement(element).mkString(hiddenNewline.toString))
-      else
-        val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
-        // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
-        if canBreakRight && name.localNameIn(config.break) then result + Doc.hardLine else result
+      val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
+      // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
+      if canBreakRight && element.getName.localNameIn(config.break) then result + Doc.hardLine else result
     ,
     text = value => Doc.text(XmlEncode.encodeXmlSpecials(value)),
     cdata = value => Doc.text(cdataMarkup(value)),
@@ -234,13 +242,32 @@ object XmlWriter:
     unknown = Doc.text(XmlEncode.encodeXmlSpecials(node.getText))
   )
 
-  private def preformatElement[Element: XmlAst](element: Element)(using config: XmlWriterConfig): Seq[String] =
-    val attributes: String =
-      val pairs: Seq[(String, String)] = writeAttributes(element)
-      if pairs.isEmpty then ""
-      else pairs.map((name, value) => s"$name=${XmlEncode.quote(value)}").mkString(" ", " ", "")
+  private enum LiteralPart[N]:
+    case Run(text: String)
+    case Other(node: N)
 
-    val children: Seq[String] = element.getChildren.flatMap(preformat)
+  private def coalesce[N](nodes: Seq[N], asRun: N => Option[String]): List[LiteralPart[N]] =
+    nodes.foldLeft(List.empty[LiteralPart[N]]): (acc, node) =>
+      asRun(node) match
+        case Some(text) => acc match
+          case LiteralPart.Run(prev) :: rest => LiteralPart.Run(prev + text) :: rest
+          case _ => LiteralPart.Run(text) :: acc
+        case None => LiteralPart.Other(node) :: acc
+    .reverse
+
+  private def splitLines(text: String): Seq[String] =
+    text.split("\n", -1).toSeq
+
+  private def literalAttributes[Element: XmlAst](element: Element): String =
+    val pairs: Seq[(String, String)] = writeAttributes(element)
+    if pairs.isEmpty then ""
+    else pairs.map((name, value) => s"$name=${XmlEncode.quote(value)}").mkString(" ", " ", "")
+
+  private def wrapLiteral[Element: XmlAst](
+    element: Element,
+    children: Seq[String]
+  )(using config: XmlWriterConfig): Seq[String] =
+    val attributes: String = literalAttributes(element)
     val qName: String = element.getName.qName
     if children.isEmpty then
       if element.getName.localNameIn(config.selfClose)
@@ -249,14 +276,40 @@ object XmlWriter:
     else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
     else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")
 
-  private def preformat(using ast: XmlAst[?], config: XmlWriterConfig)(node: ast.Node): Seq[String] = node.fold(
-    element = preformatElement,
-    text = preformat,
-    cdata = value => Seq(cdataMarkup(value)),
-    comment = value => Seq(commentMarkup(value)),
-    processingInstruction = (target, data) => Seq(processingInstructionMarkup(target, data)),
-    unknown = preformat(node.getText)
-  )
+  private def rawTextElement[Element: XmlAst](element: Element)(using config: XmlWriterConfig): Seq[String] =
+    val inner: String = rawInner(element.getChildren)
+    if inner.isEmpty then wrapLiteral(element, Seq.empty)
+    else wrapLiteral(element, splitLines(XmlEncode.protectHtmlRawText(inner)))
+
+  private def rawInner(using ast: XmlAst[?], config: XmlWriterConfig)(nodes: ast.Nodes): String =
+    coalesce(nodes, node => node.asText.orElse(node.asCData)).map:
+      case LiteralPart.Run(text) => text
+      case LiteralPart.Other(node) => node.fold(
+        element = el => rawTextElement(el).mkString("\n"),
+        text = identity,
+        cdata = identity,
+        comment = commentMarkup,
+        processingInstruction = (target, data) => processingInstructionMarkup(target, data),
+        unknown = node.getText
+      )
+    .mkString
+
+  private def preformatElement[Element: XmlAst](element: Element)(using config: XmlWriterConfig): Seq[String] =
+    wrapLiteral(element, preformatChildren(element.getChildren))
+
+  private def preformatChildren(using ast: XmlAst[?], config: XmlWriterConfig)(nodes: ast.Nodes): Seq[String] =
+    coalesce(nodes, _.asText).flatMap:
+      case LiteralPart.Run(text) => splitLines(XmlEncode.encodeXmlSpecials(text))
+      case LiteralPart.Other(node) => node.fold(
+        element = el =>
+          if el.getName.localNameIn(config.rawText) then rawTextElement(el)
+          else preformatElement(el),
+        text = t => splitLines(XmlEncode.encodeXmlSpecials(t)),
+        cdata = value => Seq(cdataMarkup(value)),
+        comment = value => Seq(commentMarkup(value)),
+        processingInstruction = (target, data) => Seq(processingInstructionMarkup(target, data)),
+        unknown = splitLines(XmlEncode.encodeXmlSpecials(node.getText))
+      )
 
   private def commentMarkup(value: String): String =
     hideNewlines(XmlMisc.Comment(value).markup)
@@ -275,6 +328,3 @@ object XmlWriter:
       .map(part => s"<![CDATA[$part]]>")
       .mkString
     )
-
-  private def preformat(string: String): Seq[String] =
-    XmlEncode.encodeXmlSpecials(string).split("\n").toSeq

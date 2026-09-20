@@ -26,3 +26,10 @@ final class XmlEncodeSpec extends AnyFunSuite:
     assert(XmlEncode.quote("a & b < \"c\"") == "\"a &amp; b &lt; &quot;c&quot;\"")
     assert(XmlEncode.quote("a&nbsp;b") == "\"a&nbsp;b\"")
   }
+
+  test("protectHtmlRawText breaks </ and is idempotent") {
+    assert(XmlEncode.protectHtmlRawText("a < b && c") == "a < b && c")
+    assert(XmlEncode.protectHtmlRawText("a</script>b") == "a<\\/script>b")
+    assert(XmlEncode.protectHtmlRawText("a</SCRIPT>b") == "a<\\/SCRIPT>b")
+    assert(XmlEncode.protectHtmlRawText("a<\\/script>b") == "a<\\/script>b")
+  }
