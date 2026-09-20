@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import Html.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
 import zio.blocks.html.{Js, script, `type`}
@@ -7,6 +8,9 @@ import zio.blocks.html.{Js, script, `type`}
 final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
   private def render(element: Xml.Element, width: Int = 40): String =
     HtmlXmlWriterConfig.render(element, width)
+
+  private def renderHtml(element: Html.Element): String =
+    HtmlXmlWriterConfig.render(element)
 
   test("span with two element children is not indented (no HTML space inside)") {
     val ref: Xml.Element = Xml
@@ -127,13 +131,13 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
   }
 
   test("inlineJs already broken </ is not double-escaped") {
-    val dumped: String = HtmlXmlWriterConfig.render(script().inlineJs(Js("a</script>b")))
+    val dumped: String = renderHtml(script().inlineJs(Js("a</script>b")))
     assert(dumped.contains("""a<\/script>b"""), dumped)
     assert(!dumped.contains("""a<\\/script>b"""), dumped)
   }
 
   test("script(Js) without inlineJs still breaks </") {
-    val dumped: String = HtmlXmlWriterConfig.render(script(Js("a</script>b")))
+    val dumped: String = renderHtml(script(Js("a</script>b")))
     assert(dumped.contains("""a<\/script>b"""), dumped)
   }
 
@@ -150,7 +154,7 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
   }
 
   test("module and json-ld scripts use the same raw rules") {
-    val module: String = HtmlXmlWriterConfig.render(
+    val module: String = renderHtml(
       script(`type` := "module").inlineJs(Js("if (a < b) {}"))
     )
     assert(module.contains("if (a < b) {}"), module)
@@ -211,7 +215,7 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
     )
     assert(xml.contains(">ab<"), xml)
     assert(!xml.contains("a\nb"), xml)
-    val html: String = HtmlXmlWriterConfig.render(script(Js("a"), Js("b")))
+    val html: String = renderHtml(script(Js("a"), Js("b")))
     assert(html.contains(">ab<"), html)
     assert(!html.contains("a\nb"), html)
   }

@@ -185,6 +185,8 @@ A second HTML AST (including zio-blocks-html as a construction-only tree) has th
 This DSL builds `Xml.Element` (or any `XmlAst`) instead.
 
 Convert another AST with `element.to[TO]` (HTML: `element.to[Html.Element]` after `import Html.given`).
+`HtmlXmlWriterConfig.render` is the inherited generic `XmlWriterConfig.render[E: XmlAst]`; write an `Html.Element` with
+`import Html.given`.
 
 === XML pretty-printing
 

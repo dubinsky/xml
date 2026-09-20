@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Inspired by ZIO Blocks HTML.
 - `import org.podval.xml.dsl.{*, given}` re-exports Xml-backed tags, keys, and `ToXmlMod` / `Conversion` givens.
 - Drop `Html.toHtml`; convert with `element.to[Html.Element]` (`import Html.given`).
+- Drop `HtmlXmlWriterConfig.render(Html.Element)` overloads.
+  `render` is the inherited generic (`XmlWriterConfig.render[E: XmlAst]`); HTML trees need `import Html.given`.
 
 ## [0.2.0] - 2026-09-19
 - `XmlWriterConfig.rawText`: HTML raw-text elements keep newlines, skip `encodeXmlSpecials`, and break `</` via

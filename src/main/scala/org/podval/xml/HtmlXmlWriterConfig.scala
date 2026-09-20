@@ -19,9 +19,4 @@ object HtmlXmlWriterConfig extends XmlWriterConfig(
     "area", "base", XmlElement.Br.localName, "col", "embed", "hr", XmlElement.Img.localName, "input",
     "link", "meta", "source", "track", "wbr"
   )
-):
-  def render(element: Html.Element): String =
-    XmlWriter.render(this, element, XmlWriter.widthDefault)(using Html)
-
-  def render(element: Html.Element, width: Int): String =
-    XmlWriter.render(this, element, width)(using Html)
+)
