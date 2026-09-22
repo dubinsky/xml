@@ -7,25 +7,22 @@ private[xml] trait XmlAstCssClass[ELEMENT]:
   extension (element: Element)
     def getClasses: Seq[String] = element
       .get(XmlAttribute.CssClass)
-      .fold(Seq.empty): element =>
-        element
-          .split(' ')
-          .toIndexedSeq
-          .map(_.trim)
-          .filterNot(_.isEmpty)
+      .fold(Seq.empty)(_
+        .split(' ')
+        .toIndexedSeq
+        .map(_.trim)
+        .filterNot(_.isEmpty)
+      )
 
-    def setClasses(values: Seq[String]): Element =
-      element.set(XmlAttribute.CssClass, values.mkString(" "))
+    def setClasses(values: Seq[String]): Element = element.set(XmlAttribute.CssClass, values.mkString(" "))
 
     def has(cssClass: CssClass): Boolean = hasClass(cssClass.name)
 
     def hasClass(cssClass: String): Boolean = element.getClasses.contains(cssClass)
 
-    def add(cssClass: Option[CssClass]): Element =
-      cssClass.fold(element)(element.add)
+    def add(cssClass: Option[CssClass]): Element = cssClass.fold(element)(element.add)
 
-    def add(cssClass: CssClass): Element =
-      addClass(cssClass.name)
+    def add(cssClass: CssClass): Element = addClass(cssClass.name)
 
     def addClass(cssClass: String): Element =
       val list = element.getClasses
