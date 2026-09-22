@@ -1,12 +1,13 @@
 package org.podval.xml
 
+import ZioBlocksXml.given
 import zio.blocks.schema.Schema
 import zio.blocks.schema.derive.Deriver
 import zio.blocks.schema.xml.Xml as XML
 import zio.blocks.typeid.TypeId
 import scala.util.control.NonFatal
 
-/** Identity codec field type. Same as `Xml.Element`.
+/** Identity codec field type. Same as `ZioBlocksXml.Element`.
  *  It has to have Schema instance, so it must be a real type... */
 type XmlTree = XML.Element
 
@@ -28,14 +29,15 @@ given xmlElementSchema: Schema[XML.Element] = XmlTree.schema
   * )
   * given Schema[Language] = Schema.derived
   * val codec: XmlCodec[Language] = XmlCodec.derived
-  * val el: Xml.Element = codec.encode(Language("ru"))
+  * val el: ZioBlocksXml.Element = codec.encode(Language("ru"))
   * }}}
   *
-  * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
+  * Identity fields are `ZioBlocksXml.Element` (alias [[XmlTree]]). The child tag is the field
   * name unless `@Modifier.config(XmlCodec.Element, …)` overrides it. `encode` is
   * polymorphic in the AST; pin it with a type ascription when more than one `XmlAst`
-  * is in scope. Other packages `import XmlCodec.given` (or `import org.podval.xml.given`)
-  * for `Schema[Xml.Element]`.
+  * is in scope. `import ZioBlocksXml.given` to select that AST.
+  * Other packages `import XmlCodec.given` (or `import org.podval.xml.given`)
+  * for `Schema[ZioBlocksXml.Element]`.
   *
   * `@Modifier.config(XmlCodec.IgnoreUnknown, "")` on a record skips leftover
   * attributes, elements, and character content. `@Modifier.config(XmlCodec.Include, "")`
@@ -64,15 +66,15 @@ object XmlCodec:
     override def isRecordLike: Boolean = true
     override def isIdentity: Boolean = true
     override def unsafeDecode[E: XmlAst](element: E): XmlTree = toZioElement(element)
-    override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E = fromZioElement(Xml.withName(value, name))
+    override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E = fromZioElement(ZioBlocksXml.withName(value, name))
     override def encode[E: XmlAst](value: XmlTree): E = fromZioElement(value)
 
   private def toZioElement[E: XmlAst](element: E): XmlTree =
-    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[XmlTree]
+    if summon[XmlAst[E]] eq ZioBlocksXml then element.asInstanceOf[XmlTree]
     else element.to[XML.Element]
 
   private def fromZioElement[E: XmlAst](element: XmlTree): E =
-    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[E]
+    if summon[XmlAst[E]] eq ZioBlocksXml then element.asInstanceOf[E]
     else element.to[E]
 
   val deriver: Deriver[XmlCodec] = XmlCodecDeriver
@@ -149,5 +151,5 @@ trait XmlCodec[A]:
   /** Nested record/identity: child name comes from the type (or an override), not from a primitive wrapper. */
   def isRecordLike: Boolean = false
 
-  /** Identity `Xml.Element` field: child tag is the Scala field name unless overridden. */
+  /** Identity `ZioBlocksXml.Element` field: child tag is the Scala field name unless overridden. */
   def isIdentity: Boolean = false

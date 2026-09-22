@@ -4,7 +4,11 @@ import zio.blocks.chunk.Chunk
 import zio.blocks.schema.xml.Xml as XML
 
 // XML AST for ZIO Blocks XML
-given Xml: XmlAst[XML.Element]:
+// `import ZioBlocksXml.given` to parse/write this AST
+// convert with `element.to[ZioBlocksXml.Element]`.
+object ZioBlocksXml extends XmlAst[XML.Element]:
+  given ZioBlocksXml.type = this
+
   override type Node = XML
 
   override def text(text: String): Node = XML.Text(text)

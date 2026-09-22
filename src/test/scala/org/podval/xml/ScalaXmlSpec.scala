@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import ZioBlocksXml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -61,8 +62,8 @@ final class ScalaXmlSpec extends AnyFunSuite:
   }
 
   test("to round-trips Xml through ScalaXml") {
-    val xml: Xml.Element = XmlParser.parseXml("""<p xml:id="x"><q>a</q>b</p>""").toOption.get
-    val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
+    val xml: ZioBlocksXml.Element = XmlParser.parseXml("""<p xml:id="x"><q>a</q>b</p>""").toOption.get
+    val round: ZioBlocksXml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.isElement(XmlElement.P))
     assert(round.get(XmlAttribute.XmlId).contains("x"))
     assert(round.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("q"))
@@ -70,16 +71,16 @@ final class ScalaXmlSpec extends AnyFunSuite:
   }
 
   test("to round-trips CDATA through ScalaXml") {
-    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
+    val xml: ZioBlocksXml.Element = ZioBlocksXml.element(XmlElement.P.qName, Seq.empty, Seq(ZioBlocksXml.cdata("a<b")))
     val scalaXml: ScalaXml.Element = xml.to[ScalaXml.Element]
     assert(ScalaXml.getChildren(scalaXml).flatMap(ScalaXml.asCData) == Seq("a<b"))
-    val round: Xml.Element = ScalaXml.converted(scalaXml)
+    val round: ZioBlocksXml.Element = ScalaXml.converted(scalaXml)
     assert(round.getChildren.flatMap(_.asCData) == Seq("a<b"))
   }
 
   test("to round-trips comments and processing instructions through ScalaXml") {
-    val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c--><?pi d?>b</p>").toOption.get
-    val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
+    val xml: ZioBlocksXml.Element = XmlParser.parseXml("<p>a<!--c--><?pi d?>b</p>").toOption.get
+    val round: ZioBlocksXml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.getChildren.flatMap(_.asText) == Seq("a", "b"))
     assert(round.getChildren.flatMap(_.asComment) == Seq("c"))
     assert(round.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")))

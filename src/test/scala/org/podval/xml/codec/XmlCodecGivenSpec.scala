@@ -1,6 +1,7 @@
 package org.podval.xml.codec
 
-import org.podval.xml.{Xml, XmlCodec, XmlParser}
+import org.podval.xml.{ZioBlocksXml, XmlCodec, XmlParser}
+import ZioBlocksXml.given
 import XmlCodec.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.schema.Schema
@@ -14,6 +15,6 @@ final class XmlCodecGivenSpec extends AnyFunSuite:
     assert(decoded.body.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
   }
 
-final case class Note(body: Xml.Element)
+final case class Note(body: ZioBlocksXml.Element)
 object Note:
   given schema: Schema[Note] = Schema.derived

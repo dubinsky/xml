@@ -11,8 +11,10 @@ implementation 'org.podval:org.podval.xml:0.3.0'
 ----
 
 `zio-blocks-schema` and `zio-blocks-schema-xml` come in transitively (`XmlCodec`, `XmlParser`).
-HTML and Scala XML ASTs need an extra dependency, not pulled in by default.
-Bring their givens in with `import Html.given` / `import ScalaXml.given`.
+Each AST given is on its object, not in the package.
+Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or `import ScalaXml.given`.
+`import org.podval.xml.dsl.given` summons `ZioBlocksXml`.
+HTML and Scala XML need an extra dependency, not pulled in by default.
 `parseHtml` needs TagSoup (also not on the POM):
 
 ----
@@ -27,9 +29,9 @@ One artifact (`org.podval:org.podval.xml`).
 It will not be split into separate Gradle or Maven modules; consumers depend on this coordinate and import the
 packages they need.
 
-`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML, Scala XML, and HTML; construction DSL (`org.podval.xml.dsl`); SAX
-parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder
-(`XmlCodec`).
+`org.podval.xml`:: AST (`XmlAst`) over ZIO Blocks XML (`ZioBlocksXml`), Scala XML, and ZIO Blocks HTML; construction DSL
+(`org.podval.xml.dsl`); SAX parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`;
+Schema-derived document binder (`XmlCodec`).
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
 key).
 `org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the
@@ -42,10 +44,11 @@ Numbered URL names stay digits; extra names in `number2names` still round-trip.
 
 == Parse
 
-`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type, or `given Xml`).
-`parseXml(s)` infers ZIO Blocks XML.
-For HTML or Scala XML ASTs, import `Html.given` / `ScalaXml.given`.
-Convert with `element.to[TO]` (HTML: `element.to[Html.Element]` after `import Html.given`).
+`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type).
+There is no package-level default.
+Import `ZioBlocksXml.given` for ZIO Blocks XML, `ZioBlocksHtml.given` for ZIO Blocks HTML, or `ScalaXml.given` for
+Scala XML.
+Convert with `element.to[TO]` (`element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`).
 `parseHtml` uses TagSoup (HTML only: no namespaces, names are lower-cased; not for TEI).
 `xi:include` is not expanded (`xi:include/@href` stays a page ref).
 `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and
@@ -130,8 +133,9 @@ Xerces nested `xml:base` is still wrong (https://issues.apache.org/jira/browse/X
 
 `XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes
 on leaf records).
-Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`)
-for `Schema[Xml.Element]`.
+Identity fields are `ZioBlocksXml.Element` (child tag = field name); `import XmlCodec.given` (or
+`import org.podval.xml.given`) for `Schema[ZioBlocksXml.Element]`.
+Encoding that field needs `import ZioBlocksXml.given` (or `import org.podval.xml.dsl.given`).
 Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`.
 `@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`.
 Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`,
@@ -167,10 +171,11 @@ Then release the deployment at https://central.sonatype.com/publishing/deploymen
 
 === XML generation
 
-Construction of wrappers around parsed XML lives on `XmlAst` (default `given Xml`).
+Construction of wrappers around parsed XML lives on `XmlAst`.
 The DSL was inspired by https://github.com/zio/zio-blocks[ZIO Blocks HTML] (`zio-blocks-html` 0.0.51:
 tag functions, `:=` / `+=`, `ToModifier` flattening, `.when`, `inlineJs` / `externalJs`).
-`import org.podval.xml.dsl.{*, given}` (or `Xml.div` / `Html.div`) builds the same tree as parsed markup.
+`import org.podval.xml.dsl.{*, given}` (or `ZioBlocksXml.div` / `ZioBlocksHtml.div`) builds the same tree as parsed
+markup.
 
 ----
 div(className := "toc", h3("Table of Contents"), ul(items))
@@ -182,11 +187,12 @@ I tried https://com-lihaoyi.github.io/scalatags/[ScalaTags] for generation, and 
 https://github.com/lihaoyi/scalatags/issues/102[interoperability] with parsed XML, so generating HTML wrappers for XML
 parsed from files is not pleasant.
 A second HTML AST (including zio-blocks-html as a construction-only tree) has the same problem.
-This DSL builds `Xml.Element` (or any `XmlAst`) instead.
+This DSL builds `ZioBlocksXml.Element` (or any `XmlAst`) instead.
 
-Convert another AST with `element.to[TO]` (HTML: `element.to[Html.Element]` after `import Html.given`).
-`HtmlXmlWriterConfig.render` is the inherited generic `XmlWriterConfig.render[E: XmlAst]`; write an `Html.Element` with
-`import Html.given`.
+Convert another AST with `element.to[TO]`
+(HTML: `element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`).
+`HtmlXmlWriterConfig.render` is the inherited generic `XmlWriterConfig.render[E: XmlAst]`.
+Write a `ZioBlocksHtml.Element` with `import ZioBlocksHtml.given`.
 
 === XML pretty-printing
 

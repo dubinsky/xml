@@ -3,7 +3,9 @@ package org.podval.xml
 import scala.xml.{Attribute, Comment, Elem, MetaData, NamespaceBinding, NodeSeq, PCData, PrefixedAttribute, ProcInstr,
   Text, TopScope}
 
-// XML AST for Scala XML. Not a package given: `import ScalaXml.given`.
+// XML AST for Scala XML
+// `import ScalaXml.given` to parse/write this AST
+// convert with `element.to[ScalaXml.Element]`.
 object ScalaXml extends XmlAst[Elem]:
   given ScalaXml.type = this
 

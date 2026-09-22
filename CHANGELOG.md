@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Breaking: `Html` is `ZioBlocksHtml`.
+  Import `ZioBlocksHtml.given`.
+  Convert with `element.to[ZioBlocksHtml.Element]`.
+- Breaking: package given `Xml` is `object ZioBlocksXml`, same shape as `ZioBlocksHtml` and `ScalaXml`.
+  It is not a package given.
+  Import `ZioBlocksXml.given`.
+  `Xml.Element` is `ZioBlocksXml.Element`.
+  `import org.podval.xml.dsl.given` still summons that AST.
+
 ## [0.3.0] - 2026-09-20
 - Construction DSL on `XmlAst`: tag functions, `:=` / `+=`, `ToXmlMod` flattening, `.when`, `inlineJs` / `externalJs`.
   Inspired by ZIO Blocks HTML.

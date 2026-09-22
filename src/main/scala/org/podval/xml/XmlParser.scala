@@ -1,6 +1,6 @@
 package org.podval.xml
 
-import zio.blocks.schema.xml.Xml
+import ZioBlocksXml.given
 import org.xml.sax.InputSource
 import scala.util.Using
 import java.io.StringReader
@@ -15,8 +15,8 @@ import java.io.StringReader
   * comments, PIs, and the doctype are on [[XmlDocument]] from
   * `parseXmlDocument`.
   *
-  * `E` is inferred from the expected type or `given Xml`. HTML and Scala XML
-  * need `import Html.given` / `import ScalaXml.given`.
+  * `E` is inferred from the expected type.
+  * Import `ZioBlocksXml.given`, `ZioBlocksHtml.given`, or `ScalaXml.given`.
   * Catalog helpers pin ZIO Blocks XML internally.
   *
   * I/O returns `Either[XmlError, _]`. `loadCatalog` / `loadResources` throw
@@ -91,7 +91,7 @@ object XmlParser:
     codec: XmlCodec[A],
     wrapperName: String
   ): Either[XmlError, Seq[A]] =
-    parseResource[Xml.Element](from.getClass, s"$name.xml")
+    parseResource[ZioBlocksXml.Element](from.getClass, s"$name.xml")
       .flatMap(root => codec.decodeCatalog(root, wrapperName))
 
   /** Each `name.xml` next to `from` decoded as one document (the root element). Throws. */
@@ -102,6 +102,6 @@ object XmlParser:
     names.foldLeft(Right(Vector.empty[A]): Either[XmlError, Vector[A]]): (acc, name) =>
       for
         items <- acc
-        item <- parseResource[Xml.Element](from.getClass, s"$name.xml").flatMap(codec.decode)
+        item <- parseResource[ZioBlocksXml.Element](from.getClass, s"$name.xml").flatMap(codec.decode)
       yield items :+ item
     .map(_.toSeq)

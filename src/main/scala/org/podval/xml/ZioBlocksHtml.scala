@@ -3,17 +3,18 @@ package org.podval.xml
 import zio.blocks.chunk.Chunk
 import zio.blocks.html.Dom as XML
 
-// XML AST for ZIO Blocks HTML. Not a package given: `import Html.given` to
-// parse/write this AST; convert with `element.to[Html.Element]`.
-object Html extends XmlAst[XML.Element]:
-  given Html.type = this
+// XML AST for ZIO Blocks HTML
+// `import ZioBlocksHtml.given` to parse/write this AST
+// convert with `element.to[ZioBlocksHtml.Element]`.
+object ZioBlocksHtml extends XmlAst[XML.Element]:
+  given ZioBlocksHtml.type = this
 
   override type Node = XML
 
   override def text(text: String): Node = XML.text(text)
 
   // HTML has no CDATA; the writer encodes `&` and `<` in the text.
-  override def cdata(text: String): Node = Html.text(text)
+  override def cdata(text: String): Node = ZioBlocksHtml.text(text)
 
   override def comment(text: String): Option[Node] = None
 
