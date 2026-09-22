@@ -1,6 +1,6 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.html.*

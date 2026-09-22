@@ -1,18 +1,18 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlDocumentSpec extends AnyFunSuite:
-  private def parseDoc(content: String): XmlDocument[ZioBlocksXml.Element] =
+  private def parseDoc(content: String): XmlDocument[Xml.Element] =
     XmlParser.parseXmlDocument(content).toOption.get
 
-  private def render(document: XmlDocument[ZioBlocksXml.Element]): String =
+  private def render(document: XmlDocument[Xml.Element]): String =
     XmlWriterConfig.Plain.render(document)
 
   test("parseXml still returns only the document element") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml(
+    val xml: Xml.Element = XmlParser.parseXml(
       """<?xml version="1.0"?>
         |<!-- prologue -->
         |<Day><names/></Day>
@@ -24,7 +24,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("parseXmlDocument keeps prolog and epilogue comments") {
-    val doc: XmlDocument[ZioBlocksXml.Element] = parseDoc(
+    val doc: XmlDocument[Xml.Element] = parseDoc(
       """<?xml version="1.0"?>
         |<!-- prologue -->
         |<Day><names/></Day>
@@ -38,7 +38,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("parseXmlDocument keeps prolog and epilogue processing instructions") {
-    val doc: XmlDocument[ZioBlocksXml.Element] = parseDoc(
+    val doc: XmlDocument[Xml.Element] = parseDoc(
       """<?xml-stylesheet href="a.css"?>
         |<p/>
         |<?pi d?>""".stripMargin
@@ -48,7 +48,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("parseXmlDocument keeps a doctype") {
-    val doc: XmlDocument[ZioBlocksXml.Element] = parseDoc(
+    val doc: XmlDocument[Xml.Element] = parseDoc(
       """<?xml version="1.0"?>
         |<!DOCTYPE Day>
         |<Day/>""".stripMargin
@@ -57,7 +57,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("parseXmlDocument keeps PUBLIC and SYSTEM doctype ids") {
-    val doc: XmlDocument[ZioBlocksXml.Element] = parseDoc(
+    val doc: XmlDocument[Xml.Element] = parseDoc(
       """<?xml version="1.0"?>
         |<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
         |<html/>""".stripMargin
@@ -85,7 +85,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
         |<Day><names/></Day>
         |<!-- after -->
         |""".stripMargin
-    val doc: XmlDocument[ZioBlocksXml.Element] = parseDoc(input)
+    val doc: XmlDocument[Xml.Element] = parseDoc(input)
     assert(doc.doctype.contains(XmlDoctype("Day")))
     assert(doc.prolog == Seq(
       XmlMisc.Comment("\n  file comment\n"),
@@ -93,7 +93,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     ))
     assert(doc.epilogue == Seq(XmlMisc.Comment(" after ")))
     val dumped: String = render(doc)
-    val round: XmlDocument[ZioBlocksXml.Element] = parseDoc(dumped)
+    val round: XmlDocument[Xml.Element] = parseDoc(dumped)
     assert(round.declaration.contains(XmlDeclaration()), dumped)
     assert(round.doctype == doc.doctype, dumped)
     assert(round.prolog == doc.prolog, dumped)
@@ -112,7 +112,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
         |</Haftarah>
         |""".stripMargin
     val dumped: String = render(parseDoc(input))
-    val round: XmlDocument[ZioBlocksXml.Element] = parseDoc(dumped)
+    val round: XmlDocument[Xml.Element] = parseDoc(dumped)
     assert(round.prolog == Seq(XmlMisc.Comment("\n  Each Haftarah is described by the <week> element.\n")))
     assert(dumped.startsWith("""<?xml version="1.0" encoding="UTF-8"?>"""))
     assert(dumped.contains("Each Haftarah is described"))
@@ -127,8 +127,8 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("XmlDocument.xml helper sets the canonical declaration") {
-    val xml: ZioBlocksXml.Element = ZioBlocksXml.element(XmlElement.P)
-    val doc: XmlDocument[ZioBlocksXml.Element] = XmlDocument.xml(
+    val xml: Xml.Element = Xml.element(XmlElement.P)
+    val doc: XmlDocument[Xml.Element] = XmlDocument.xml(
       root = xml,
       prolog = Seq(XmlMisc.Comment(" c "))
     )

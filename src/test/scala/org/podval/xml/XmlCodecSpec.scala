@@ -1,18 +1,18 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.schema.{Modifier, Schema}
 
 final class XmlCodecSpec extends AnyFunSuite:
-  private def parse(xml: String): ZioBlocksXml.Element = XmlParser.parseXml(xml).toOption.get
+  private def parse(xml: String): Xml.Element = XmlParser.parseXml(xml).toOption.get
 
   test("leaf record keeps attributes") {
     val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
     val language: Language = codec.decode(parse("""<Language ident="ru"/>""")).toOption.get
     assert(language.ident == "ru")
-    val encoded: ZioBlocksXml.Element = codec.encode(language)
+    val encoded: Xml.Element = codec.encode(language)
     assert(encoded.get("ident").contains("ru"))
     assert(encoded.getChildren.flatMap(_.asElement).isEmpty)
   }
@@ -22,7 +22,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val xml: String = """<LangUsage><language ident="ru"/><language ident="he"/></LangUsage>"""
     val decoded: LangUsage = codec.decode(parse(xml)).toOption.get
     assert(decoded.languages.map(_.ident) == Seq("ru", "he"))
-    val encoded: ZioBlocksXml.Element = codec.encode(decoded)
+    val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("language", "language"))
     assert(encoded.getChildren.flatMap(_.asElement).flatMap(_.get("ident")) == Seq("ru", "he"))
   }
@@ -33,7 +33,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.id.contains("n1"))
     assert(decoded.ref.isEmpty)
     assert(decoded.name == "Moses")
-    val encoded: ZioBlocksXml.Element = codec.encode(decoded)
+    val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get(XmlAttribute.Id).contains("n1"))
     assert(encoded.getText.trim == "Moses")
   }
@@ -44,8 +44,8 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(codec.decode(parse("""<Flag on="1"/>""")).toOption.get.on)
     assert(!codec.decode(parse("""<Flag on="no"/>""")).toOption.get.on)
     assert(!codec.decode(parse("""<Flag on="0"/>""")).toOption.get.on)
-    val encodedTrue: ZioBlocksXml.Element = codec.encode(Flag(true))
-    val encodedFalse: ZioBlocksXml.Element = codec.encode(Flag(false))
+    val encodedTrue: Xml.Element = codec.encode(Flag(true))
+    val encodedFalse: Xml.Element = codec.encode(Flag(false))
     assert(encodedTrue.get("on").contains("true"))
     assert(encodedFalse.get("on").contains("false"))
   }
@@ -78,7 +78,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.lang.contains("ru"))
     assert(decoded.body.isElement(XmlElement.Body))
     assert(decoded.body.getChildren.exists(_.asComment.contains("n")))
-    val encoded: ZioBlocksXml.Element = codec.encode(decoded)
+    val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get(XmlAttribute.Lang).contains("ru"))
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("body"))
     assert(encoded.getChildren.flatMap(_.asElement).head.getChildren.exists(_.asComment.contains("n")))
@@ -113,7 +113,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: TaggedIndex = result.toOption.get
     assert(decoded.items.map(_.n) == Seq("a", "b"))
     assert(decoded.items.map(_.kind) == Seq(TaggedKind.person, TaggedKind.place))
-    val encoded: ZioBlocksXml.Element = TaggedIndex.codec.encode(decoded)
+    val encoded: Xml.Element = TaggedIndex.codec.encode(decoded)
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("person", "place"))
   }
 
@@ -133,13 +133,13 @@ final class XmlCodecSpec extends AnyFunSuite:
     val xml: String = """<Lesson><positive n="1"/><negative n="2"/></Lesson>"""
     val decoded: Lesson = codec.decode(parse(xml)).toOption.get
     assert(decoded.parts == Seq(Positive(1), Negative(2)))
-    val encoded: ZioBlocksXml.Element = codec.encode(decoded)
+    val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("positive", "negative"))
   }
 
-  test("the same codec encodes ZIO XML and Scala XML") {
+  test("the same codec encodes Xml and Scala XML") {
     val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
-    val zioEl: ZioBlocksXml.Element = codec.encode(Language("he"))
+    val zioEl: Xml.Element = codec.encode(Language("he"))
     val scalaEl: ScalaXml.Element = codec.encode(Language("he"))
     assert(zioEl.get("ident").contains("he"))
     assert(scalaEl.get("ident").contains("he"))
@@ -152,9 +152,9 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: Named = codec.decode(parse("""<Named xml:id="x">Ada</Named>""")).toOption.get
     assert(decoded.id.contains("x"))
     assert(decoded.name == "Ada")
-    val encoded: ZioBlocksXml.Element = codec.encode(decoded)
+    val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get(XmlAttribute.XmlId).contains("x"))
-    assert(encoded.attributes.find(_._1.qualifiedName == "xml:id").get._1.namespace.contains(XmlNamespace.xml.uri))
+    assert(encoded.attributes.find(_._1.qName == "xml:id").get._1.uri.contains(XmlNamespace.xml.uri))
   }
 
   test("leftover xmlns is not an error") {
@@ -165,11 +165,11 @@ final class XmlCodecSpec extends AnyFunSuite:
 
   test("namespace modifiers encode xmlns and a prefixed name") {
     val codec: XmlCodec[NsBox] = XmlCodec.derived(using NsBox.schema)
-    val encoded: ZioBlocksXml.Element = codec.encode(NsBox("1"))
+    val encoded: Xml.Element = codec.encode(NsBox("1"))
     assert(encoded.getName.qName == "ex:NsBox")
     assert(encoded.name.localName == "NsBox")
     assert(encoded.name.prefix.contains("ex"))
-    assert(encoded.name.namespace.contains("http://example.com/ns"))
+    assert(encoded.name.uri.contains("http://example.com/ns"))
     assert(encoded.get(XmlAttribute.Xmlns("ex")).contains("http://example.com/ns"))
     assert(encoded.get("n").contains("1"))
     val decoded: NsBox = codec.decode(parse("""<ex:NsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
@@ -218,7 +218,7 @@ final class XmlCodecSpec extends AnyFunSuite:
 
   test("classpath catalog decodes children of the wrapper") {
     val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
-    val root: ZioBlocksXml.Element =
+    val root: Xml.Element =
       XmlParser.parseResource(classOf[XmlCodecSpec], "languages.xml").toOption.get
     val decoded: Seq[Language] = codec.decodeCatalog(root, "Languages").toOption.get
     assert(decoded.map(_.ident) == Seq("ru", "he"))
@@ -229,7 +229,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val xml: String = """<node n="root"><node n="a"/><node n="b"><node n="c"/></node></node>"""
     val decoded: Node = codec.decode(parse(xml)).toOption.get
     assert(decoded == Node("root", Seq(Node("a"), Node("b", Seq(Node("c"))))))
-    val encoded: ZioBlocksXml.Element = codec.encode(decoded)
+    val encoded: Xml.Element = codec.encode(decoded)
     assert(codec.decode(encoded).toOption.get == decoded)
   }
 
@@ -273,7 +273,7 @@ object Count:
 
 final case class Text(
   @Modifier.config(XmlCodec.Attribute, "") lang: Option[String],
-  body: ZioBlocksXml.Element
+  body: Xml.Element
 ) derives CanEqual
 object Text:
   given schema: Schema[Text] = Schema.derived
@@ -316,7 +316,7 @@ object Book:
 @Modifier.config(XmlCodec.IgnoreUnknown, "")
 final case class OpenDoc(
   @Modifier.config(XmlCodec.Attribute, "") n: String,
-  title: Option[ZioBlocksXml.Element] = None,
+  title: Option[Xml.Element] = None,
   @Modifier.config(XmlCodec.Include, "") hrefs: Seq[String] = Seq.empty
 ) derives CanEqual
 object OpenDoc:
@@ -348,9 +348,9 @@ object TaggedIndex:
 @Modifier.config(XmlCodec.IgnoreUnknown, "")
 final case class DayDoc(
   @Modifier.config(XmlCodec.Attribute, "") n: String,
-  torah: Seq[ZioBlocksXml.Element] = Seq.empty,
-  maftir: Seq[ZioBlocksXml.Element] = Seq.empty,
-  haftarah: Seq[ZioBlocksXml.Element] = Seq.empty
+  torah: Seq[Xml.Element] = Seq.empty,
+  maftir: Seq[Xml.Element] = Seq.empty,
+  haftarah: Seq[Xml.Element] = Seq.empty
 ) derives CanEqual
 object DayDoc:
   given schema: Schema[DayDoc] = Schema.derived

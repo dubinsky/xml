@@ -1,12 +1,15 @@
 package org.podval.xml
 
-/** AST that represents XML and provides operations on it;
-  * abstracts over the underlying representation:
+/** AST that represents XML and provides operations on it.
+  * Abstracts over the underlying representation:
+  * - [[Xml]], the tree owned by this library
   * - ZIO Blocks XML
   * - ZIO Blocks HTML
   * - Scala XML
+  *
+  * Construction (`div`, `:=`, `.when`) lives on [[Xml]], not on this trait.
   */
-trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT], XmlAstDsl[ELEMENT]:
+trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   final type Element = ELEMENT
 
   type Node >: Element

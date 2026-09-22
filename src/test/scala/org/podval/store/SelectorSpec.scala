@@ -1,8 +1,8 @@
 package org.podval.store
 
 import org.podval.metadata.{Name, Names}
-import org.podval.xml.{XmlParser, ZioBlocksXml}
-import ZioBlocksXml.given
+import org.podval.xml.{XmlParser, Xml}
+import Xml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class SelectorSpec extends AnyFunSuite:
@@ -31,10 +31,10 @@ final class SelectorSpec extends AnyFunSuite:
 
   test("Selector codec") {
     def decode(xml: String) =
-      Selector.codec.decode(XmlParser.parseXml(xml).toOption.get)(using ZioBlocksXml)
+      Selector.codec.decode(XmlParser.parseXml(xml).toOption.get)(using Xml)
 
     val book = decode("""<selector><name lang="en" n="book"/></selector>""").toOption.get
     assert(book.names.hasName("book"))
-    val encoded = Selector.codec.encode(book)(using ZioBlocksXml)
-    assert(Selector.codec.decode(encoded)(using ZioBlocksXml).toOption.get.names.hasName("book"))
+    val encoded = Selector.codec.encode(book)(using Xml)
+    assert(Selector.codec.decode(encoded)(using Xml).toOption.get.names.hasName("book"))
   }

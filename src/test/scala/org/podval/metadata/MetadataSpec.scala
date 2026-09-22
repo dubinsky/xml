@@ -1,7 +1,7 @@
 package org.podval.metadata
 
-import org.podval.xml.{XmlAttribute, XmlCodec, XmlParser, ZioBlocksXml}
-import ZioBlocksXml.given
+import org.podval.xml.{XmlAttribute, XmlCodec, XmlParser, Xml}
+import Xml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.schema.{Modifier, Schema}
 
@@ -18,7 +18,7 @@ final class MetadataSpec extends AnyFunSuite:
 
   test("Name codec accepts n or text but not both") {
     def decode(xml: String) =
-      Name.codec.decode(XmlParser.parseXml(xml).toOption.get)(using ZioBlocksXml)
+      Name.codec.decode(XmlParser.parseXml(xml).toOption.get)(using Xml)
 
     val fromN = decode("""<name lang="en" n="English"/>""").toOption.get
     assert(fromN.name == "English")
@@ -35,11 +35,11 @@ final class MetadataSpec extends AnyFunSuite:
     val entryCodec: XmlCodec[NamedEntry] = XmlCodec.derived(using NamedEntry.schema)
     val entry = entryCodec.decode(XmlParser.parseXml(
       """<NamedEntry><name lang="en" n="English"/></NamedEntry>"""
-    ).toOption.get)(using ZioBlocksXml).toOption.get
+    ).toOption.get)(using Xml).toOption.get
     assert(entry.names.head.name == "English")
     assert(entry.names.head.languageSpec.language.contains(Language.English))
 
-    val encoded = Name.codec.encode(fromN)(using ZioBlocksXml)
+    val encoded = Name.codec.encode(fromN)(using Xml)
     assert(encoded.get("n").contains("English"))
     assert(encoded.get(XmlAttribute.Lang).contains("en"))
   }

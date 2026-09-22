@@ -6,14 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Breaking: the owned tree is `object Xml` (`XmlNode`: element, text, CDATA, comment, processing instruction).
+  It is not a package given.
+  Import `Xml.given`.
+  Identity fields, catalogs, and `import org.podval.xml.dsl.given` use `Xml.Element`.
+- The construction DSL is mixed into `Xml` only.
+  `ScalaXml`, `ZioBlocksXml`, and `ZioBlocksHtml` are parse/convert/write adapters.
+  Reach them with `element.to[TO]`.
+- `zio-blocks-schema-xml` is `compileOnly`, same as `zio-blocks-html` and `scala-xml`.
 - Breaking: `Html` is `ZioBlocksHtml`.
   Import `ZioBlocksHtml.given`.
   Convert with `element.to[ZioBlocksHtml.Element]`.
-- Breaking: package given `Xml` is `object ZioBlocksXml`, same shape as `ZioBlocksHtml` and `ScalaXml`.
-  It is not a package given.
-  Import `ZioBlocksXml.given`.
-  `Xml.Element` is `ZioBlocksXml.Element`.
-  `import org.podval.xml.dsl.given` still summons that AST.
 
 ## [0.3.0] - 2026-09-20
 - Construction DSL on `XmlAst`: tag functions, `:=` / `+=`, `ToXmlMod` flattening, `.when`, `inlineJs` / `externalJs`.

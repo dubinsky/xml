@@ -1,6 +1,6 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlEncodeSpec extends AnyFunSuite:

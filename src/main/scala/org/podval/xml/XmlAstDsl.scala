@@ -1,7 +1,8 @@
 package org.podval.xml
 
-/** Construction DSL over this AST: tag functions, `:=` / `+=`, `ToXmlMod` flattening, `.when`, script helpers.
+/** Construction DSL for [[Xml]]: tag functions, `:=` / `+=`, `ToXmlMod` flattening, `.when`, script helpers.
   * Inspired by ZIO Blocks HTML (`zio-blocks-html` 0.0.51).
+  * Mixed into [[Xml]] only.
   */
 private[xml] trait XmlAstDsl[ELEMENT]:
   this: XmlAst[ELEMENT] =>

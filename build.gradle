@@ -23,7 +23,8 @@ String tagsoupVersion = '1.2.1'
 
 dependencies {
   api "dev.zio:zio-blocks-schema_3:$zioBlocksVersion"
-  api "dev.zio:zio-blocks-schema-xml_3:$zioBlocksVersion"
+  compileOnly "dev.zio:zio-blocks-schema-xml_3:$zioBlocksVersion"
+  testImplementation "dev.zio:zio-blocks-schema-xml_3:$zioBlocksVersion"
   compileOnly "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
   testImplementation "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
   compileOnly "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"

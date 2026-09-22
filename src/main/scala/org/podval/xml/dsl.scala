@@ -1,13 +1,13 @@
 package org.podval.xml
 
-/** ZioBlocksXml-backed construction DSL. Inspired by ZIO Blocks HTML.
+/** Construction DSL for [[Xml]]. Inspired by ZIO Blocks HTML.
   *
   * `import org.podval.xml.dsl.{*, given}`
   */
 object dsl:
-  given xml: ZioBlocksXml.type = ZioBlocksXml
+  given xml: Xml.type = Xml
 
-  export ZioBlocksXml.{
+  export Xml.{
     XmlMod,
     ToXmlMod,
     Attr,
@@ -83,4 +83,4 @@ object dsl:
     aria,
     attr
   }
-  export ZioBlocksXml.ToXmlMod.given
+  export Xml.ToXmlMod.given

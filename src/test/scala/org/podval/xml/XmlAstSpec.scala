@@ -1,23 +1,23 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
 
 final class XmlAstSpec extends AnyFunSuite:
-  private def parse(input: String): ZioBlocksXml.Element =
+  private def parse(input: String): Xml.Element =
     XmlParser.parseXml(input).toOption.get
 
   test("convertElements keeps mixed text and elements") {
-    val converted: ZioBlocksXml.Nodes = parse("<p>a<x/>b</p>").getChildren.convertElements(_ => None)
+    val converted: Xml.Nodes = parse("<p>a<x/>b</p>").getChildren.convertElements(_ => None)
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
     assert(converted.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
   }
 
   test("convertElements can expand an element among text") {
-    val converted: ZioBlocksXml.Nodes = parse("<p>a<note/>b</p>").getChildren.convertElements(
-      el => Option.when(el.isNamed("note"))(Chunk(ZioBlocksXml.element(XmlElement.Span), ZioBlocksXml.element("aside")))
+    val converted: Xml.Nodes = parse("<p>a<note/>b</p>").getChildren.convertElements(
+      el => Option.when(el.isNamed("note"))(Chunk(Xml.element(XmlElement.Span), Xml.element("aside")))
     )
     assert(converted.flatMap(_.asText) == Seq("a", "b"))
     assert(converted.flatMap(_.asElement).map(_.getName.qName) == Seq("span", "aside"))
@@ -51,7 +51,7 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("to[ZioBlocksHtml.Element] turns CDATA into HTML text encoded on write") {
-    val xml: ZioBlocksXml.Element = ZioBlocksXml.element(XmlElement.P.qName, Seq.empty, Seq(ZioBlocksXml.cdata("a<b")))
+    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
     val html: ZioBlocksHtml.Element = xml.to[ZioBlocksHtml.Element]
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a<b"))
     val dumped: String = HtmlXmlWriterConfig.render(html)
@@ -64,12 +64,12 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("elementById finds a descendant") {
-    val xml: ZioBlocksXml.Element = parse("""<div><p id="n1">a</p></div>""")
+    val xml: Xml.Element = parse("""<div><p id="n1">a</p></div>""")
     assert(xml.elementById("n1").getText == "a")
   }
 
   test("requireName and childrenNamed") {
-    val xml: ZioBlocksXml.Element = parse("""<torah><aliyah n="1"/><aliyah n="2"/></torah>""")
+    val xml: Xml.Element = parse("""<torah><aliyah n="1"/><aliyah n="2"/></torah>""")
     xml.requireName("torah")
     xml.requireNoOther(Set("aliyah"))
     assert(xml.childrenNamed("aliyah").map(_.requireAttr("n")) == Seq("1", "2"))
@@ -77,30 +77,30 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("isInclude requires XInclude namespace or xi prefix") {
-    val withNs: ZioBlocksXml.Element = parse(
+    val withNs: Xml.Element = parse(
       s"""<xi:include xmlns:xi="${XmlNamespace.xinclude.uri}" href="a.xml"/>"""
     )
     assert(withNs.isInclude)
-    val prefixed: ZioBlocksXml.Element = ZioBlocksXml.element("xi:include", Seq(XmlAttribute.Href.qName -> "a.xml"), Seq.empty)
+    val prefixed: Xml.Element = Xml.element("xi:include", Seq(XmlAttribute.Href.qName -> "a.xml"), Seq.empty)
     assert(prefixed.isInclude)
-    val bare: ZioBlocksXml.Element = parse("""<include href="a.xml"/>""")
+    val bare: Xml.Element = parse("""<include href="a.xml"/>""")
     assert(!bare.isInclude)
-    val noHref: ZioBlocksXml.Element = parse(
+    val noHref: Xml.Element = parse(
       s"""<xi:include xmlns:xi="${XmlNamespace.xinclude.uri}"/>"""
     )
     assert(!noHref.isInclude)
   }
 
   test("withAttribute matches xml:id by URI and local name") {
-    val xml: ZioBlocksXml.Element = parse("""<p xml:id="old" n="1"/>""")
-    val updated: ZioBlocksXml.Element = xml.set(XmlAttribute.XmlId, "new")
+    val xml: Xml.Element = parse("""<p xml:id="old" n="1"/>""")
+    val updated: Xml.Element = xml.set(XmlAttribute.XmlId, "new")
     assert(updated.get(XmlAttribute.XmlId).contains("new"))
     assert(updated.get("n").contains("1"))
     assert(updated.getAttributes.count((name, _) => name.localName == "id") == 1)
   }
 
   test("fold dispatches node kinds") {
-    val xml: ZioBlocksXml.Element = parse("<p>a<!--c--><?pi d?><![CDATA[b]]><x/></p>")
+    val xml: Xml.Element = parse("<p>a<!--c--><?pi d?><![CDATA[b]]><x/></p>")
     val kinds: Seq[String] = xml.getChildren.map: n =>
       n.fold(
         element = _ => "el",
@@ -114,7 +114,7 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("get(XmlAttribute) matches expanded names") {
-    val xml: ZioBlocksXml.Element = parse("""<p xml:id="n1" id="n2" xml:lang="en" lang="fr"/>""")
+    val xml: Xml.Element = parse("""<p xml:id="n1" id="n2" xml:lang="en" lang="fr"/>""")
     assert(xml.get(XmlAttribute.XmlId).contains("n1"))
     assert(xml.get(XmlAttribute.Id).contains("n2"))
     assert(xml.get(XmlAttribute.XmlLang).contains("en"))
@@ -135,7 +135,7 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("CssClass is a token; HtmlClass is the class attribute") {
-    val xml: ZioBlocksXml.Element = ZioBlocksXml.element(XmlElement.P).add(CssClass("x")).add(CssClass("x"))
+    val xml: Xml.Element = Xml.element(XmlElement.P).add(CssClass("x")).add(CssClass("x"))
     assert(xml.has(CssClass("x")))
     assert(!xml.has(CssClass("y")))
     assert(xml.get(XmlAttribute.CssClass).contains("x"))
@@ -143,18 +143,18 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("renameKeepingClass stamps the old local name as a class") {
-    val xml: ZioBlocksXml.Element = parse("""<tei:p xmlns:tei="http://www.tei-c.org/ns/1.0">a</tei:p>""")
-    val renamed: ZioBlocksXml.Element = xml.renameKeepingClass("tei-p")
+    val xml: Xml.Element = parse("""<tei:p xmlns:tei="http://www.tei-c.org/ns/1.0">a</tei:p>""")
+    val renamed: Xml.Element = xml.renameKeepingClass("tei-p")
     assert(renamed.getName.qName == "tei-p")
     assert(renamed.getClasses.contains("p"))
     assert(xml.rename("div").getClasses.isEmpty)
   }
 
   test("transform stopAtCode matches local name") {
-    val xml: ZioBlocksXml.Element = parse(
+    val xml: Xml.Element = parse(
       """<tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code>"""
     )
-    val transformed: ZioBlocksXml.Element = xml.transform(_.rename("y"))
+    val transformed: Xml.Element = xml.transform(_.rename("y"))
     assert(transformed.getName.qName == "tei:code")
     assert(transformed.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
   }

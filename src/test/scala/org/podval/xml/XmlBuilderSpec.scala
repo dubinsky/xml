@@ -1,6 +1,6 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import ZioBlocksHtml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
@@ -14,7 +14,7 @@ final class XmlBuilderSpec extends AnyFunSuite:
     builder.result
 
   test("consecutive text chunks merge") {
-    val xml: ZioBlocksXml.Element = parse: b =>
+    val xml: Xml.Element = parse: b =>
       b.text("a")
       b.text("b")
     assert(xml.getChildren.flatMap(_.asText) == Seq("ab"))
@@ -22,7 +22,7 @@ final class XmlBuilderSpec extends AnyFunSuite:
   }
 
   test("text and CDATA stay distinct") {
-    val xml: ZioBlocksXml.Element = parse: b =>
+    val xml: Xml.Element = parse: b =>
       b.text("a")
       b.cdata("b")
       b.text("c")
@@ -31,14 +31,14 @@ final class XmlBuilderSpec extends AnyFunSuite:
   }
 
   test("adjacent CDATA sections stay distinct") {
-    val xml: ZioBlocksXml.Element = parse: b =>
+    val xml: Xml.Element = parse: b =>
       b.cdata("a")
       b.cdata("b")
     assert(xml.getChildren.flatMap(_.asCData) == Seq("a", "b"))
   }
 
   test("empty text and CDATA are dropped") {
-    val xml: ZioBlocksXml.Element = parse: b =>
+    val xml: Xml.Element = parse: b =>
       b.text("")
       b.cdata("")
       b.text("a")
@@ -63,33 +63,33 @@ final class XmlBuilderSpec extends AnyFunSuite:
   }
 
   test("comments before and after the root go on the document") {
-    val builder: XmlBuilder[ZioBlocksXml.Element] = XmlBuilder()
+    val builder: XmlBuilder[Xml.Element] = XmlBuilder()
     builder.comment("before")
-    builder.startElement(ZioBlocksXml.element(XmlElement.P))
+    builder.startElement(Xml.element(XmlElement.P))
     builder.comment("inside")
     builder.endElement()
     builder.comment("after")
-    val doc: XmlDocument[ZioBlocksXml.Element] = builder.document
+    val doc: XmlDocument[Xml.Element] = builder.document
     assert(doc.prolog == Seq(XmlMisc.Comment("before")))
     assert(doc.epilogue == Seq(XmlMisc.Comment("after")))
     assert(doc.root.getChildren.flatMap(_.asComment) == Seq("inside"))
   }
 
   test("nested elements are built from the child buffer") {
-    val builder: XmlBuilder[ZioBlocksXml.Element] = XmlBuilder()
-    builder.startElement(ZioBlocksXml.element("outer"))
-    builder.startElement(ZioBlocksXml.element("inner"))
+    val builder: XmlBuilder[Xml.Element] = XmlBuilder()
+    builder.startElement(Xml.element("outer"))
+    builder.startElement(Xml.element("inner"))
     builder.text("a")
     builder.endElement()
     builder.endElement()
-    val xml: ZioBlocksXml.Element = builder.result
+    val xml: Xml.Element = builder.result
     assert(xml.isNamed("outer"))
     assert(xml.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("inner"))
     assert(xml.getChildren.flatMap(_.asElement).head.getChildren.flatMap(_.asText) == Seq("a"))
   }
 
   test("result requires a document element") {
-    intercept[IllegalArgumentException](XmlBuilder[ZioBlocksXml.Element]().result)
+    intercept[IllegalArgumentException](XmlBuilder[Xml.Element]().result)
   }
 
   test("HTML document keeps prologue comments that the tree drops") {

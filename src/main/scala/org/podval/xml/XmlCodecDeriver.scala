@@ -240,7 +240,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
       XmlCodecDeriver.taggedCodecs.asScala.toList.map: (id, codec) =>
         InstanceOverrideByType(id.asInstanceOf[TypeId[Any]], codec.asInstanceOf[Lazy[XmlCodec[Any]]])
     Chunk(
-      InstanceOverrideByType(TypeId.of[zio.blocks.schema.xml.Xml.Element], Lazy(XmlCodec.elementCodec))
+      InstanceOverrideByType(TypeId.of[XmlNode.Element], Lazy(XmlCodec.elementCodec))
     ) ++ Chunk.from(tagged)
 
   private def primitiveCodec[A](primitiveType: PrimitiveType[A]): XmlCodec[A] =

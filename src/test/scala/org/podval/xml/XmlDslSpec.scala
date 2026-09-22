@@ -5,15 +5,15 @@ import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.html.Dom
 
 final class XmlDslSpec extends AnyFunSuite:
-  private def render(element: ZioBlocksXml.Element): String =
+  private def render(element: Xml.Element): String =
     HtmlXmlWriterConfig.render(element)
 
-  private def qNames(element: ZioBlocksXml.Element): Seq[(String, String)] =
+  private def qNames(element: Xml.Element): Seq[(String, String)] =
     XmlName.asPairs(element.getAttributes)
 
   test("Option, Seq, nested Option in Seq, and String plus element children flatten") {
-    val nested: Seq[Option[ZioBlocksXml.Element]] = Seq(Some(span("a")), None, Some(em("b")))
-    val el: ZioBlocksXml.Element = div(
+    val nested: Seq[Option[Xml.Element]] = Seq(Some(span("a")), None, Some(em("b")))
+    val el: Xml.Element = div(
       Option.when(true)(p("p")),
       Option.empty[String],
       nested,
@@ -33,7 +33,7 @@ final class XmlDslSpec extends AnyFunSuite:
   }
 
   test("later className := replaces earlier +=") {
-    val el: ZioBlocksXml.Element = div(className += "a", className := "b")
+    val el: Xml.Element = div(className += "a", className := "b")
     assert(qNames(el) == Seq("class" -> "b"))
     val dumped: String = render(el)
     assert(dumped.contains("""class="b""""), dumped)
@@ -52,7 +52,7 @@ final class XmlDslSpec extends AnyFunSuite:
   }
 
   test("attributes stay in insertion order, not alphabetical") {
-    val el: ZioBlocksXml.Element = div(id := "x", className := "a")
+    val el: Xml.Element = div(id := "x", className := "a")
     assert(qNames(el) == Seq("id" -> "x", "class" -> "a"))
     val dumped: String = render(el)
     assert(dumped.indexOf("id=") < dumped.indexOf("class="), dumped)
@@ -71,24 +71,24 @@ final class XmlDslSpec extends AnyFunSuite:
   }
 
   test(".when(true) merges into existing lang and body") {
-    val el: ZioBlocksXml.Element = html(langAttr := "en", body("x")).when(true)(className := "wide")
+    val el: Xml.Element = html(langAttr := "en", body("x")).when(true)(className := "wide")
     assert(qNames(el) == Seq("lang" -> "en", "class" -> "wide"))
     assert(el.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("body"))
   }
 
   test(".when(false) is identity") {
-    val el: ZioBlocksXml.Element = html(langAttr := "en", body())
+    val el: Xml.Element = html(langAttr := "en", body())
     assert(el.when(false)(className := "wide") eq el)
   }
 
   test("inlineJs appends text; externalJs sets src; module type") {
-    val inline: ZioBlocksXml.Element = script().inlineJs("if (a < b) {}")
+    val inline: Xml.Element = script().inlineJs("if (a < b) {}")
     assert(inline.getChildren.flatMap(_.asText) == Seq("if (a < b) {}"))
-    val twice: ZioBlocksXml.Element = script().inlineJs("a();").inlineJs("b();")
+    val twice: Xml.Element = script().inlineJs("a();").inlineJs("b();")
     assert(twice.getChildren.flatMap(_.asText) == Seq("a();", "b();"))
-    val external: ZioBlocksXml.Element = script().externalJs("https://example.com/x.js")
+    val external: Xml.Element = script().externalJs("https://example.com/x.js")
     assert(qNames(external) == Seq("src" -> "https://example.com/x.js"))
-    val module: ZioBlocksXml.Element = script(typeAttr := "module").inlineJs("x()")
+    val module: Xml.Element = script(typeAttr := "module").inlineJs("x()")
     assert(qNames(module) == Seq("type" -> "module"))
     assert(module.getChildren.flatMap(_.asText) == Seq("x()"))
   }
@@ -100,17 +100,16 @@ final class XmlDslSpec extends AnyFunSuite:
     assert(!dumped.contains("&lt;"), dumped)
   }
 
-  test("ZioBlocksHtml.div with ZioBlocksHtml.given still yields Generic") {
+  test("to[ZioBlocksHtml.Element] yields Generic") {
     import ZioBlocksHtml.given
-    import ZioBlocksHtml.ToXmlMod.given
-    val el: ZioBlocksHtml.Element = ZioBlocksHtml.div(ZioBlocksHtml.className := "x", "y")
+    val el: ZioBlocksHtml.Element = div(className := "x", "y").to[ZioBlocksHtml.Element]
     assert(el.isInstanceOf[Dom.Element.Generic])
     assert(el.getName.qName == "div")
     assert(XmlName.asPairs(el.getAttributes) == Seq("class" -> "x"))
   }
 
   test("element(name, mods*) builds names without a tag function") {
-    val el: ZioBlocksXml.Element = element("urlset", xmlns := "http://www.sitemaps.org/schemas/sitemap/0.9", "x")
+    val el: Xml.Element = element("urlset", xmlns := "http://www.sitemaps.org/schemas/sitemap/0.9", "x")
     assert(el.isNamed("urlset"))
     assert(el.get(XmlAttribute.Xmlns).contains("http://www.sitemaps.org/schemas/sitemap/0.9"))
     assert(el.getChildren.flatMap(_.asText) == Seq("x"))

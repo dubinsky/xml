@@ -1,16 +1,16 @@
 package org.podval.xml
 
-import ZioBlocksXml.given
+import Xml.given
 import ZioBlocksHtml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlParserSpec extends AnyFunSuite:
-  private def children(element: ZioBlocksXml.Element): Seq[ZioBlocksXml.Element] =
+  private def children(element: Xml.Element): Seq[Xml.Element] =
     element.getChildren.flatMap(_.asElement)
 
   test("string parse does not expand xi:include") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml(
+    val xml: Xml.Element = XmlParser.parseXml(
       """<includer>
         |  <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="includee.xml"/>
         |</includer>""".stripMargin
@@ -20,7 +20,7 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("resource parse does not expand xi:include") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseResource(classOf[XmlParserSpec], "includer.xml").toOption.get
+    val xml: Xml.Element = XmlParser.parseResource(classOf[XmlParserSpec], "includer.xml").toOption.get
     assert(children(xml).map(_.getName.localName) == Seq("include"))
     assert(children(xml).flatMap(_.get(XmlAttribute.Href)) == Seq("includee.xml"))
   }
@@ -32,7 +32,7 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("missing resource is Left") {
-    val result: Either[XmlError, ZioBlocksXml.Element] =
+    val result: Either[XmlError, Xml.Element] =
       XmlParser.parseResource(classOf[XmlParserSpec], "no-such.xml")
     assert(result.isLeft)
     assert(result.swap.toOption.get.getMessage.contains("Resource not found"))
@@ -46,7 +46,7 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("parseXml does not attach comments outside the root element") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml(
+    val xml: Xml.Element = XmlParser.parseXml(
       """<?xml version="1.0"?>
         |<!-- prologue -->
         |<Day><names/></Day>""".stripMargin
@@ -56,21 +56,21 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("parseHtml parses a fragment") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseHtml("<p>a<b>c</b></p>").toOption.get
+    val xml: Xml.Element = XmlParser.parseHtml("<p>a<b>c</b></p>").toOption.get
     assert(xml.isElement(XmlElement.P))
     assert(children(xml).map(_.getName.qName) == Seq("b"))
     assert(xml.getText == "ac")
   }
 
   test("keeps text on both sides of a comment") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))
     assert(xml.getChildren.flatMap(_.asComment) == Seq("c"))
     assert(xml.getChildren.flatMap(_.asElement).isEmpty)
   }
 
   test("keeps a processing instruction as a child") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml("<p>a<?pi d?>b</p>").toOption.get
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<?pi d?>b</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))
     assert(xml.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")))
   }
@@ -93,17 +93,17 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("parseXml keeps text and CDATA as distinct children") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml("<p>a<![CDATA[b]]>c</p>").toOption.get
+    val xml: Xml.Element = XmlParser.parseXml("<p>a<![CDATA[b]]>c</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText) == Seq("a", "c"))
     assert(xml.getChildren.flatMap(_.asCData) == Seq("b"))
   }
 
   test("parseXml keeps adjacent CDATA sections distinct") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml("<p><![CDATA[a]]><![CDATA[b]]></p>").toOption.get
+    val xml: Xml.Element = XmlParser.parseXml("<p><![CDATA[a]]><![CDATA[b]]></p>").toOption.get
     assert(xml.getChildren.flatMap(_.asCData) == Seq("a", "b"))
   }
 
   test("parseXml keeps undeclared entity references as text") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseXml("<p>a&nbsp;b</p>").toOption.get
+    val xml: Xml.Element = XmlParser.parseXml("<p>a&nbsp;b</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText).mkString == "a&nbsp;b")
   }

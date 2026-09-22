@@ -1,7 +1,6 @@
 package org.podval.xml
 
 import zio.blocks.schema.Schema
-import zio.blocks.schema.xml.XmlName as ZioXmlName
 
 /** Expanded name: local part and optional namespace (URI + prefix).
   *
@@ -53,23 +52,8 @@ final case class XmlName(
 
   def localNameIn(names: Set[String]): Boolean = names.contains(localName)
 
-  def toZio: ZioXmlName = ZioXmlName(
-    localName = localName,
-    prefix = prefix,
-    namespace = uri
-  )
-
-  def toZio(attributes: Seq[(XmlName, String)], isAttribute: Boolean): ZioXmlName =
-    val resolved: Option[String] = uri
-      .orElse(XmlNamespace.wellKnown(prefix, localName, isAttribute).map(_.uri))
-      .orElse(XmlName.declaredUri(prefix, attributes, isAttribute))
-    XmlName(localName, XmlNamespace.of(prefix, resolved)).toZio
-
 object XmlName:
   given schema: Schema[XmlName] = Schema.derived
-
-  def fromZio(name: ZioXmlName): XmlName =
-    XmlName(name.localName, XmlNamespace.of(name.prefix, name.namespace))
 
   def parseQName(name: String): XmlName =
     name.span(_ != ':') match
