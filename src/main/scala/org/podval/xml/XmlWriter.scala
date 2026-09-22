@@ -312,10 +312,10 @@ object XmlWriter:
       )
 
   private def commentMarkup(value: String): String =
-    hideNewlines(XmlMisc.Comment(value).markup)
+    hideNewlines(XmlNode.Comment(value).markup)
 
   private def processingInstructionMarkup(target: String, data: String): String =
-    hideNewlines(XmlMisc.ProcessingInstruction(target, data).markup)
+    hideNewlines(XmlNode.ProcessingInstruction(target, data).markup)
 
   /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
   private def cdataMarkup(value: String): String =

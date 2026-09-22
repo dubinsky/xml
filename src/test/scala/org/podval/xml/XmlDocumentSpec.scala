@@ -33,8 +33,8 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(doc.root.isNamed("Day"))
     assert(doc.declaration.contains(XmlDeclaration()))
     assert(doc.doctype.isEmpty)
-    assert(doc.prolog == Seq(XmlMisc.Comment(" prologue ")))
-    assert(doc.epilogue == Seq(XmlMisc.Comment(" epilogue ")))
+    assert(doc.prolog == Seq(XmlNode.Comment(" prologue ")))
+    assert(doc.epilogue == Seq(XmlNode.Comment(" epilogue ")))
   }
 
   test("parseXmlDocument keeps prolog and epilogue processing instructions") {
@@ -43,8 +43,8 @@ final class XmlDocumentSpec extends AnyFunSuite:
         |<p/>
         |<?pi d?>""".stripMargin
     )
-    assert(doc.prolog == Seq(XmlMisc.ProcessingInstruction("xml-stylesheet", "href=\"a.css\"")))
-    assert(doc.epilogue == Seq(XmlMisc.ProcessingInstruction("pi", "d")))
+    assert(doc.prolog == Seq(XmlNode.ProcessingInstruction("xml-stylesheet", "href=\"a.css\"")))
+    assert(doc.epilogue == Seq(XmlNode.ProcessingInstruction("pi", "d")))
   }
 
   test("parseXmlDocument keeps a doctype") {
@@ -88,10 +88,10 @@ final class XmlDocumentSpec extends AnyFunSuite:
     val doc: XmlDocument[Xml.Element] = parseDoc(input)
     assert(doc.doctype.contains(XmlDoctype("Day")))
     assert(doc.prolog == Seq(
-      XmlMisc.Comment("\n  file comment\n"),
-      XmlMisc.ProcessingInstruction("keep", "me")
+      XmlNode.Comment("\n  file comment\n"),
+      XmlNode.ProcessingInstruction("keep", "me")
     ))
-    assert(doc.epilogue == Seq(XmlMisc.Comment(" after ")))
+    assert(doc.epilogue == Seq(XmlNode.Comment(" after ")))
     val dumped: String = render(doc)
     val round: XmlDocument[Xml.Element] = parseDoc(dumped)
     assert(round.declaration.contains(XmlDeclaration()), dumped)
@@ -113,7 +113,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
         |""".stripMargin
     val dumped: String = render(parseDoc(input))
     val round: XmlDocument[Xml.Element] = parseDoc(dumped)
-    assert(round.prolog == Seq(XmlMisc.Comment("\n  Each Haftarah is described by the <week> element.\n")))
+    assert(round.prolog == Seq(XmlNode.Comment("\n  Each Haftarah is described by the <week> element.\n")))
     assert(dumped.startsWith("""<?xml version="1.0" encoding="UTF-8"?>"""))
     assert(dumped.contains("Each Haftarah is described"))
   }
@@ -122,7 +122,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     val doc: XmlDocument[ScalaXml.Element] = XmlParser.parseXmlDocument(
       "<!-- c --><p>a</p>"
     ).toOption.get
-    assert(doc.prolog == Seq(XmlMisc.Comment(" c ")))
+    assert(doc.prolog == Seq(XmlNode.Comment(" c ")))
     assert(doc.root.getName.qName == "p")
   }
 
@@ -130,7 +130,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     val xml: Xml.Element = Xml.element(XmlElement.P)
     val doc: XmlDocument[Xml.Element] = XmlDocument.xml(
       root = xml,
-      prolog = Seq(XmlMisc.Comment(" c "))
+      prolog = Seq(XmlNode.Comment(" c "))
     )
     val dumped: String = render(doc)
     assert(dumped.startsWith("""<?xml version="1.0" encoding="UTF-8"?>"""), dumped)

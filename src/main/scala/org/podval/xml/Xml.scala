@@ -3,6 +3,10 @@ package org.podval.xml
 /** Node of the XML tree owned by this library. */
 sealed trait XmlNode derives CanEqual
 
+/** Comment or processing instruction outside the document element (`Misc` minus whitespace). */
+sealed trait XmlMisc extends XmlNode derives CanEqual:
+  def markup: String
+
 object XmlNode:
   final case class Element(
     name: XmlName,
@@ -14,9 +18,12 @@ object XmlNode:
 
   final case class CData(value: String) extends XmlNode derives CanEqual
 
-  final case class Comment(value: String) extends XmlNode derives CanEqual
+  final case class Comment(value: String) extends XmlMisc derives CanEqual:
+    def markup: String = s"<!--$value-->"
 
-  final case class ProcessingInstruction(target: String, data: String) extends XmlNode derives CanEqual
+  final case class ProcessingInstruction(target: String, data: String) extends XmlMisc derives CanEqual:
+    def markup: String =
+      if data.isEmpty then s"<?$target?>" else s"<?$target $data?>"
 
 // XML AST owned by this library.
 // `import Xml.given` to parse/write this AST.

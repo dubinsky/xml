@@ -70,8 +70,8 @@ final class XmlBuilderSpec extends AnyFunSuite:
     builder.endElement()
     builder.comment("after")
     val doc: XmlDocument[Xml.Element] = builder.document
-    assert(doc.prolog == Seq(XmlMisc.Comment("before")))
-    assert(doc.epilogue == Seq(XmlMisc.Comment("after")))
+    assert(doc.prolog == Seq(XmlNode.Comment("before")))
+    assert(doc.epilogue == Seq(XmlNode.Comment("after")))
     assert(doc.root.getChildren.flatMap(_.asComment) == Seq("inside"))
   }
 
@@ -97,6 +97,6 @@ final class XmlBuilderSpec extends AnyFunSuite:
     builder.comment("c")
     builder.startElement(ZioBlocksHtml.element(XmlElement.P))
     builder.endElement()
-    assert(builder.document.prolog == Seq(XmlMisc.Comment("c")))
+    assert(builder.document.prolog == Seq(XmlNode.Comment("c")))
     assert(builder.result.getChildren.flatMap(_.asComment).isEmpty)
   }

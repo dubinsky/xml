@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `XmlMisc` is the prolog and epilogue slice of `XmlNode`.
+  `Comment` and `ProcessingInstruction` live on `XmlNode` and carry `markup`.
 - Breaking: the owned tree is `object Xml` (`XmlNode`: element, text, CDATA, comment, processing instruction).
   It is not a package given.
   Import `Xml.given`.

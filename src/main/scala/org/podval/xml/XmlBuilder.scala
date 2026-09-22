@@ -56,11 +56,11 @@ final class XmlBuilder[E](using ast: XmlAst[E]):
 
   def processingInstruction(target: String, data: String): Unit =
     if frames.nonEmpty then ast.processingInstruction(target, data).foreach(addChild)
-    else addMisc(XmlMisc.ProcessingInstruction(target, data))
+    else addMisc(XmlNode.ProcessingInstruction(target, data))
 
   def comment(text: String): Unit =
     if frames.nonEmpty then ast.comment(text).foreach(addChild)
-    else addMisc(XmlMisc.Comment(text))
+    else addMisc(XmlNode.Comment(text))
 
   private def addMisc(misc: XmlMisc): Unit =
     if root.isEmpty then prologBuf += misc else epilogueBuf += misc
