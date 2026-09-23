@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import Xml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -119,7 +118,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
   }
 
   test("ScalaXml document parse keeps prolog comments") {
-    val doc: XmlDocument[ScalaXml.Element] = XmlParser.parseXmlDocument(
+    val doc: XmlDocument[ScalaXml.Element] = XmlParser.parseXmlDocument[ScalaXml.Element](
       "<!-- c --><p>a</p>"
     ).toOption.get
     assert(doc.prolog == Seq(XmlNode.Comment(" c ")))

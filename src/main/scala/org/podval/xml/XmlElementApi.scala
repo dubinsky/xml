@@ -81,12 +81,21 @@ private[xml] trait XmlElementApi:
           Seq(result.setChildren(descend(result.getChildren, Some(result))))
         case Xml.Rewrite.Replace(nodes) =>
           descend(nodes, parent)
+        case Xml.Rewrite.Emit(nodes) =>
+          nodes
     def descend(nodes: Seq[XmlNode], parent: Option[XmlNode.Element]): Seq[XmlNode] =
       XmlNode.flatMapNodes(nodes): node =>
         node.asElement.fold(Seq(node))(el => loop(el, parent))
     loop(this, None) match
       case Seq(only) if only.asElement.nonEmpty => only.asElement.get
       case _ => throw XmlError("rewrite must leave exactly one element")
+
+  /** Elements for which `predicate` is true. `stopAtCode` matches [[gather]]. */
+  def elements(
+    predicate: XmlNode.Element => Boolean,
+    stopAtCode: Boolean = true
+  ): Seq[XmlNode.Element] =
+    gather(el => Option.when(predicate(el))(el), stopAtCode)
 
   def gather[A](
     gatherElement: XmlNode.Element => Option[A],

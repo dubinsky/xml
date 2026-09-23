@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import Xml.given
 import ZioBlocksHtml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
@@ -76,7 +75,9 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("parseXml into ScalaXml keeps names, text, CDATA, and comments") {
-    val xml: ScalaXml.Element = XmlParser.parseXml("""<p xml:id="x">a<![CDATA[b]]><!--c--></p>""").toOption.get
+    val xml: ScalaXml.Element = XmlParser.parseXml[ScalaXml.Element](
+      """<p xml:id="x">a<![CDATA[b]]><!--c--></p>"""
+    ).toOption.get
     assert(xml.getName.qName == "p")
     assert(ScalaXml.getAttributes(xml).collectFirst { case (n, v) if n.is(XmlAttribute.XmlId) => v }.contains("x"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("a"))
@@ -85,7 +86,7 @@ final class XmlParserSpec extends AnyFunSuite:
   }
 
   test("parseHtml into ZioBlocksHtml keeps tags and text and drops comments") {
-    val html: ZioBlocksHtml.Element = XmlParser.parseHtml("<p>a<!--c--><b>d</b></p>").toOption.get
+    val html: ZioBlocksHtml.Element = XmlParser.parseHtml[ZioBlocksHtml.Element]("<p>a<!--c--><b>d</b></p>").toOption.get
     assert(html.getName.is(XmlElement.P))
     assert(html.getChildren.flatMap(_.asComment).isEmpty)
     assert(html.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("b"))

@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import Xml.given
 import XmlNode.convertElements
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
@@ -170,6 +169,27 @@ final class XmlAstSpec extends AnyFunSuite:
     val code: Xml.Element = rewritten.childElements.head
     assert(code.getName.qName == "tei:code")
     assert(code.childElements.map(_.getName.qName) == Seq("x"))
+  }
+
+  test("rewrite Emit does not visit the nodes it inserts") {
+    val xml: Xml.Element = parse("<p><note/></p>")
+    var seen: Seq[String] = Seq.empty
+    val rewritten: Xml.Element = xml.rewrite: (el, _) =>
+      seen = seen :+ el.getName.qName
+      if el.isNamed("note") then
+        Xml.Rewrite.Emit(Seq(Xml.element("span", Seq.empty, Seq(Xml.element("inner")))))
+      else
+        Xml.Rewrite.Keep(el)
+    assert(seen == Seq("p", "note"))
+    val span: Xml.Element = rewritten.childElements.head
+    assert(span.getName.qName == "span")
+    assert(span.childElements.map(_.getName.qName) == Seq("inner"))
+  }
+
+  test("elements collects elements that match") {
+    val xml: Xml.Element = parse("<div><p id=\"a\"/><span/><p id=\"b\"/></div>")
+    assert(xml.elements(_.isNamed("p")).flatMap(_.getId) == Seq("a", "b"))
+    assert(xml.elements(_.isNamed("span"), stopAtCode = false).map(_.getName.qName) == Seq("span"))
   }
 
   test("rewrite Replace of a child runs on a nested element inside the replacement") {

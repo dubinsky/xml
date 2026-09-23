@@ -8,27 +8,20 @@ import zio.blocks.schema.binding.*
 import zio.blocks.schema.binding.RegisterOffset.RegisterOffset
 import zio.blocks.schema.derive.{BindingInstance, Deriver, InstanceOverride, InstanceOverrideByType}
 import zio.blocks.typeid.TypeId
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
-object XmlCodecDeriver extends XmlCodecDeriver:
-  private val taggedCodecs: ConcurrentHashMap[TypeId[?], Lazy[XmlCodec[?]]] = ConcurrentHashMap()
-
-  private[xml] def register[A](typeId: TypeId[A], codec: XmlCodec[A]): Unit =
-    taggedCodecs.put(typeId, Lazy(codec))
-
-  private[xml] def registerTagged[A](typeId: TypeId[A], codec: XmlCodec[A]): Unit =
-    register(typeId, codec)
-
+object XmlCodecDeriver extends XmlCodecDeriver(Seq.empty, None):
   def tagged[A, K](tagField: String, tag: XmlTag[K])(using typeId: TypeId[A]): XmlCodecDeriver =
     val target: String = typeId.fullName
     val xmlTag: XmlTag[Any] = tag.erased
-    new XmlCodecDeriver:
+    new XmlCodecDeriver(Seq.empty, None):
       override protected def tagBinding(id: TypeId[?]): Option[(String, XmlTag[Any])] =
         Option.when(id.fullName == target)((tagField, xmlTag))
 
-class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
+class XmlCodecDeriver(
+  val localCodecs: Seq[(TypeId[?], XmlCodec[?])] = Seq.empty,
+  val rootElementName: Option[(String, String)] = None
+) extends Deriver[XmlCodec], XmlCodecRecord:
   protected def tagBinding(typeId: TypeId[?]): Option[(String, XmlTag[Any])] = None
 
   override def derivePrimitive[A](
@@ -107,8 +100,10 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         .asInstanceOf[XmlCodec[A]]
     else Lazy:
       val caseCodecs: IndexedSeq[(String, XmlCodec[A], Option[A])] = cases.map: caseTerm =>
-        val name: String = configuredElementName(caseTerm.name, caseTerm.modifiers, caseTerm.value.modifiers)
         val codec: XmlCodec[A] = D.instance(caseTerm.value.metadata).force.asInstanceOf[XmlCodec[A]]
+        val name: String = codec.explicitElementName.getOrElse(
+          configuredElementName(caseTerm.name, caseTerm.modifiers, caseTerm.value.modifiers)
+        )
         val empty: Option[A] = caseTerm.value.asRecord.filter(_.fields.isEmpty).map: record =>
           val ctor: Constructor[?] = F.record(record.recordBinding).constructor
           ctor.construct(Registers(ctor.usedRegisters), 0).asInstanceOf[A]
@@ -118,7 +113,10 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
       def caseByName(name: XmlName): Option[(String, XmlCodec[A], Option[A])] =
         caseCodecs.find((caseName, _, _) => name.matches(caseName))
       new XmlCodec[A]:
-        override def elementName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
+        override def registeredType: Option[TypeId[?]] = Some(typeId)
+        override def explicitElementName: Option[String] = nameFor(typeId)
+        override def elementName: String =
+          explicitElementName.getOrElse(configuredElementName(typeId.name, Seq.empty, modifiers))
         override def isRecordLike: Boolean = true
         override def isEnumeration: Boolean = enumeration
         override def caseNames: Seq[String] = caseCodecs.map(_._1)
@@ -222,7 +220,10 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
       D.instance(wrapped.metadata).map: codec =>
         val inner: XmlCodec[B] = codec
         new XmlCodec[A]:
-          override def elementName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
+          override def registeredType: Option[TypeId[?]] = Some(typeId)
+          override def explicitElementName: Option[String] = nameFor(typeId).orElse(inner.explicitElementName)
+          override def elementName: String =
+            nameFor(typeId).getOrElse(configuredElementName(typeId.name, Seq.empty, modifiers))
           override def isRecordLike: Boolean = inner.isRecordLike
           override def caseNames: Seq[String] = inner.caseNames
           override def isEnumeration: Boolean = inner.isEnumeration
@@ -232,17 +233,20 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
           override def unsafeDecodeText(text: String): A = wrapperBinding.wrap(inner.unsafeDecodeText(text))
           override def encodeText(value: A): String = inner.encodeText(wrapperBinding.unwrap(value))
 
+  /** `fullName` of the type being derived, paired with the `element` argument. */
+  private[xml] def nameFor(typeId: TypeId[?]): Option[String] =
+    rootElementName.collect { case (full, name) if full == typeId.fullName => name }
+
   override def instanceOverrides: IndexedSeq[InstanceOverride] =
     recursiveRecordCache.remove()
-    // Parent `Schema.derived` inlines `Schema[Name]` before `Name`'s given runs.
-    // Register here, before this snapshot is taken, so `Seq[Name]` uses `<name>`.
-    XmlCodecDeriver.register(TypeId.of[Name], Name.codec)
-    val tagged: List[InstanceOverride] =
-      XmlCodecDeriver.taggedCodecs.asScala.toList.map: (id, codec) =>
-        InstanceOverrideByType(id.asInstanceOf[TypeId[Any]], codec.asInstanceOf[Lazy[XmlCodec[Any]]])
-    Chunk(
-      InstanceOverrideByType(TypeId.of[XmlNode.Element], Lazy(XmlCodec.elementCodec))
-    ) ++ Chunk.from(tagged)
+    // `Schema[Name]` is inlined unless this override is present before the snapshot.
+    val builtin: Seq[InstanceOverride] = Seq(
+      InstanceOverrideByType(TypeId.of[XmlNode.Element], Lazy(XmlCodec.elementCodec)),
+      InstanceOverrideByType(TypeId.of[Name], Lazy(Name.codec))
+    )
+    val passed: Seq[InstanceOverride] = localCodecs.map: (id, codec) =>
+      InstanceOverrideByType(id.asInstanceOf[TypeId[Any]], Lazy(codec.asInstanceOf[XmlCodec[Any]]))
+    Chunk.from(builtin ++ passed)
 
   private def primitiveCodec[A](primitiveType: PrimitiveType[A]): XmlCodec[A] =
     primitiveType match

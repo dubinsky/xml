@@ -1,5 +1,7 @@
 package org.podval.xml
 
+import scala.util.NotGiven
+
 object XmlWriterConfig:
   object Plain extends XmlWriterConfig()
 
@@ -22,14 +24,28 @@ open class XmlWriterConfig(
   // Keep the tags on the content's first and last line. Does not cling to the previous element.
   val stick: Set[String] = Set.empty
 ):
-  def render[Element: XmlAst](element: Element): String =
-    render(element, XmlWriter.widthDefault)
+  def render(element: Xml.Element): String =
+    XmlWriter.render[Xml.Element](this, element, XmlWriter.widthDefault)(using Xml)
 
-  def render[Element: XmlAst](element: Element, width: Int): String =
+  def render(element: Xml.Element, width: Int): String =
+    XmlWriter.render[Xml.Element](this, element, width)(using Xml)
+
+  def render(document: XmlDocument[Xml.Element]): String =
+    XmlWriter.render[Xml.Element](this, document, XmlWriter.widthDefault)(using Xml)
+
+  def render(document: XmlDocument[Xml.Element], width: Int): String =
+    XmlWriter.render[Xml.Element](this, document, width)(using Xml)
+
+  def render[Element: XmlAst](element: Element)(using NotGiven[Element =:= Xml.Element]): String =
+    XmlWriter.render(this, element, XmlWriter.widthDefault)
+
+  def render[Element: XmlAst](element: Element, width: Int)(using NotGiven[Element =:= Xml.Element]): String =
     XmlWriter.render(this, element, width)
 
-  def render[Element: XmlAst](document: XmlDocument[Element]): String =
-    render(document, XmlWriter.widthDefault)
+  def render[Element: XmlAst](document: XmlDocument[Element])(using NotGiven[Element =:= Xml.Element]): String =
+    XmlWriter.render(this, document, XmlWriter.widthDefault)
 
-  def render[Element: XmlAst](document: XmlDocument[Element], width: Int): String =
+  def render[Element: XmlAst](document: XmlDocument[Element], width: Int)(using
+    NotGiven[Element =:= Xml.Element]
+  ): String =
     XmlWriter.render(this, document, width)

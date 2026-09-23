@@ -115,6 +115,15 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.items.map(_.kind) == Seq(TaggedKind.person, TaggedKind.place))
     val encoded: Xml.Element = TaggedIndex.codec.encode(decoded)
     assert(encoded.childElements.map(_.getName.qName) == Seq("person", "place"))
+    val plain: Xml.Element = PlainIndex.codec.encode(PlainIndex(Seq(TaggedItem(TaggedKind.person, "a"))))
+    assert(plain.childElements.map(_.getName.qName) == Seq("TaggedItem"))
+  }
+
+  test("Schema[Xml.Element] does not carry the tree") {
+    val failed: XmlError = intercept[XmlError] {
+      summon[Schema[Xml.Element]].toDynamicValue(Xml.element("p"))
+    }
+    assert(failed.getMessage.contains("use XmlCodec"))
   }
 
   test("identity sequence fields collect mixed sibling tags") {
@@ -226,7 +235,7 @@ final class XmlCodecSpec extends AnyFunSuite:
   }
 
   test("nested recursive children round-trip") {
-    val codec: XmlCodec[Node] = XmlCodec.derived(using Node.schema)
+    val codec: XmlCodec[Node] = Node.codec
     val xml: String = """<node n="root"><node n="a"/><node n="b"><node n="c"/></node></node>"""
     val decoded: Node = codec.decode(parse(xml)).toOption.get
     assert(decoded == Node("root", Seq(Node("a"), Node("b", Seq(Node("c"))))))
@@ -393,13 +402,18 @@ final case class DayDoc(
 object DayDoc:
   given schema: Schema[DayDoc] = Schema.derived
 
-@Modifier.config(XmlCodec.Element, "node")
 final case class Node(
   n: String,
-  @Modifier.config(XmlCodec.Element, "node") children: Seq[Node] = Seq.empty
+  children: Seq[Node] = Seq.empty
 ) derives CanEqual
 object Node:
   given schema: Schema[Node] = Schema.derived
+  val codec: XmlCodec[Node] = XmlCodec.derived(element = "node")
+
+final case class PlainIndex(items: Seq[TaggedItem] = Seq.empty) derives CanEqual
+object PlainIndex:
+  given schema: Schema[PlainIndex] = Schema.derived
+  val codec: XmlCodec[PlainIndex] = XmlCodec.derived
 
 final case class AttrDefault(
   label: String,

@@ -24,12 +24,15 @@ private[xml] trait XmlCodecRecord:
     deconstructor: Deconstructor[A],
     xmlTag: Option[XmlTag[Any]]
   ) extends XmlCodec[A]:
-    private val recordName: String = configuredElementName(typeId.name, Seq.empty, modifiers)
+    private val recordName: String =
+      nameFor(typeId).getOrElse(configuredElementName(typeId.name, Seq.empty, modifiers))
     private val namespace: Option[(String, String)] = namespaceOf(modifiers)
     private val ignoreUnknown: Boolean = configValue(modifiers, XmlCodec.IgnoreUnknown).isDefined
     // Recursive records cache this array before every slot is filled; look up after derivation.
     private lazy val tagField: Option[FieldInfo] = fieldInfos.find(_.kind == FieldKind.Tag)
 
+    override def registeredType: Option[TypeId[?]] = Some(typeId)
+    override def explicitElementName: Option[String] = nameFor(typeId)
     override def elementName: String = xmlTag.flatMap(_.names.headOption).getOrElse(recordName)
     override def caseNames: Seq[String] = xmlTag.fold(Seq.empty)(_.names)
     override def isRecordLike: Boolean = true

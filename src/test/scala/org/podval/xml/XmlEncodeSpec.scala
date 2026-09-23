@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import Xml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlEncodeSpec extends AnyFunSuite:

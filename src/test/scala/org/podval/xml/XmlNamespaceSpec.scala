@@ -10,7 +10,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   private val docbook: String = "http://docbook.org/ns/docbook"
 
   private def parse(xml: String): ZioBlocksXml.Element =
-    XmlParser.parseXml(xml).toOption.get
+    XmlParser.parseXml[ZioBlocksXml.Element](xml).toOption.get
 
   private def children(element: ZioBlocksXml.Element): Seq[ZioBlocksXml.Element] =
     element.getChildren.flatMap(_.asElement)
@@ -110,12 +110,12 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   }
 
   test("SAX: undeclared prefix is an error") {
-    val result: Either[XmlError, ZioBlocksXml.Element] = XmlParser.parseXml("<tei:p/>")
+    val result: Either[XmlError, ZioBlocksXml.Element] = XmlParser.parseXml[ZioBlocksXml.Element]("<tei:p/>")
     assert(result.isLeft)
   }
 
   test("HTML parse drops the XHTML namespace") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseHtml("<p id=\"x\">a</p>").toOption.get
+    val xml: ZioBlocksXml.Element = XmlParser.parseHtml[ZioBlocksXml.Element]("<p id=\"x\">a</p>").toOption.get
     assert(xml.getName.is(XmlElement.P))
     assert(xml.name.namespace.isEmpty)
     assert(xml.attr(XmlAttribute.Id).contains("x"))

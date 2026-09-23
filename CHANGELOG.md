@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `XmlParser.parse`, `parseXml`, `parseXmlDocument`, `parseHtml`, and `parseResource` return `Xml.Element` with no
+  given.
+  The same names with a type argument still parse into another `XmlAst`.
+- `XmlWriterConfig.render` of an `Xml.Element` or `XmlDocument[Xml.Element]` needs no given.
+- `rewrite` accepts `Emit`, which inserts nodes and does not walk them.
+  `Keep` and `Replace` are still walked.
+- `Xml.Element.elements` collects elements that match a predicate.
+  `gather` still extracts a value.
+- `XmlCodec.derived(element = "chapter")` sets that type's tag.
+  Codecs passed to `XmlCodec.derived(Child.codec)` apply to that derivation only.
+- `Schema[Xml.Element]` fails.
+  `XmlCodec` carries the tree.
+- `flatMapNodes` and `convertElements` build the result with a list builder.
 - Breaking: `XmlCodec` decode and encode take `Xml.Element`.
   Convert a foreign tree with `to[Xml.Element]` before decode, and the encode result with `to[TO]`.
 - Breaking: walk, attribute, and CSS operations exist only on `Xml.Element`.

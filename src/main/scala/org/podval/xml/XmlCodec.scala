@@ -13,7 +13,11 @@ type XmlTree = Xml.Element
 
 object XmlTree:
   given schema: Schema[XmlTree] =
-    Schema[Unit].transform(_ => Xml.element("empty"), _ => ())(using TypeId.of[XmlNode.Element])
+    val toTree: Unit => XmlTree = _ =>
+      throw XmlError("Schema[Xml.Element] does not carry XML; use XmlCodec")
+    val fromTree: XmlTree => Unit = _ =>
+      throw XmlError("Schema[Xml.Element] does not carry XML; use XmlCodec")
+    Schema[Unit].transform(toTree, fromTree)(using TypeId.of[XmlNode.Element])
 
 /** Same as [[XmlCodec.xmlElementSchema]]. In this package automatically. */
 given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
@@ -33,9 +37,11 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   * An unannotated primitive is an attribute named after the field.
   * `@Modifier.rename("n")` renames that attribute, or the child tag of a record or identity field.
   * `@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into a child element.
-  * Put that config on the case class when the type has one XML tag.
+  * A type with one tag takes the name on the codec: `XmlCodec.derived(element = "chapter")`.
+  * Pass child codecs to `XmlCodec.derived(Child.codec)` so that derivation uses them and no other.
   * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
   * name unless rename or an element config overrides it.
+  * `Schema[Xml.Element]` does not carry the tree.
   * A foreign tree decodes after `element.to[Xml.Element]`; encode with `codec.encode(value).to[TO]`.
   * Other packages `import XmlCodec.given` (or `import org.podval.xml.given`)
   * for `Schema[Xml.Element]`.
@@ -85,27 +91,40 @@ object XmlCodec:
 
   val deriver: Deriver[XmlCodec] = XmlCodecDeriver
 
-  def derived[A](using schema: Schema[A]): XmlCodec[A] = schema.derive(deriver)
+  def derived[A](using schema: Schema[A]): XmlCodec[A] = derive(schema, None, Seq.empty)
 
-  /** The only supported way to publish a tagged child codec into a parent `derived`.
-    *
-    * The parameters are unused in the body on purpose.
-    * The call publishes the child codec because the argument expressions run first:
-    * `derived(tagField, tag)` calls `registerTagged`, which fills `instanceOverrides`,
-    * before this method derives the parent.
-    * `Schema.derived` inlines nested records and does not run the child codec.
+  /** Root element name for a type that has one tag. */
+  def derived[A](element: String)(using schema: Schema[A]): XmlCodec[A] =
+    derive(schema, Some(element), Seq.empty)
+
+  /** Use these codecs for their registered types in this derivation only.
+    * `Schema.derived` inlines a nested record unless its codec is passed here.
     */
   def derived[A](nested: XmlCodec[?], rest: XmlCodec[?]*)(using schema: Schema[A]): XmlCodec[A] =
-    val _ = (nested, rest)
-    derived(using schema)
+    derive(schema, None, nested +: rest)
+
+  /** Element name and child codecs for one derivation. */
+  def derived[A](
+    element: String,
+    nested: XmlCodec[?],
+    rest: XmlCodec[?]*
+  )(using schema: Schema[A]): XmlCodec[A] =
+    derive(schema, Some(element), nested +: rest)
+
+  private def derive[A](schema: Schema[A], element: Option[String], codecs: Seq[XmlCodec[?]]): XmlCodec[A] =
+    val overrides: Seq[(TypeId[?], XmlCodec[?])] = codecs.map: codec =>
+      codec.registeredType match
+        case Some(id) => (id, codec)
+        case None =>
+          throw XmlError("XmlCodec.derived expects a codec from XmlCodec.derived")
+    val rootName: Option[(String, String)] = element.map(schema.reflect.typeId.fullName -> _)
+    schema.derive(new XmlCodecDeriver(overrides, rootName))
 
   /** Derive a record whose XML tag comes from `tagField` via `tag`.
-    * Nested records of this type in a later `XmlCodec.derived` pick up the tagged codec
-    * once this method has run (pass `Child.codec` to `XmlCodec.derived(nested)`). */
-  def derived[A, K](tagField: String, tag: XmlTag[K])(using schema: Schema[A], typeId: TypeId[A]): XmlCodec[A] =
-    val codec: XmlCodec[A] = schema.derive(XmlCodecDeriver.tagged(tagField, tag))
-    XmlCodecDeriver.registerTagged(typeId, codec)
-    codec
+    * Pass `Child.codec` to the parent `XmlCodec.derived` so that parent uses this codec.
+    */
+  def derived[A, K](tagField: String, tag: XmlTag[K])(using schema: Schema[A]): XmlCodec[A] =
+    schema.derive(XmlCodecDeriver.tagged(tagField, tag)(using schema.reflect.typeId))
 
   extension [A](codec: XmlCodec[A])
     /** Decode each element child of `root`. Whitespace and comments are ignored;
@@ -165,3 +184,9 @@ trait XmlCodec[A]:
 
   /** Identity `Xml.Element` field: child tag is the Scala field name unless overridden. */
   def isIdentity: Boolean = false
+
+  /** Set when this codec was derived for a type. `XmlCodec.derived(codec)` overrides that type. */
+  def registeredType: Option[TypeId[?]] = None
+
+  /** Name passed to `XmlCodec.derived(element = ...)`, when this codec is that root. */
+  def explicitElementName: Option[String] = None

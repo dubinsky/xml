@@ -1,7 +1,6 @@
 package org.podval.xml.codec
 
 import org.podval.xml.{Xml, XmlCodec, XmlParser}
-import Xml.given
 import XmlCodec.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.schema.Schema

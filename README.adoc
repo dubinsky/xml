@@ -13,9 +13,9 @@ implementation 'org.podval:org.podval.xml:0.3.0'
 `zio-blocks-schema` comes in transitively (`XmlCodec`).
 `zio-blocks-schema-xml` does not: it is only for the `ZioBlocksXml` adapter.
 Each AST given is on its object, not in the package.
-Bring one in with `import Xml.given`, `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or
-`import ScalaXml.given`.
-That given is how parse, `render`, and `encode` choose a tree.
+Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or `import ScalaXml.given`.
+`import Xml.given` is for converting with `to[Xml.Element]` from another tree.
+Parse and `render` of `Xml.Element` need no given.
 Walk, attribute, and class operations on the owned `Xml.Element` are members and need no given.
 `import org.podval.xml.dsl.given` summons `Xml`.
 ZIO Blocks XML, ZIO Blocks HTML, and Scala XML need an extra dependency, not pulled in by default.
@@ -50,10 +50,10 @@ Numbered URL names stay digits; extra names in `number2names` still round-trip.
 
 == Parse
 
-`XmlParser` loads from a string or classpath resource into any `XmlAst` (`E` from the expected type).
-There is no package-level default.
-Import `Xml.given` for the owned tree, `ZioBlocksXml.given` for ZIO Blocks XML, `ZioBlocksHtml.given` for ZIO Blocks
-HTML, or `ScalaXml.given` for Scala XML.
+`XmlParser` loads from a string or classpath resource.
+`parseXml`, `parseXmlDocument`, `parseHtml`, `parse`, and `parseResource` return `Xml.Element` and need no given.
+Pass a type argument, and import that tree's given, for another AST:
+`import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or `import ScalaXml.given`.
 Convert with `element.to[TO]` (`element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`).
 `parseHtml` uses TagSoup (HTML only: no namespaces, names are lower-cased; not for TEI).
 `xi:include` is not expanded (`xi:include/@href` stays a page ref).
@@ -153,14 +153,19 @@ Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, 
 `Seq[Name]`.
 Those children are `<name>`: derivation registers `Name.codec` before it snapshots overrides, so the field needs no
 `@Modifier.config(XmlCodec.Element, "name")`.
-`XmlCodec.derived[A, K](tagField, tag)` is picked up when `A` is nested; pass `Child.codec` to
-`XmlCodec.derived(nested)` so the child codec is initialized (`Schema.derived` inlines nested records).
+`XmlCodec.derived(element = "chapter")` names a type that has one tag.
+`XmlCodec.derived[A, K](tagField, tag)` is the tagged form.
+Pass `Child.codec` to `XmlCodec.derived(Child.codec)` so that derivation uses it.
+`Schema.derived` inlines a nested record that is not passed.
+Those overrides apply only to that derivation.
+`Schema[Xml.Element]` does not carry the tree.
 `XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources`
 decodes one document per `name.xml`.
-`transform` / `gather` / `rewrite`, attributes, and CSS classes are members of `Xml.Element`.
+`transform` / `gather` / `elements` / `rewrite`, attributes, and CSS classes are members of `Xml.Element`.
+`Emit` inserts finished nodes; `Keep` and `Replace` are walked again.
 A foreign tree converts with `to[Xml.Element]` before those operations.
 They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
-`rewrite` can keep one element or replace it with a node list.
+`rewrite` can keep one element, replace it with a node list, or emit finished nodes.
 `getById` returns `Option`; `childNamed` is the first `childrenNamed` match.
 `childElements` is the element children.
 `flatMapNodes` and `convertElements` are extensions on `Seq[XmlNode]` (`import XmlNode.flatMapNodes`, or
@@ -168,8 +173,7 @@ They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to wa
 They need no `XmlAst` given.
 `@Modifier.rename("chapter")` renames a child or attribute that already has the right kind.
 `@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into an element.
-Put that config on the case class when the type has one tag (`NumberedSpanDto` stays on the field, via rename, because
-one type is several tags).
+`NumberedSpanDto` stays on the field, via rename, because one type is several tags.
 
 == Build
 

@@ -86,22 +86,31 @@ object XmlNode:
     */
   extension (nodes: Seq[XmlNode])
     def flatMapNodes(f: XmlNode => Seq[XmlNode]): Seq[XmlNode] =
-      nodes.foldLeft(Seq.empty[XmlNode]): (acc, node) =>
-        f(node).foldLeft(acc)(_ :+ _)
+      val buf = List.newBuilder[XmlNode]
+      nodes.foreach(node => buf.addAll(f(node)))
+      buf.result()
 
     def convertElements(converter: Element => Option[Seq[XmlNode]]): Seq[XmlNode] =
-      nodes.foldLeft(Seq.empty[XmlNode]): (acc, node) =>
-        node.asElement.flatMap(converter).getOrElse(Seq(node)).foldLeft(acc)(_ :+ _)
+      val buf = List.newBuilder[XmlNode]
+      nodes.foreach: node =>
+        buf.addAll(node.asElement.flatMap(converter).getOrElse(Seq(node)))
+      buf.result()
 
 // XML AST owned by this library.
-// `import Xml.given` to parse, write, or convert (`to[TO]`).
+// `XmlParser.parseXml` and `XmlWriterConfig.render` take `Xml.Element` with no given.
+// `import Xml.given` to parse or write another AST, or to convert (`to[TO]`).
 // Walk, attribute, and CSS operations are members of `XmlNode.Element`.
 // `import XmlNode.flatMapNodes` (or `convertElements`) for a node list; no given.
 object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
-  /** One element, or the nodes that replace it. The walk then continues into the result. */
+  /** What [[XmlNode.Element.rewrite]] does with the element it visits.
+    * `Keep` and `Replace` are walked again.
+    * `Emit` is inserted as finished output.
+    */
   enum Rewrite:
     case Keep(element: XmlNode.Element)
     case Replace(nodes: Seq[XmlNode])
+    case Emit(nodes: Seq[XmlNode])
+
   given Xml.type = this
 
   override type Node = XmlNode

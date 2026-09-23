@@ -2,7 +2,6 @@ package org.podval.store
 
 import org.podval.metadata.{Name, Names}
 import org.podval.xml.{XmlParser, Xml}
-import Xml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class SelectorSpec extends AnyFunSuite:

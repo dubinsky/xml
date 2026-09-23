@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import Xml.given
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
