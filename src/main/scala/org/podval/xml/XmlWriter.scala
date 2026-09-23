@@ -103,7 +103,7 @@ object XmlWriter:
     canBreakRight: Boolean,
     scope: NsScope
   )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
-    val (attributeValues, childScope) = attributesAndScope(element, scope)
+    val (attributeValues: Seq[(String, String)], childScope: NsScope) = attributesAndScope(element, scope)
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
       else Doc.lineOrSpace + Doc.intercalate(
@@ -193,9 +193,9 @@ object XmlWriter:
   @scala.annotation.tailrec
   private def words[N](text: String, acc: List[Token[N]] = Nil): List[Token[N]] =
     if text.isEmpty then acc.reverse else
-      val (spaces, afterSpaces) = text.span(_ == ' ')
+      val (spaces: String, afterSpaces: String) = text.span(_ == ' ')
       val acc1 = if spaces.isEmpty then acc else Token.Space() :: acc
-      val (word, afterWord) = afterSpaces.span(_ != ' ')
+      val (word: String, afterWord: String) = afterSpaces.span(_ != ' ')
       if word.isEmpty then acc1.reverse
       else words(afterWord, Token.Word(word) :: acc1)
 
@@ -333,7 +333,7 @@ object XmlWriter:
     element: Element,
     scope: NsScope
   )(using config: XmlWriterConfig): Seq[String] =
-    val (pairs, childScope) = attributesAndScope(element, scope)
+    val (pairs: Seq[(String, String)], childScope: NsScope) = attributesAndScope(element, scope)
     val attributes: String = attributeText(pairs)
     val inner: String = rawInner(element.getChildren, childScope)
     if inner.isEmpty then wrapLiteral(element, attributes, Seq.empty)
@@ -359,7 +359,7 @@ object XmlWriter:
     element: Element,
     scope: NsScope
   )(using config: XmlWriterConfig): Seq[String] =
-    val (pairs, childScope) = attributesAndScope(element, scope)
+    val (pairs: Seq[(String, String)], childScope: NsScope) = attributesAndScope(element, scope)
     wrapLiteral(element, attributeText(pairs), preformatChildren(element.getChildren, childScope))
 
   private def preformatChildren(using ast: XmlAst[?], config: XmlWriterConfig)(
