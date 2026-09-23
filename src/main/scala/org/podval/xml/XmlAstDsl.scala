@@ -45,7 +45,10 @@ private[xml] trait XmlAstDsl[ELEMENT]:
   private def applyMods(element: Element, mods: Seq[XmlMod]): Element =
     val start: (Seq[(XmlName, String)], Nodes) = (element.getAttributes, element.getChildren)
     val (attrs, children) = mods.foldLeft(start)(applyOne)
-    this.element(element.getName, attrs, children)
+    // After every mod, so a prefixed name sees `xmlns:prefix` even when that declaration is later.
+    val rebound: Seq[(XmlName, String)] = attrs.map: (name, value) =>
+      XmlName.parseDeclared(name, attrs, isAttribute = true) -> value
+    this.element(XmlName.parseDeclared(element.getName, rebound, isAttribute = false), rebound, children)
 
   private def applyOne(
     state: (Seq[(XmlName, String)], Nodes),
@@ -107,6 +110,7 @@ private[xml] trait XmlAstDsl[ELEMENT]:
   val hidden: Attr = Attr(XmlAttribute.Hidden.name)
   val datetime: Attr = Attr(XmlAttribute.Datetime.name)
   val xmlns: Attr = Attr(XmlAttribute.Xmlns.name)
+  def xmlns(prefix: String): Attr = Attr(XmlAttribute.Xmlns(prefix).name)
 
   def aria(name: String): Attr = Attr(attrName(s"aria-$name"))
   def attr(qName: String): Attr = Attr(attrName(qName))

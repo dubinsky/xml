@@ -114,3 +114,35 @@ final class XmlDslSpec extends AnyFunSuite:
     assert(el.get(XmlAttribute.Xmlns).contains("http://www.sitemaps.org/schemas/sitemap/0.9"))
     assert(el.getChildren.flatMap(_.asText) == Seq("x"))
   }
+
+  test("prefixed xmlns rebinds the element and attributes after every mod") {
+    val xsi: String = "http://www.w3.org/2001/XMLSchema-instance"
+    val sitemapNs: String = "http://www.sitemaps.org/schemas/sitemap/0.9"
+    val location: String =
+      "http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd"
+    val el: Xml.Element = element(
+      "urlset",
+      xmlns("xsi") := xsi,
+      attr("xsi:schemaLocation") := location,
+      xmlns := sitemapNs
+    )
+    assert(el.getName.uri.contains(sitemapNs))
+    assert(attrName(el, "xmlns:xsi").uri.contains(XmlNamespace.xmlns.uri))
+    assert(attrName(el, "xsi:schemaLocation").uri.contains(xsi))
+    val reversed: Xml.Element = element(
+      "urlset",
+      attr("xsi:schemaLocation") := location,
+      xmlns := sitemapNs,
+      xmlns("xsi") := xsi
+    )
+    assert(reversed.getName.uri.contains(sitemapNs))
+    assert(attrName(reversed, "xmlns:xsi").uri.contains(XmlNamespace.xmlns.uri))
+    assert(attrName(reversed, "xsi:schemaLocation").uri.contains(xsi))
+    val html: Xml.Element = div(xmlns := sitemapNs, hidden := false, id := "x")
+    assert(html.getName.uri.contains(sitemapNs))
+    assert(attrName(html, "id").uri.isEmpty)
+    assert(qNames(html) == Seq("xmlns" -> sitemapNs, "id" -> "x"))
+  }
+
+  private def attrName(element: Xml.Element, qName: String): XmlName =
+    element.getAttributes.collectFirst { case (name, _) if name.qName == qName => name }.get

@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- The construction DSL rebinds names with `XmlName.parseDeclared` after xmlns mods.
+  `xmlns := uri` is the default namespace.
+  `xmlns(prefix) := uri` declares a prefix, and a prefixed attribute picks it up regardless of mod order.
 - Structural reads and child replacement are members on `XmlNode` and `XmlNode.Element`, so they need no `given`.
   `Xml`'s extension overrides for those operations delegate to the members.
 - `rewrite` keeps one element or replaces it with a node list; `stopAtCode` still defaults to `true`.
