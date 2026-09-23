@@ -137,6 +137,7 @@ Xerces nested `xml:base` is still wrong (https://issues.apache.org/jira/browse/X
 
 `XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes
 on leaf records).
+An unannotated primitive is an attribute named after the field.
 Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`)
 for `Schema[Xml.Element]`.
 Encoding that field needs `import Xml.given` (or `import org.podval.xml.dsl.given`).

@@ -188,13 +188,19 @@ private[xml] trait XmlCodecRecord:
     val itemReflect: Reflect[F, ?] =
       if sequence then innerReflect.asSequenceUnknown.get.sequence.element else innerReflect
     val codec: XmlCodec[Any] = D.instance(itemReflect.metadata).force.asInstanceOf[XmlCodec[Any]]
+    val attributeConfig: Option[String] = configValue(field.modifiers, XmlCodec.Attribute)
+    // Empty config is not a qName: rename, else the field name. A non-empty value wins over rename.
+    def attributeQName(configured: Option[String]): String =
+      configured.filter(_.nonEmpty).orElse(renameOf(field.modifiers)).getOrElse(field.name)
     val kind: FieldKind =
       if tagBinding(recordTypeId).exists(_._1 == field.name) then FieldKind.Tag
       else if configValue(field.modifiers, XmlCodec.Include).isDefined then FieldKind.Include
-      else configValue(field.modifiers, XmlCodec.Attribute) match
-        case Some(attr) => FieldKind.Attribute(if attr.isEmpty then field.name else attr)
-        case None if configValue(field.modifiers, XmlCodec.Text).isDefined => FieldKind.Text
-        case None => FieldKind.Child
+      else if attributeConfig.isDefined then FieldKind.Attribute(attributeQName(attributeConfig))
+      else if configValue(field.modifiers, XmlCodec.Text).isDefined then FieldKind.Text
+      else if configValue(field.modifiers, XmlCodec.Element).exists(_.nonEmpty) then FieldKind.Child
+      // Reflect.Wrapper (identity Xml.Element) does not override asPrimitive. Sequences stay children.
+      else if !sequence && itemReflect.asPrimitive.isDefined then FieldKind.Attribute(attributeQName(None))
+      else FieldKind.Child
     val itemName: String =
       configValue(field.modifiers, XmlCodec.Element).filter(_.nonEmpty)
         .orElse(renameOf(field.modifiers))

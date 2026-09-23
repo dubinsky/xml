@@ -13,11 +13,11 @@ object Name:
   /** XML shape of `<name>` (`n` xor text, spec as attributes). Domain `Name`
     * is not this record: a derived `Language.Spec` would nest. */
   private final case class Data(
-    @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
+    n: Option[String] = None,
     @Modifier.config(XmlCodec.Text, "") text: Option[String] = None,
-    @Modifier.config(XmlCodec.Attribute, "lang") lang: Option[String] = None,
-    @Modifier.config(XmlCodec.Attribute, "") transliterated: Option[Boolean] = None,
-    @Modifier.config(XmlCodec.Attribute, "") flavour: Option[String] = None
+    lang: Option[String] = None,
+    transliterated: Option[Boolean] = None,
+    flavour: Option[String] = None
   ) derives CanEqual
 
   private object Data:

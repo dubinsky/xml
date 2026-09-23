@@ -233,8 +233,45 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(codec.decode(encoded).toOption.get == decoded)
   }
 
+  test("unannotated primitives are attributes; element, identity, and sequence stay children") {
+    val value: AttrDefault = AttrDefault(
+      label = "t",
+      count = Some(3),
+      comment = Some("c"),
+      note = Some(Xml.element("p")),
+      tags = Seq("a", "b")
+    )
+    val encoded: Xml.Element = XmlCodec.derived(using AttrDefault.schema).encode(value)
+    assert(encoded.get("label").contains("t"))
+    assert(encoded.get("count").contains("3"))
+    assert(encoded.get("comment").isEmpty)
+    assert(encoded.get("note").isEmpty)
+    assert(encoded.get("tags").isEmpty)
+    val children: Seq[Xml.Element] = encoded.getChildren.flatMap(_.asElement)
+    assert(children.map(_.getName.qName) == Seq("comment", "note", "tags", "tags"))
+    assert(children.head.getText.trim == "c")
+    assert(children.drop(2).map(_.getText.trim) == Seq("a", "b"))
+
+    val missing: Either[XmlError, RequiredLabel] =
+      XmlCodec.derived(using RequiredLabel.schema).decode(parse("<RequiredLabel/>"))
+    val message: String = missing.swap.toOption.get.getMessage
+    assert(message.contains("label"))
+    assert(message.contains("Missing required attribute"))
+
+    val renamed: Xml.Element = XmlCodec.derived(using RenamedLabel.schema).encode(RenamedLabel("t"))
+    assert(renamed.get("n").contains("t"))
+    assert(renamed.get("label").isEmpty)
+    assert(renamed.getChildren.flatMap(_.asElement).isEmpty)
+
+    val explicit: Xml.Element =
+      XmlCodec.derived(using ExplicitQName.schema).encode(ExplicitQName("collection"))
+    assert(explicit.get("pageType").contains("collection"))
+    assert(explicit.get("renamed").isEmpty)
+    assert(explicit.get("pageTypeName").isEmpty)
+  }
+
 final case class Language(
-  @Modifier.config(XmlCodec.Attribute, "") ident: String
+  ident: String
 ) derives CanEqual
 object Language:
   given schema: Schema[Language] = Schema.derived
@@ -246,33 +283,33 @@ object LangUsage:
   given schema: Schema[LangUsage] = Schema.derived
 
 final case class EntityName(
-  @Modifier.config(XmlCodec.Attribute, "") id: Option[String] = None,
-  @Modifier.config(XmlCodec.Attribute, "") ref: Option[String] = None,
+  id: Option[String] = None,
+  ref: Option[String] = None,
   @Modifier.config(XmlCodec.Text, "") name: String
 ) derives CanEqual
 object EntityName:
   given schema: Schema[EntityName] = Schema.derived
 
 final case class Flag(
-  @Modifier.config(XmlCodec.Attribute, "") on: Boolean
+  on: Boolean
 ) derives CanEqual
 object Flag:
   given schema: Schema[Flag] = Schema.derived
 
 final case class Box(
-  @Modifier.config(XmlCodec.Attribute, "") n: String
+  n: String
 ) derives CanEqual
 object Box:
   given schema: Schema[Box] = Schema.derived
 
 final case class Count(
-  @Modifier.config(XmlCodec.Attribute, "") n: Int
+  n: Int
 ) derives CanEqual
 object Count:
   given schema: Schema[Count] = Schema.derived
 
 final case class Text(
-  @Modifier.config(XmlCodec.Attribute, "") lang: Option[String],
+  lang: Option[String],
   body: Xml.Element
 ) derives CanEqual
 object Text:
@@ -280,9 +317,9 @@ object Text:
 
 sealed trait Part derives CanEqual
 @Modifier.config(XmlCodec.Element, "positive")
-final case class Positive(@Modifier.config(XmlCodec.Attribute, "") n: Int) extends Part derives CanEqual
+final case class Positive(n: Int) extends Part derives CanEqual
 @Modifier.config(XmlCodec.Element, "negative")
-final case class Negative(@Modifier.config(XmlCodec.Attribute, "") n: Int) extends Part derives CanEqual
+final case class Negative(n: Int) extends Part derives CanEqual
 object Part:
   given schema: Schema[Part] = Schema.derived
 
@@ -300,7 +337,7 @@ object Named:
 @Modifier.config(XmlCodec.NamespaceUri, "http://example.com/ns")
 @Modifier.config(XmlCodec.NamespacePrefix, "ex")
 final case class NsBox(
-  @Modifier.config(XmlCodec.Attribute, "") n: String
+  n: String
 ) derives CanEqual
 object NsBox:
   given schema: Schema[NsBox] = Schema.derived
@@ -315,7 +352,7 @@ object Book:
 
 @Modifier.config(XmlCodec.IgnoreUnknown, "")
 final case class OpenDoc(
-  @Modifier.config(XmlCodec.Attribute, "") n: String,
+  n: String,
   title: Option[Xml.Element] = None,
   @Modifier.config(XmlCodec.Include, "") hrefs: Seq[String] = Seq.empty
 ) derives CanEqual
@@ -334,7 +371,7 @@ object TaggedKind:
 
 final case class TaggedItem(
   kind: TaggedKind,
-  @Modifier.config(XmlCodec.Attribute, "") n: String
+  n: String
 ) derives CanEqual
 object TaggedItem:
   given schema: Schema[TaggedItem] = Schema.derived
@@ -347,7 +384,7 @@ object TaggedIndex:
 
 @Modifier.config(XmlCodec.IgnoreUnknown, "")
 final case class DayDoc(
-  @Modifier.config(XmlCodec.Attribute, "") n: String,
+  n: String,
   torah: Seq[Xml.Element] = Seq.empty,
   maftir: Seq[Xml.Element] = Seq.empty,
   haftarah: Seq[Xml.Element] = Seq.empty
@@ -357,8 +394,34 @@ object DayDoc:
 
 @Modifier.config(XmlCodec.Element, "node")
 final case class Node(
-  @Modifier.config(XmlCodec.Attribute, "") n: String,
+  n: String,
   @Modifier.config(XmlCodec.Element, "node") children: Seq[Node] = Seq.empty
 ) derives CanEqual
 object Node:
   given schema: Schema[Node] = Schema.derived
+
+final case class AttrDefault(
+  label: String,
+  count: Option[Int],
+  @Modifier.config(XmlCodec.Element, "comment") comment: Option[String],
+  note: Option[Xml.Element],
+  tags: Seq[String]
+) derives CanEqual
+object AttrDefault:
+  given schema: Schema[AttrDefault] = Schema.derived
+
+final case class RequiredLabel(label: String) derives CanEqual
+object RequiredLabel:
+  given schema: Schema[RequiredLabel] = Schema.derived
+
+final case class RenamedLabel(@Modifier.rename("n") label: String) derives CanEqual
+object RenamedLabel:
+  given schema: Schema[RenamedLabel] = Schema.derived
+
+final case class ExplicitQName(
+  @Modifier.config(XmlCodec.Attribute, "pageType")
+  @Modifier.rename("renamed")
+  pageTypeName: String
+) derives CanEqual
+object ExplicitQName:
+  given schema: Schema[ExplicitQName] = Schema.derived

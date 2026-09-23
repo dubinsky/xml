@@ -25,14 +25,13 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   * (`Modifier` is sealed, so `@xmlAttribute` is not visible to `Schema.derived`):
   *
   * {{{
-  * final case class Language(
-  *   @Modifier.config(XmlCodec.Attribute, "") ident: String
-  * )
+  * final case class Language(ident: String)
   * given Schema[Language] = Schema.derived
   * val codec: XmlCodec[Language] = XmlCodec.derived
   * val el: Xml.Element = codec.encode(Language("ru"))
   * }}}
   *
+  * An unannotated primitive is an attribute named after the field.
   * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
   * name unless `@Modifier.config(XmlCodec.Element, …)` overrides it. `encode` is
   * polymorphic in the AST; pin it with a type ascription when more than one `XmlAst`
@@ -45,11 +44,20 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   * on a `Seq[String]` gathers `xi:include/@href` from the subtree.
   */
 object XmlCodec:
-  /** `@Modifier.config(XmlCodec.Attribute, "")` or `@Modifier.config(XmlCodec.Attribute, "xml:id")`. */
+  /** `@Modifier.config` value with no extra XML name.
+    * On `Attribute`, this is the Scala field name.
+    * On `Text`, `Include`, and `IgnoreUnknown` it is the required dummy string.
+    */
+  final val UseFieldName: String = ""
+
+  /** Attribute qName, or [[UseFieldName]] for `@Modifier.rename` or the field name.
+    * A non-empty value (`"xml:id"`) wins over rename.
+    * An unannotated primitive is already an attribute of that name.
+    */
   final val Attribute = "xml.attribute"
   /** Type or field element name: `@Modifier.config(XmlCodec.Element, "persName")`. */
   final val Element = "xml.element"
-  /** Character content of this element: `@Modifier.config(XmlCodec.Text, "")`. */
+  /** Character content of this element: `@Modifier.config(XmlCodec.Text, UseFieldName)`. */
   final val Text = "xml.text"
   final val NamespaceUri = "xml.namespace.uri"
   final val NamespacePrefix = "xml.namespace.prefix"
@@ -82,9 +90,16 @@ object XmlCodec:
 
   def derived[A](using schema: Schema[A]): XmlCodec[A] = schema.derive(deriver)
 
-  /** Like `derived`, after nested tagged codecs have been initialized.
-    * `Schema.derived` inlines nested records and does not run `Child.codec`. */
+  /** The only supported way to publish a tagged child codec into a parent `derived`.
+    *
+    * The parameters are unused in the body on purpose.
+    * The call publishes the child codec because the argument expressions run first:
+    * `derived(tagField, tag)` calls `registerTagged`, which fills `instanceOverrides`,
+    * before this method derives the parent.
+    * `Schema.derived` inlines nested records and does not run the child codec.
+    */
   def derived[A](nested: XmlCodec[?], rest: XmlCodec[?]*)(using schema: Schema[A]): XmlCodec[A] =
+    val _ = (nested, rest)
     derived(using schema)
 
   /** Derive a record whose XML tag comes from `tagField` via `tag`.

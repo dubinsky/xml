@@ -13,9 +13,9 @@ object Alias:
   def apply(names: Names, to: Path): Alias = new Alias(names, to.structureNames)
 
   private final case class Data(
-    @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
+    n: Option[String] = None,
     @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty,
-    @Modifier.config(XmlCodec.Attribute, "") to: String
+    to: String
   ) derives CanEqual
 
   private object Data:

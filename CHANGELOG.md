@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Breaking: an unannotated primitive codec field, and an `Option` of a primitive, is an attribute named after the field.
+  Sequences stay repeated child elements.
+  `@Modifier.config(XmlCodec.Element, …)` still forces a child.
+  A missing required primitive reports `Missing required attribute`.
 - The construction DSL rebinds names with `XmlName.parseDeclared` after xmlns mods.
   `xmlns := uri` is the default namespace.
   `xmlns(prefix) := uri` declares a prefix, and a prefixed attribute picks it up regardless of mod order.

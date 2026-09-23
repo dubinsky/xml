@@ -21,7 +21,7 @@ object Selector:
     val codec: XmlCodec[PluralData] = XmlCodec.derived
 
   private final case class Data(
-    @Modifier.config(XmlCodec.Attribute, "") n: Option[String] = None,
+    n: Option[String] = None,
     @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty,
     @Modifier.config(XmlCodec.Element, "plural") plural: Option[PluralData] = None
   ) derives CanEqual
