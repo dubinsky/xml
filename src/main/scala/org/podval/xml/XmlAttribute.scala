@@ -51,6 +51,26 @@ object XmlAttribute:
   object Title extends XmlAttribute("title")
 
   object Type extends XmlAttribute("type")
-  
+
+  object Charset extends XmlAttribute("charset")
+
+  object Content extends XmlAttribute("content")
+
+  object Datetime extends XmlAttribute("datetime")
+
+  object For extends XmlAttribute("for")
+
+  object Hidden extends XmlAttribute("hidden")
+
+  object HttpEquiv extends XmlAttribute("http-equiv")
+
+  object ItemProp extends XmlAttribute("itemprop")
+
+  object ItemScope extends XmlAttribute("itemscope")
+
+  object ItemType extends XmlAttribute("itemtype")
+
+  object Name extends XmlAttribute("name")
+
   object Xmlns extends XmlAttribute("xmlns", XmlNamespace.xmlns):
     def apply(prefix: String): XmlAttribute = XmlAttribute(prefix, XmlNamespace.xmlns)
