@@ -245,6 +245,42 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(!XmlName("include").isInclude)
   }
 
+  test("writer does not repeat an in-scope default xmlns") {
+    val xml: ZioBlocksXml.Element = parse(s"""<outer xmlns="$tei"><inner n="1">x</inner></outer>""")
+    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    assert(dumped.contains(s"""xmlns="$tei""""), dumped)
+    assert(dumped.indexOf("xmlns=") == dumped.lastIndexOf("xmlns="), dumped)
+  }
+
+  test("writer does not repeat an in-scope prefixed xmlns") {
+    val xml: ZioBlocksXml.Element = parse(s"""<tei:p xmlns:tei="$tei"><tei:hi>a</tei:hi></tei:p>""")
+    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    assert(dumped.contains("<tei:hi>"), dumped)
+    assert(dumped.indexOf("xmlns:tei=") == dumped.lastIndexOf("xmlns:tei="), dumped)
+  }
+
+  test("writer keeps an author-written xmlns undeclare") {
+    val xml: ZioBlocksXml.Element = parse(s"""<outer xmlns="$tei"><inner xmlns="">x</inner></outer>""")
+    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    assert(dumped.contains("""<inner xmlns="">"""), dumped)
+  }
+
+  test("writer does not repeat xmlns on a preformatted child") {
+    val xml: ZioBlocksXml.Element = parse(
+      s"""<article xmlns="$docbook"><programlisting><co id="x"/></programlisting></article>"""
+    )
+    val dumped: String = XmlWriterConfig(preformat = Set("programlisting")).render(xml)
+    assert(dumped.contains("<co"), dumped)
+    assert(dumped.indexOf("xmlns=") == dumped.lastIndexOf("xmlns="), dumped)
+  }
+
+  test("a small namespaced document is idempotent") {
+    val xml: ZioBlocksXml.Element = parse(s"""<tei:p xmlns:tei="$tei" xml:id="n1"><tei:hi>a</tei:hi></tei:p>""")
+    val once: String = XmlWriterConfig.Plain.render(xml)
+    val twice: String = XmlWriterConfig.Plain.render(parse(once.trim))
+    assert(twice == once, twice)
+  }
+
   test("writer emits xmlns for an inherited namespace on a child written alone") {
     val child: ZioBlocksXml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
     assert(child.name.namespace.contains(tei))

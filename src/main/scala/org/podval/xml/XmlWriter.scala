@@ -13,17 +13,63 @@ object XmlWriter:
 
   private def hideNewlines(text: String): String = text.replace('\n', hiddenNewline)
 
-  private def writeAttributes[Element: XmlAst](element: Element): Seq[(String, String)] =
+  /** In-scope namespace bindings. `None` is the default xmlns. `xml` starts bound. */
+  private final case class NsScope(bindings: Map[Option[String], String]) derives CanEqual:
+    def get(prefix: Option[String]): Option[String] = bindings.get(prefix.filter(_.nonEmpty))
+
+    def bind(prefix: Option[String], uri: String): NsScope =
+      val key: Option[String] = prefix.filter(_.nonEmpty)
+      if uri.isEmpty then NsScope(bindings - key) else NsScope(bindings.updated(key, uri))
+
+  private object NsScope:
+    val root: NsScope = NsScope(Map(Some(XmlNamespace.xml.prefix.get) -> XmlNamespace.xml.uri))
+
+  /** `Some(None)` is a default `xmlns`. `Some(Some(prefix))` is `xmlns:prefix`. */
+  private def declaredPrefix(name: XmlName): Option[Option[String]] =
+    if !name.isXmlnsDeclaration then None
+    else if name.isDefaultXmlns then Some(None)
+    else Some(Some(name.localName))
+
+  private def attributesAndScope[Element: XmlAst](
+    element: Element,
+    parent: NsScope
+  ): (Seq[(String, String)], NsScope) =
     val existing: Seq[(XmlName, String)] = element.getAttributes
-    XmlName.asPairs(
-      XmlName.xmlnsDeclarations(element.getName, existing) ++ existing
-    )
+    val afterDeclared: NsScope = existing.foldLeft(parent): (scope, pair) =>
+      val (name, value) = pair
+      declaredPrefix(name).fold(scope)(prefix => scope.bind(prefix, value))
+    val synthesized: Seq[(XmlName, String)] =
+      (element.getName +: existing.map(_._1)).foldLeft(Seq.empty[(XmlName, String)]): (acc, name) =>
+        neededDeclaration(name, afterDeclared, acc)
+    val child: NsScope = synthesized.foldLeft(afterDeclared): (scope, pair) =>
+      val (name, value) = pair
+      declaredPrefix(name).fold(scope)(prefix => scope.bind(prefix, value))
+    (XmlName.asPairs(synthesized ++ existing), child)
+
+  private def neededDeclaration(
+    name: XmlName,
+    scope: NsScope,
+    already: Seq[(XmlName, String)]
+  ): Seq[(XmlName, String)] =
+    if name.isXmlnsDeclaration || name.isXml then already
+    else name.uri match
+      case Some(uri) =>
+        val prefix: Option[String] = name.prefix.filter(_.nonEmpty)
+        val pending: Boolean = already.exists: (decl, value) =>
+          declaredPrefix(decl).contains(prefix) && value == uri
+        if scope.get(prefix).contains(uri) || pending then already
+        else already :+ XmlName.xmlnsAttribute(prefix, uri)
+      case None => already
+
+  private def closesEmpty(using config: XmlWriterConfig)(name: XmlName): Boolean =
+    config.selfCloseEmpty || name.localNameIn(config.selfClose)
 
   def render[Element: XmlAst](config: XmlWriterConfig, element: Element, width: Int): String =
     fromElement(
       element,
       canBreakLeft = true,
-      canBreakRight = true
+      canBreakRight = true,
+      NsScope.root
     )(using config)
       .render(width)
       .replace(hiddenNewline, '\n')
@@ -40,22 +86,24 @@ object XmlWriter:
   private def fromElement[Element](
     element: Element,
     canBreakLeft: Boolean,
-    canBreakRight: Boolean
+    canBreakRight: Boolean,
+    scope: NsScope
   )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
     val name: XmlName = element.getName
     if name.localNameIn(config.rawText) then
-      Doc.text(rawTextElement(element).mkString(hiddenNewline.toString))
+      Doc.text(rawTextElement(element, scope).mkString(hiddenNewline.toString))
     else if name.localNameIn(config.preformat) then
-      Doc.text(preformatElement(element).mkString(hiddenNewline.toString))
+      Doc.text(preformatElement(element, scope).mkString(hiddenNewline.toString))
     else
-      fromMixedElement(element, canBreakLeft, canBreakRight)
+      fromMixedElement(element, canBreakLeft, canBreakRight, scope)
 
   private def fromMixedElement[Element](
     element: Element,
     canBreakLeft: Boolean,
-    canBreakRight: Boolean
+    canBreakRight: Boolean,
+    scope: NsScope
   )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
-    val attributeValues: Seq[(String, String)] = writeAttributes(element)
+    val (attributeValues, childScope) = attributesAndScope(element, scope)
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
       else Doc.lineOrSpace + Doc.intercalate(
@@ -73,10 +121,10 @@ object XmlWriter:
     val canBreakLeft1: Boolean = canBreakLeft || whitespaceLeft
     val canBreakRight1: Boolean = canBreakRight || whitespaceRight
     val children: List[Doc] = mapEnds(chunks)(
-      one = fromChunk(_, canBreakLeft1, canBreakRight1),
-      first = fromChunk(_, canBreakLeft1, true),
-      middle = fromChunk(_, true, true),
-      last = fromChunk(_, true, canBreakRight1)
+      one = fromChunk(_, canBreakLeft1, canBreakRight1, childScope),
+      first = fromChunk(_, canBreakLeft1, true, childScope),
+      middle = fromChunk(_, true, true, childScope),
+      last = fromChunk(_, true, canBreakRight1, childScope)
     )
 
     val name: XmlName = element.getName
@@ -84,7 +132,7 @@ object XmlWriter:
 
     if children.isEmpty then
       Doc.text(s"<$qName") + attributes + Doc.lineOrEmpty + (
-        if name.localNameIn(config.selfClose)
+        if closesEmpty(name)
         then Doc.text("/>")
         else Doc.text(s"></$qName>")
       )
@@ -208,30 +256,33 @@ object XmlWriter:
   private def fromChunk(using config: XmlWriterConfig, ast: XmlAst[?])(
     tokens: List[Token[ast.Node]],
     canBreakLeft: Boolean,
-    canBreakRight: Boolean
+    canBreakRight: Boolean,
+    scope: NsScope
   ): Doc = Doc.cat(mapEnds(tokens)(
-    one = token => fromToken(token, canBreakLeft, canBreakRight),
-    first = token => fromToken(token, canBreakLeft, canBreakRight = false),
-    middle = token => fromToken(token, canBreakLeft = false, canBreakRight = false),
-    last = token => fromToken(token, canBreakLeft = false, canBreakRight)
+    one = token => fromToken(token, canBreakLeft, canBreakRight, scope),
+    first = token => fromToken(token, canBreakLeft, canBreakRight = false, scope),
+    middle = token => fromToken(token, canBreakLeft = false, canBreakRight = false, scope),
+    last = token => fromToken(token, canBreakLeft = false, canBreakRight, scope)
   ))
 
   private def fromToken(using config: XmlWriterConfig, ast: XmlAst[?])(
     token: Token[ast.Node],
     canBreakLeft: Boolean,
-    canBreakRight: Boolean
+    canBreakRight: Boolean,
+    scope: NsScope
   ): Doc = token match
     case Token.Word(value) => Doc.text(XmlEncode.encodeXmlSpecials(value))
     case Token.Space() => Doc.space
-    case Token.Tree(node) => fromNode(node, canBreakLeft, canBreakRight)
+    case Token.Tree(node) => fromNode(node, canBreakLeft, canBreakRight, scope)
 
   private def fromNode(using config: XmlWriterConfig, ast: XmlAst[?])(
     node: ast.Node,
     canBreakLeft: Boolean,
-    canBreakRight: Boolean
+    canBreakRight: Boolean,
+    scope: NsScope
   ): Doc = node.fold(
     element = (element: ast.Element) =>
-      val result: Doc = fromElement(element, canBreakLeft, canBreakRight)
+      val result: Doc = fromElement(element, canBreakLeft, canBreakRight, scope)
       // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
       if canBreakRight && element.getName.localNameIn(config.break) then result + Doc.hardLine else result
     ,
@@ -258,34 +309,41 @@ object XmlWriter:
   private def splitLines(text: String): Seq[String] =
     text.split("\n", -1).toSeq
 
-  private def literalAttributes[Element: XmlAst](element: Element): String =
-    val pairs: Seq[(String, String)] = writeAttributes(element)
+  private def attributeText(pairs: Seq[(String, String)]): String =
     if pairs.isEmpty then ""
     else pairs.map((name, value) => s"$name=${XmlEncode.quote(value)}").mkString(" ", " ", "")
 
   private def wrapLiteral[Element: XmlAst](
     element: Element,
+    attributes: String,
     children: Seq[String]
   )(using config: XmlWriterConfig): Seq[String] =
-    val attributes: String = literalAttributes(element)
     val qName: String = element.getName.qName
     if children.isEmpty then
-      if element.getName.localNameIn(config.selfClose)
+      if closesEmpty(element.getName)
       then Seq(s"<$qName$attributes/>")
       else Seq(s"<$qName$attributes></$qName>")
     else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
     else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")
 
-  private def rawTextElement[Element: XmlAst](element: Element)(using config: XmlWriterConfig): Seq[String] =
-    val inner: String = rawInner(element.getChildren)
-    if inner.isEmpty then wrapLiteral(element, Seq.empty)
-    else wrapLiteral(element, splitLines(XmlEncode.protectHtmlRawText(inner)))
+  private def rawTextElement[Element: XmlAst](
+    element: Element,
+    scope: NsScope
+  )(using config: XmlWriterConfig): Seq[String] =
+    val (pairs, childScope) = attributesAndScope(element, scope)
+    val attributes: String = attributeText(pairs)
+    val inner: String = rawInner(element.getChildren, childScope)
+    if inner.isEmpty then wrapLiteral(element, attributes, Seq.empty)
+    else wrapLiteral(element, attributes, splitLines(XmlEncode.protectHtmlRawText(inner)))
 
-  private def rawInner(using ast: XmlAst[?], config: XmlWriterConfig)(nodes: ast.Nodes): String =
+  private def rawInner(using ast: XmlAst[?], config: XmlWriterConfig)(
+    nodes: ast.Nodes,
+    scope: NsScope
+  ): String =
     coalesce(nodes, node => node.asText.orElse(node.asCData)).map:
       case LiteralPart.Run(text) => text
       case LiteralPart.Other(node) => node.fold(
-        element = el => rawTextElement(el).mkString("\n"),
+        element = el => rawTextElement(el, scope).mkString("\n"),
         text = identity,
         cdata = identity,
         comment = commentMarkup,
@@ -294,16 +352,23 @@ object XmlWriter:
       )
     .mkString
 
-  private def preformatElement[Element: XmlAst](element: Element)(using config: XmlWriterConfig): Seq[String] =
-    wrapLiteral(element, preformatChildren(element.getChildren))
+  private def preformatElement[Element: XmlAst](
+    element: Element,
+    scope: NsScope
+  )(using config: XmlWriterConfig): Seq[String] =
+    val (pairs, childScope) = attributesAndScope(element, scope)
+    wrapLiteral(element, attributeText(pairs), preformatChildren(element.getChildren, childScope))
 
-  private def preformatChildren(using ast: XmlAst[?], config: XmlWriterConfig)(nodes: ast.Nodes): Seq[String] =
+  private def preformatChildren(using ast: XmlAst[?], config: XmlWriterConfig)(
+    nodes: ast.Nodes,
+    scope: NsScope
+  ): Seq[String] =
     coalesce(nodes, _.asText).flatMap:
       case LiteralPart.Run(text) => splitLines(XmlEncode.encodeXmlSpecials(text))
       case LiteralPart.Other(node) => node.fold(
         element = el =>
-          if el.getName.localNameIn(config.rawText) then rawTextElement(el)
-          else preformatElement(el),
+          if el.getName.localNameIn(config.rawText) then rawTextElement(el, scope)
+          else preformatElement(el, scope),
         text = t => splitLines(XmlEncode.encodeXmlSpecials(t)),
         cdata = value => Seq(cdataMarkup(value)),
         comment = value => Seq(commentMarkup(value)),

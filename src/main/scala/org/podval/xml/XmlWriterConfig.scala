@@ -16,19 +16,10 @@ open class XmlWriterConfig(
   // Glue to the previous element even when both sides are elements.
   val cling: Set[String] = Set.empty,
   // Empty tags: local names written as <br/>; others as <script></script>.
-  val selfClose: Set[String] = Set.empty
+  val selfClose: Set[String] = Set.empty,
+  // Every empty element is `<e/>`. `selfClose` still applies when this is false.
+  val selfCloseEmpty: Boolean = false
 ):
-  def plus(other: XmlWriterConfig): XmlWriterConfig = XmlWriterConfig(
-    preformat = preformat ++ other.preformat,
-    rawText = rawText ++ other.rawText,
-    stack = stack ++ other.stack,
-    unStack = unStack ++ other.unStack,
-    nest = nest ++ other.nest,
-    break = break ++ other.break,
-    cling = cling ++ other.cling,
-    selfClose = selfClose ++ other.selfClose
-  )
-
   def render[Element: XmlAst](element: Element): String =
     render(element, XmlWriter.widthDefault)
 

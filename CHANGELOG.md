@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- The writer suppresses a namespace declaration when that prefix is already bound to the same URI.
+  It does not invent `xmlns=""` for a name that has no URI.
+  An author-written `xmlns=""` is kept and clears the default for descendants.
+- `XmlWriterConfig.selfCloseEmpty` (default false) writes every empty element as `<e/>`.
+  `selfClose` still names the empty elements that self-close when the flag is off.
+- Breaking: `XmlWriterConfig.plus` is removed.
 - Breaking: an unannotated primitive codec field, and an `Option` of a primitive, is an attribute named after the field.
   Sequences stay repeated child elements.
   `@Modifier.config(XmlCodec.Element, …)` still forces a child.

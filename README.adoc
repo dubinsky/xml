@@ -219,3 +219,9 @@ https://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf[A prettier pr
 it in Scala, but it turns out that there is an implementation already:
 https://github.com/typelevel/paiges[Typelevel Paiges].
 With its declarative approach, I was able to tweak the output to my liking :)
+
+A declaration is written only when that prefix is not already bound to the same URI.
+A name with no URI does not gain a synthesized `xmlns=""`.
+An empty element is `<e></e>` unless its local name is in `selfClose`, or `selfCloseEmpty` is set.
+`HtmlXmlWriterConfig` leaves `selfCloseEmpty` off, so an empty `script` stays `<script></script>` and `br` stays
+`<br/>`.

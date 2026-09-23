@@ -190,12 +190,24 @@ final class XmlWriterSpec extends AnyFunSuite:
     assert(!dumped.contains("&lt;"), dumped)
   }
 
-  test("plus unions rawText") {
-    val combined: XmlWriterConfig = HtmlXmlWriterConfig.plus(XmlWriterConfig.Plain)
-    assert(combined.rawText.contains(XmlElement.Script.localName))
-    assert(combined.rawText.contains(XmlElement.Style.localName))
-    val fromPlain: XmlWriterConfig = XmlWriterConfig.Plain.plus(HtmlXmlWriterConfig)
-    assert(fromPlain.rawText.contains(XmlElement.Script.localName))
+  test("selfCloseEmpty writes empty tags and leaves a non-empty element paired") {
+    val config: XmlWriterConfig = XmlWriterConfig(selfCloseEmpty = true)
+    val name: String = config.render(Xml.element("name", Seq("n" -> "a"), Seq.empty))
+    assert(name.contains("""<name n="a"/>"""), name)
+    val lb: String = config.render(Xml.element("lb"))
+    assert(lb.contains("<lb/>"), lb)
+    assert(!lb.contains("</lb>"), lb)
+    val paragraph: String = config.render(Xml.element("p").setText("text"))
+    assert(paragraph.contains("<p>text</p>"), paragraph)
+    assert(!paragraph.contains("<p/>"), paragraph)
+  }
+
+  test("HtmlXmlWriterConfig still pairs an empty script and self-closes br") {
+    val script: String = HtmlXmlWriterConfig.render(Xml.element("script"))
+    assert(script.contains("<script></script>"), script)
+    assert(!script.contains("<script/>"), script)
+    val br: String = HtmlXmlWriterConfig.render(Xml.element("br"))
+    assert(br.contains("<br/>"), br)
   }
 
   test("preformat concatenates adjacent text") {
@@ -204,6 +216,28 @@ final class XmlWriterSpec extends AnyFunSuite:
     )
     assert(dumped.contains(">ab<"), dumped)
     assert(!dumped.contains("a\nb"), dumped)
+  }
+
+  test("a constructed feed child stays in the parent default namespace") {
+    val atom: String = "http://www.w3.org/2005/Atom"
+    val feed: Xml.Element = Xml.element("feed")
+      .set(XmlAttribute.Xmlns, atom)
+      .setChildren(Seq(Xml.element("entry")))
+    val dumped: String = render(feed)
+    assert(dumped.contains(s"""xmlns="$atom""""), dumped)
+    assert(!dumped.contains("xmlns=\"\""), dumped)
+    assert(dumped.contains("<entry>"), dumped)
+  }
+
+  test("a constructed sitemap url stays in the parent default namespace") {
+    val sitemapNs: String = "http://www.sitemaps.org/schemas/sitemap/0.9"
+    val urlset: Xml.Element = Xml.element("urlset")
+      .set(XmlAttribute.Xmlns, sitemapNs)
+      .setChildren(Seq(Xml.element("url", Seq.empty, Seq(Xml.element("loc").setText("http://example.test/")))))
+    val dumped: String = render(urlset)
+    assert(!dumped.contains("xmlns=\"\""), dumped)
+    assert(dumped.contains("<url>"), dumped)
+    assert(dumped.contains("<loc>"), dumped)
   }
 
   test("plain CDATA in script stays a CDATA section") {
