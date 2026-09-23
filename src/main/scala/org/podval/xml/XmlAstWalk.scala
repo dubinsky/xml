@@ -4,6 +4,12 @@ package org.podval.xml
 private[xml] trait XmlAstWalk[ELEMENT]:
   this: XmlAst[ELEMENT] =>
 
+  enum Rewrite:
+    /** One element. The walk then rewrites its children. */
+    case Keep(element: Element)
+    /** These nodes replace the element. The walk then runs on them. */
+    case Replace(nodes: Nodes)
+
   extension (element: Element)
     def transform(
       transformElement: Element => Element,
@@ -15,6 +21,24 @@ private[xml] trait XmlAstWalk[ELEMENT]:
           val result: Element = transformElement(element)
           result.setChildren(result.getChildren.map(xml => xml.asElement.fold(xml)(loop)))
       loop(element)
+
+    def rewrite(
+      f: (Element, Option[Element]) => Rewrite,
+      stopAtCode: Boolean = true
+    ): Element =
+      def loop(element: Element, parent: Option[Element]): Nodes =
+        if stopAtCode && element.isNamed(XmlElement.Code.localName) then Seq(element)
+        else f(element, parent) match
+          case Rewrite.Keep(result) =>
+            Seq(result.setChildren(descend(result.getChildren, Some(result))))
+          case Rewrite.Replace(nodes) =>
+            descend(nodes, parent)
+      def descend(nodes: Nodes, parent: Option[Element]): Nodes =
+        nodes.flatMapNodes: node =>
+          node.asElement.fold(Seq(node))(el => loop(el, parent))
+      loop(element, None) match
+        case Seq(only) if only.asElement.nonEmpty => only.asElement.get
+        case _ => throw XmlError("rewrite must leave exactly one element")
 
     def gather[A](
       gatherElement: Element => Option[A],

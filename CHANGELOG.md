@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Structural reads and child replacement are members on `XmlNode` and `XmlNode.Element`, so they need no `given`.
   `Xml`'s extension overrides for those operations delegate to the members.
+- `rewrite` keeps one element or replaces it with a node list; `stopAtCode` still defaults to `true`.
 - `XmlMisc` is the prolog and epilogue slice of `XmlNode`.
   `Comment` and `ProcessingInstruction` live on `XmlNode` and carry `markup`.
 - Breaking: the owned tree is `object Xml` (`XmlNode`: element, text, CDATA, comment, processing instruction).

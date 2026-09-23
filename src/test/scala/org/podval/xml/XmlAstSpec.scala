@@ -158,3 +158,69 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(transformed.getName.qName == "tei:code")
     assert(transformed.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
   }
+
+  test("rewrite Keep with default stopAtCode does not rename inside tei:code") {
+    val xml: Xml.Element = parse(
+      """<div><tei:code xmlns:tei="http://www.tei-c.org/ns/1.0"><x/></tei:code></div>"""
+    )
+    val rewritten: Xml.Element = xml.rewrite((el, _) => Xml.Rewrite.Keep(el.rename("y")))
+    assert(rewritten.getName.qName == "y")
+    val code: Xml.Element = rewritten.getChildren.flatMap(_.asElement).head
+    assert(code.getName.qName == "tei:code")
+    assert(code.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
+  }
+
+  test("rewrite Replace of a child runs on a nested element inside the replacement") {
+    val xml: Xml.Element = parse("<p><note/></p>")
+    var seen: Seq[String] = Seq.empty
+    val rewritten: Xml.Element = xml.rewrite: (el, _) =>
+      seen = seen :+ el.getName.qName
+      if el.isNamed("note") then
+        Xml.Rewrite.Replace(Seq(Xml.element("span", Seq.empty, Seq(Xml.element("inner")))))
+      else if el.isNamed("inner") then
+        Xml.Rewrite.Keep(el.rename("done"))
+      else
+        Xml.Rewrite.Keep(el)
+    assert(seen == Seq("p", "note", "span", "inner"))
+    val span: Xml.Element = rewritten.getChildren.flatMap(_.asElement).head
+    assert(span.getName.qName == "span")
+    assert(span.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("done"))
+  }
+
+  test("rewrite does not double-wrap code when the parent is pre") {
+    def wrap(el: Xml.Element, parent: Option[Xml.Element]): Xml.Rewrite =
+      if el.isNamed("code") && !parent.exists(_.isNamed("pre")) then
+        Xml.Rewrite.Replace(Seq(Xml.element("pre", Seq.empty, Seq(el))))
+      else
+        Xml.Rewrite.Keep(el)
+
+    val wrapped: Xml.Element = parse("<div><code>x</code></div>").rewrite(wrap, stopAtCode = false)
+    val pre: Xml.Element = wrapped.getChildren.flatMap(_.asElement).head
+    assert(pre.getName.qName == "pre")
+    assert(pre.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("code"))
+    assert(pre.getChildren.flatMap(_.asElement).head.getText == "x")
+
+    val already: Xml.Element = parse("<pre><code>x</code></pre>").rewrite(wrap, stopAtCode = false)
+    assert(already.getName.qName == "pre")
+    assert(already.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("code"))
+    assert(already.getChildren.flatMap(_.asElement).head.getText == "x")
+  }
+
+  test("rewrite throws when a root Replace is two nodes") {
+    val xml: Xml.Element = parse("<p/>")
+    val error: XmlError = intercept[XmlError] {
+      xml.rewrite: (el, _) =>
+        if el.isNamed("p") then Xml.Rewrite.Replace(Seq(Xml.element("a"), Xml.element("b")))
+        else Xml.Rewrite.Keep(el)
+    }
+    assert(error.getMessage == "rewrite must leave exactly one element")
+  }
+
+  test("omitting stopAtCode stops rewrite at code") {
+    val xml: Xml.Element = parse("<div><code><x/></code></div>")
+    val rewritten: Xml.Element = xml.rewrite((el, _) => Xml.Rewrite.Keep(el.rename("y")))
+    assert(rewritten.getName.qName == "y")
+    val code: Xml.Element = rewritten.getChildren.flatMap(_.asElement).head
+    assert(code.getName.qName == "code")
+    assert(code.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
+  }

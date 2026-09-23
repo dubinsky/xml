@@ -152,6 +152,7 @@ Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, 
 decodes one document per `name.xml`.
 `transform` / `gather` skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them
 (publisher IR).
+`rewrite` uses that same default and can keep one element or replace it with a node list.
 
 == Build
 
