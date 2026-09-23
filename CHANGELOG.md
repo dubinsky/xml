@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Walk, attribute, and CSS operations on `Xml.Element` are members.
+  `import Xml.given` remains for parsing, writing, and codec encode.
+- Breaking: `elementById` is `getById` and returns `Option`.
+  A missing id is `None`.
+- `childNamed` is the first `childrenNamed` match.
+- Breaking: removed `intAttr`, `intOpt`, `positiveIntOpt`, and `booleanOpt`.
+  `requireAttr`, `requireName`, `requireNoOther`, and `positiveInt` stay.
+- `Seq[Name]` binds repeated `<name>` elements without `@Modifier.config(XmlCodec.Element, "name")`.
+  Derivation registers `Name.codec` before it snapshots type overrides.
+- Breaking: `Xml2Html.is`, `get`, and `convert` take `Xml.Element`.
 - The writer suppresses a namespace declaration when that prefix is already bound to the same URI.
   It does not invent `xmlns=""` for a name that has no URI.
   An author-written `xmlns=""` is kept and clears the default for descendants.

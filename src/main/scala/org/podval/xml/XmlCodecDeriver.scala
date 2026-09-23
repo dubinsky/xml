@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import org.podval.metadata.Name
 import zio.blocks.chunk.Chunk
 import zio.blocks.docs.Doc
 import zio.blocks.schema.*
@@ -14,8 +15,11 @@ import scala.reflect.ClassTag
 object XmlCodecDeriver extends XmlCodecDeriver:
   private val taggedCodecs: ConcurrentHashMap[TypeId[?], Lazy[XmlCodec[?]]] = ConcurrentHashMap()
 
-  private[xml] def registerTagged[A](typeId: TypeId[A], codec: XmlCodec[A]): Unit =
+  private[xml] def register[A](typeId: TypeId[A], codec: XmlCodec[A]): Unit =
     taggedCodecs.put(typeId, Lazy(codec))
+
+  private[xml] def registerTagged[A](typeId: TypeId[A], codec: XmlCodec[A]): Unit =
+    register(typeId, codec)
 
   def tagged[A, K](tagField: String, tag: XmlTag[K])(using typeId: TypeId[A]): XmlCodecDeriver =
     val target: String = typeId.fullName
@@ -236,6 +240,9 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
 
   override def instanceOverrides: IndexedSeq[InstanceOverride] =
     recursiveRecordCache.remove()
+    // Parent `Schema.derived` inlines `Schema[Name]` before `Name`'s given runs.
+    // Register here, before this snapshot is taken, so `Seq[Name]` uses `<name>`.
+    XmlCodecDeriver.register(TypeId.of[Name], Name.codec)
     val tagged: List[InstanceOverride] =
       XmlCodecDeriver.taggedCodecs.asScala.toList.map: (id, codec) =>
         InstanceOverrideByType(id.asInstanceOf[TypeId[Any]], codec.asInstanceOf[Lazy[XmlCodec[Any]]])

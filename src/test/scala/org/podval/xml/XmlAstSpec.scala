@@ -63,9 +63,10 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(XmlAst.toId("  a b  ") == "a-b")
   }
 
-  test("elementById finds a descendant") {
+  test("getById finds a descendant") {
     val xml: Xml.Element = parse("""<div><p id="n1">a</p></div>""")
-    assert(xml.elementById("n1").getText == "a")
+    assert(xml.getById("n1").map(_.getText).contains("a"))
+    assert(xml.getById("missing").isEmpty)
   }
 
   test("requireName and childrenNamed") {

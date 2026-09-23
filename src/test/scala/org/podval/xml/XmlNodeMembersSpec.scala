@@ -50,6 +50,21 @@ final class XmlNodeMembersSpec extends AnyFunSuite:
     assert(Xml.comment("c").get.asAtom.isEmpty)
   }
 
+  test("transform, attributes, classes, and getById need no Xml.given") {
+    val element: Xml.Element = Xml.element(XmlElement.P).setChildren(Seq(
+      Xml.element(XmlElement.Span).set(XmlAttribute.Id, "n1").setText("a")
+    ))
+    val renamed: Xml.Element = element.transform(el =>
+      if el.isElement(XmlElement.P) then el.rename("div") else el
+    ).addClass("x")
+    assert(renamed.isNamed("div"))
+    assert(renamed.hasClass("x"))
+    assert(renamed.getById("n1").map(_.getText).contains("a"))
+    assert(renamed.getById("missing").isEmpty)
+    assert(renamed.childrenNamed("span").flatMap(_.getId) == Seq("n1"))
+    assert(renamed.childNamed("span").flatMap(_.getId).contains("n1"))
+  }
+
   test("Xml extensions delegate to XmlNode members") {
     import Xml.given
 

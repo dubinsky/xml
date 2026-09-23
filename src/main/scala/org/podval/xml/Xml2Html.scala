@@ -38,16 +38,16 @@ final class Xml2Html(val prefix: String):
   /** Attribute qName after `convert`: reserved HTML names get `$prefix-…`; `xml:*` stays. */
   def attributeName(attr: XmlAttribute): String = rewriteAttribute(attr.name).qName
 
-  def is[E: XmlAst](element: E, elem: XmlElement): Boolean =
+  def is(element: Xml.Element, elem: XmlElement): Boolean =
     element.isNamed(elementName(elem)) || element.isElement(elem)
 
   /** Prefixed name first, then the catalog name — so HTML `class` added by
     * `renameKeepingClass` does not hide the original reserved `class`. */
-  def get[E: XmlAst](element: E, attr: XmlAttribute): Option[String] =
+  def get(element: Xml.Element, attr: XmlAttribute): Option[String] =
     element.get(attributeName(attr)).orElse(element.get(attr))
 
-  def convert[E: XmlAst](element: E): E =
-    val attributesConverted: E = element.setAttributes(
+  def convert(element: Xml.Element): Xml.Element =
+    val attributesConverted: Xml.Element = element.setAttributes(
       element.getAttributes.map((name, value) => (rewriteAttribute(name), value))
     )
     if !element.getName.localNameIn(Xml2Html.reservedHtmlElements)

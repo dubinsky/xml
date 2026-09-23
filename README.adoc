@@ -15,6 +15,8 @@ implementation 'org.podval:org.podval.xml:0.3.0'
 Each AST given is on its object, not in the package.
 Bring one in with `import Xml.given`, `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or
 `import ScalaXml.given`.
+That given is how parse, `render`, and `encode` choose a tree.
+Walk, attribute, and class operations on the owned `Xml.Element` are members and need no given.
 `import org.podval.xml.dsl.given` summons `Xml`.
 ZIO Blocks XML, ZIO Blocks HTML, and Scala XML need an extra dependency, not pulled in by default.
 `parseHtml` needs TagSoup (also not on the POM):
@@ -147,13 +149,16 @@ Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, 
 `XmlCodec.NamespaceUri`, `XmlCodec.NamespacePrefix`).
 `Name` / `Language` / `Language.Spec` have `Schema` givens (`Names` has `XmlCodec` only); catalog DTOs use
 `Seq[Name]`.
+Those children are `<name>`: derivation registers `Name.codec` before it snapshots overrides, so the field needs no
+`@Modifier.config(XmlCodec.Element, "name")`.
 `XmlCodec.derived[A, K](tagField, tag)` is picked up when `A` is nested; pass `Child.codec` to
 `XmlCodec.derived(nested)` so the child codec is initialized (`Schema.derived` inlines nested records).
 `XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources`
 decodes one document per `name.xml`.
-`transform` / `gather` skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them
-(publisher IR).
-`rewrite` uses that same default and can keep one element or replace it with a node list.
+`transform` / `gather` / `rewrite` are members of `Xml.Element` (and still `XmlAst` extensions for other trees).
+They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
+`rewrite` can keep one element or replace it with a node list.
+`getById` returns `Option`; `childNamed` is the first `childrenNamed` match.
 
 == Build
 

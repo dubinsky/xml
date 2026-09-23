@@ -3,7 +3,7 @@ package org.podval.metadata
 import org.podval.xml.{XmlAttribute, XmlCodec, XmlParser, Xml}
 import Xml.given
 import org.scalatest.funsuite.AnyFunSuite
-import zio.blocks.schema.{Modifier, Schema}
+import zio.blocks.schema.Schema
 
 final class MetadataSpec extends AnyFunSuite:
   test("Language names") {
@@ -42,6 +42,9 @@ final class MetadataSpec extends AnyFunSuite:
     val encoded = Name.codec.encode(fromN)(using Xml)
     assert(encoded.get("n").contains("English"))
     assert(encoded.get(XmlAttribute.Lang).contains("en"))
+
+    val encodedEntry = entryCodec.encode(entry)(using Xml)
+    assert(encodedEntry.childrenNamed("name").flatMap(_.get("n")) == Seq("English"))
   }
 
   test("Hebrew.numberToString") {
@@ -124,7 +127,7 @@ final class MetadataSpec extends AnyFunSuite:
   }
 
 private final case class NamedEntry(
-  @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty
+  names: Seq[Name] = Seq.empty
 ) derives CanEqual
 private object NamedEntry:
   given schema: Schema[NamedEntry] = Schema.derived

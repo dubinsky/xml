@@ -55,7 +55,7 @@ object XmlNode:
     name: XmlName,
     attributes: Seq[(XmlName, String)],
     children: Seq[XmlNode]
-  ) extends XmlNode derives CanEqual:
+  ) extends XmlNode, XmlElementApi derives CanEqual:
     def getName: XmlName = name
 
     def getChildren: Seq[XmlNode] = children
@@ -82,7 +82,8 @@ object XmlNode:
       if data.isEmpty then s"<?$target?>" else s"<?$target $data?>"
 
 // XML AST owned by this library.
-// `import Xml.given` to parse/write this AST.
+// `import Xml.given` to parse, write, or encode this AST.
+// Walk, attribute, and CSS operations are members of `XmlNode.Element`.
 // Convert with `element.to[Xml.Element]`.
 object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
   given Xml.type = this

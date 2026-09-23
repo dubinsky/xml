@@ -81,9 +81,9 @@ private[xml] trait XmlAstWalk[ELEMENT]:
     def copyAttribute(from: String, to: String): Element =
       element.get(from).fold(element)(element.set(to, _))
 
-    def elementById(id: String): Element = element
+    def getById(id: String): Option[Element] = element
       .gather(el => Option.when(el.getId.contains(id))(el))
-      .head
+      .headOption
 
     def isInclude: Boolean =
       element.getName.isInclude &&
@@ -92,6 +92,8 @@ private[xml] trait XmlAstWalk[ELEMENT]:
     def childrenNamed(name: String): Seq[Element] =
       element.getChildren.flatMap(_.asElement).filter(_.isNamed(name))
 
+    def childNamed(name: String): Option[Element] = element.childrenNamed(name).headOption
+
     def requireName(name: String): Unit =
       if !element.isNamed(name) then throw XmlError(s"Expected '$name', found '${element.getName.qName}'")
 
@@ -99,31 +101,16 @@ private[xml] trait XmlAstWalk[ELEMENT]:
       element.get(name).map(_.trim).filter(_.nonEmpty).getOrElse:
         throw XmlError(s"Missing attribute '$name'")
 
-    def intOpt(name: String): Option[Int] =
-      element.get(name).map(_.trim).filter(_.nonEmpty).map: raw =>
-        raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
-
     def requireNoOther(allowed: Set[String]): Unit =
       val extra: Seq[String] =
         element.getChildren.flatMap(_.asElement).map(_.getName.localName).filterNot(allowed.contains)
       if extra.nonEmpty then throw XmlError(s"Unparsed elements: $extra")
 
-    def intAttr(name: String): Int =
-      val raw: String = element.requireAttr(name)
-      raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
-
     def positiveInt(name: String): Int =
-      val n: Int = element.intAttr(name)
+      val raw: String = element.requireAttr(name)
+      val n: Int = raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
       if n <= 0 then throw XmlError(s"Non-positive integer: $n")
       n
-
-    def positiveIntOpt(name: String): Option[Int] =
-      element.intOpt(name).map: n =>
-        if n <= 0 then throw XmlError(s"Non-positive integer: $n")
-        n
-
-    def booleanOpt(name: String): Option[Boolean] =
-      element.get(name).map(_.trim).filter(_.nonEmpty).map(XmlAst.parseBoolean)
 
   // ZIO Blocks `Chunk.flatMap` / `++` take ClassTag from the first inner chunk, so a leading
   // text node then an element (or the reverse) throws ArrayStoreException. `:+` uses an AnyRef
