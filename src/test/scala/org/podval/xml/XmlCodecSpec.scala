@@ -137,6 +137,21 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.haftarah.flatMap(_.getId) == Seq("h1", "h2"))
   }
 
+  test("class element config names a nested record without passing its codec") {
+    val encoded: Xml.Element = InlinedBook.codec.encode(InlinedBook(Seq(InlinedChapter(2), InlinedChapter(3))))
+    assert(encoded.childElements.map(_.getName.qName) == Seq("chapter", "chapter"))
+    assert(encoded.childElements.flatMap(_.get("n")) == Seq("2", "3"))
+    val decoded: InlinedBook = InlinedBook.codec.decode(parse(
+      """<InlinedBook><chapter n="2"/><chapter n="3"/></InlinedBook>"""
+    )).toOption.get
+    assert(decoded == InlinedBook(Seq(InlinedChapter(2), InlinedChapter(3))))
+  }
+
+  test("derived(element) names that derivation and wins over the class annotation") {
+    assert(RenamedRoot.codec.encode(RenamedRoot(1)).getName.qName == "root")
+    assert(RenamedRoot.codec.decode(parse("""<root n="1"/>""")).toOption.get == RenamedRoot(1))
+  }
+
   test("sealed trait sequence uses case element names") {
     val codec: XmlCodec[Lesson] = XmlCodec.derived(using Lesson.schema)
     val xml: String = """<Lesson><positive n="1"/><negative n="2"/></Lesson>"""
@@ -336,6 +351,22 @@ object Part:
 final case class Lesson(parts: Seq[Part]) derives CanEqual
 object Lesson:
   given schema: Schema[Lesson] = Schema.derived
+
+@Modifier.config(XmlCodec.Element, "chapter")
+final case class InlinedChapter(n: Int) derives CanEqual
+object InlinedChapter:
+  given schema: Schema[InlinedChapter] = Schema.derived
+
+final case class InlinedBook(chapters: Seq[InlinedChapter]) derives CanEqual
+object InlinedBook:
+  given schema: Schema[InlinedBook] = Schema.derived
+  val codec: XmlCodec[InlinedBook] = XmlCodec.derived
+
+@Modifier.config(XmlCodec.Element, "ignored")
+final case class RenamedRoot(n: Int) derives CanEqual
+object RenamedRoot:
+  given schema: Schema[RenamedRoot] = Schema.derived
+  val codec: XmlCodec[RenamedRoot] = XmlCodec.derived(element = "root")
 
 final case class Named(
   @Modifier.config(XmlCodec.Attribute, "xml:id") id: Option[String],

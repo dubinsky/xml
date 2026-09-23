@@ -153,10 +153,11 @@ Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, 
 `Seq[Name]`.
 Those children are `<name>`: derivation registers `Name.codec` before it snapshots overrides, so the field needs no
 `@Modifier.config(XmlCodec.Element, "name")`.
-`XmlCodec.derived(element = "chapter")` names a type that has one tag.
+A type with one tag names it on the class: `@Modifier.config(XmlCodec.Element, "chapter")`.
+A parent `XmlCodec.derived` inlines that tag and does not take the child codec.
+`XmlCodec.derived(element = "wrapper")` names that derivation, and wins over the class annotation.
 `XmlCodec.derived[A, K](tagField, tag)` is the tagged form.
-Pass `Child.codec` to `XmlCodec.derived(Child.codec)` so that derivation uses it.
-`Schema.derived` inlines a nested record that is not passed.
+Pass that codec, or a hand-written codec, when inlining would drop it.
 Those overrides apply only to that derivation.
 `Schema[Xml.Element]` does not carry the tree.
 `XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources`

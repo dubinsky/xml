@@ -100,6 +100,27 @@ final class XmlDslSpec extends AnyFunSuite:
     assert(!dumped.contains("&lt;"), dumped)
   }
 
+  test("every catalog element is a DSL function of that local name") {
+    val catalog: Set[String] = XmlElement.getClass.getDeclaredClasses.flatMap { cls =>
+      if !classOf[XmlElement].isAssignableFrom(cls) then None
+      else
+        val module = cls.getField("MODULE$").get(null).asInstanceOf[XmlElement]
+        Some(module.localName)
+    }.toSet
+    val tags: Map[String, java.lang.reflect.Method] = dsl.getClass.getMethods.iterator
+      .filter(method => method.getParameterCount == 1 && classOf[Xml.Element].isAssignableFrom(method.getReturnType))
+      .map(method => method.getName -> method)
+      .toMap
+    val missing: Set[String] = catalog.diff(tags.keySet)
+    assert(missing.isEmpty, missing.mkString(", "))
+    catalog.foreach { localName =>
+      val built: Xml.Element = tags(localName).invoke(dsl, Seq.empty).asInstanceOf[Xml.Element]
+      assert(built.getName.localName == localName)
+      assert(built.getChildren.isEmpty)
+    }
+    assert(s"catalog ${catalog.size}" == s"catalog ${catalog.size}")
+  }
+
   test("to[ZioBlocksHtml.Element] yields Generic") {
     import ZioBlocksHtml.given
     val el: ZioBlocksHtml.Element = div(className := "x", "y").to[ZioBlocksHtml.Element]

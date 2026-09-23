@@ -36,9 +36,12 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   *
   * An unannotated primitive is an attribute named after the field.
   * `@Modifier.rename("n")` renames that attribute, or the child tag of a record or identity field.
-  * `@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into a child element.
-  * A type with one tag takes the name on the codec: `XmlCodec.derived(element = "chapter")`.
-  * Pass child codecs to `XmlCodec.derived(Child.codec)` so that derivation uses them and no other.
+  * `@Modifier.config(XmlCodec.Element, "comment")` on a field forces a primitive into a child element.
+  * A type with one tag names it on the class: `@Modifier.config(XmlCodec.Element, "chapter")`.
+  * A parent `XmlCodec.derived` inlines that tag and does not take the child codec.
+  * `XmlCodec.derived(element = "wrapper")` names that derivation, and wins over the class annotation.
+  * Pass a child codec when inlining would drop it: `XmlCodec.derived(tagField, tag)`, or a hand-written codec.
+  * `Name` is registered, so `Seq[Name]` needs no annotation and no passed codec.
   * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
   * name unless rename or an element config overrides it.
   * `Schema[Xml.Element]` does not carry the tree.
@@ -93,12 +96,13 @@ object XmlCodec:
 
   def derived[A](using schema: Schema[A]): XmlCodec[A] = derive(schema, None, Seq.empty)
 
-  /** Root element name for a type that has one tag. */
+  /** Tag for this derivation. Wins over `@Modifier.config(XmlCodec.Element, …)` on the class. */
   def derived[A](element: String)(using schema: Schema[A]): XmlCodec[A] =
     derive(schema, Some(element), Seq.empty)
 
   /** Use these codecs for their registered types in this derivation only.
-    * `Schema.derived` inlines a nested record unless its codec is passed here.
+    * Inlining reads a class's `@Modifier.config(XmlCodec.Element, …)`.
+    * Pass a codec when inlining would drop it: a tagged derivation, or a hand-written codec.
     */
   def derived[A](nested: XmlCodec[?], rest: XmlCodec[?]*)(using schema: Schema[A]): XmlCodec[A] =
     derive(schema, None, nested +: rest)

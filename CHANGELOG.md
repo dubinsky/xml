@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Construction DSL functions cover every `XmlElement`, named by local name.
+  `import org.podval.xml.dsl.{*, given}` exports them.
+  `object` and `var` are backtick names.
+- A type with one XML tag names it on the class with `@Modifier.config(XmlCodec.Element, "chapter")`.
+  A parent `XmlCodec.derived` inlines that tag.
+  `XmlCodec.derived(element = …)` still names one derivation and wins over the class annotation.
+  Pass a child codec when inlining would drop it: a tagged derivation, or a hand-written codec.
 - `XmlParser.parse`, `parseXml`, `parseXmlDocument`, `parseHtml`, and `parseResource` return `Xml.Element` with no
   given.
   The same names with a type argument still parse into another `XmlAst`.
