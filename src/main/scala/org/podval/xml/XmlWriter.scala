@@ -161,7 +161,10 @@ object XmlWriter:
         // character content should stick to the opening and closing tags.
         // unStack (phrasing): a break after the start tag or before the end tag is a visible
         // HTML space, e.g. "(<span>\n  <a>posuk</a>" → "( posuk".
-        val breakAtTags: Boolean = !name.localNameIn(config.unStack)
+        // unStack: a break here would become a visible HTML space.
+        // stick: a verse line keeps `<l>` on the first word and `</l>` on the last.
+        val breakAtTags: Boolean =
+          !name.localNameIn(config.unStack) && !name.localNameIn(config.stick)
         Doc.cat(Seq(
           start,
           if breakAtTags && canBreakLeft && !charactersLeft then Doc.lineOrEmpty else Doc.empty,
