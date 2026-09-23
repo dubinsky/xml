@@ -57,7 +57,7 @@ object XmlElement:
   object Mark extends XmlElement("mark")
   object Meta extends XmlElement("meta")
   object Nav extends XmlElement("nav")
-  // HTML `object` element. Call sites write `XmlElement.Object`.
+  // HTML `object` element. A bare `Object` is `java.lang.Object`.
   object Object extends XmlElement("object")
   object Ol extends XmlElement("ol")
   object P extends XmlElement("p")
