@@ -1,7 +1,50 @@
 package org.podval.xml
 
 /** Node of the XML tree owned by this library. */
-sealed trait XmlNode derives CanEqual
+sealed trait XmlNode derives CanEqual:
+  def asElement: Option[XmlNode.Element] = this match
+    case element: XmlNode.Element => Some(element)
+    case _ => None
+
+  def asText: Option[String] = this match
+    case XmlNode.Text(value) => Some(value)
+    case _ => None
+
+  def asCData: Option[String] = this match
+    case XmlNode.CData(value) => Some(value)
+    case _ => None
+
+  def asComment: Option[String] = this match
+    case XmlNode.Comment(value) => Some(value)
+    case _ => None
+
+  def asProcessingInstruction: Option[(String, String)] = this match
+    case XmlNode.ProcessingInstruction(target, data) => Some((target, data))
+    case _ => None
+
+  def asAtom: Option[String] = asText.orElse(asCData)
+
+  def fold[A](
+    element: XmlNode.Element => A,
+    text: String => A,
+    cdata: String => A,
+    comment: String => A,
+    processingInstruction: (String, String) => A,
+    unknown: => A
+  ): A = asElement.map(element)
+    .orElse(asCData.map(cdata))
+    .orElse(asText.map(text))
+    .orElse(asComment.map(comment))
+    .orElse(asProcessingInstruction.map(processingInstruction.tupled))
+    .getOrElse(unknown)
+
+  def isWhitespace: Boolean = asText.exists(_.trim.isEmpty)
+
+  def isCharacters: Boolean = asCData.isDefined || asText.exists(_.trim.nonEmpty)
+
+  def getText: String = asAtom
+    .orElse(asElement.map(el => el.getChildren.map(_.getText).mkString))
+    .getOrElse("")
 
 /** Comment or processing instruction outside the document element (`Misc` minus whitespace). */
 sealed trait XmlMisc extends XmlNode derives CanEqual:
@@ -12,7 +55,20 @@ object XmlNode:
     name: XmlName,
     attributes: Seq[(XmlName, String)],
     children: Seq[XmlNode]
-  ) extends XmlNode derives CanEqual
+  ) extends XmlNode derives CanEqual:
+    def getName: XmlName = name
+
+    def getChildren: Seq[XmlNode] = children
+
+    def getAttributes: Seq[(XmlName, String)] = attributes
+
+    def setChildren(children: Seq[XmlNode]): Element = copy(children = children)
+
+    def setText(text: String): Element = setChildren(Seq(Text(text)))
+
+    def isElement(elem: XmlElement): Boolean = name.is(elem)
+
+    def isNamed(name: String): Boolean = this.name.matches(name)
 
   final case class Text(value: String) extends XmlNode derives CanEqual
 
@@ -49,31 +105,44 @@ object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
   ): Element = XmlNode.Element(name, attributes, children)
 
   extension (node: Node)
-    override def asElement: Option[Element] = node match
-      case element: XmlNode.Element => Some(element)
-      case _ => None
+    override def asElement: Option[Element] = node.asElement
 
-    override def asText: Option[String] = node match
-      case XmlNode.Text(value) => Some(value)
-      case _ => None
+    override def asText: Option[String] = node.asText
 
-    override def asCData: Option[String] = node match
-      case XmlNode.CData(value) => Some(value)
-      case _ => None
+    override def asCData: Option[String] = node.asCData
 
-    override def asComment: Option[String] = node match
-      case XmlNode.Comment(value) => Some(value)
-      case _ => None
+    override def asComment: Option[String] = node.asComment
 
-    override def asProcessingInstruction: Option[(String, String)] = node match
-      case XmlNode.ProcessingInstruction(target, data) => Some((target, data))
-      case _ => None
+    override def asProcessingInstruction: Option[(String, String)] = node.asProcessingInstruction
 
-    override def asAtom: Option[String] = node.asText.orElse(node.asCData)
+    override def asAtom: Option[String] = node.asAtom
+
+    override def fold[A](
+      element: Element => A,
+      text: String => A,
+      cdata: String => A,
+      comment: String => A,
+      processingInstruction: (String, String) => A,
+      unknown: => A
+    ): A = node.fold(element, text, cdata, comment, processingInstruction, unknown)
+
+    override def isWhitespace: Boolean = node.isWhitespace
+
+    override def isCharacters: Boolean = node.isCharacters
+
+    override def getText: String = node.getText
 
   extension (element: Element)
-    override def getName: XmlName = element.name
+    override def getName: XmlName = element.getName
 
-    override def getChildren: Nodes = element.children
+    override def getChildren: Nodes = element.getChildren
 
-    override def getAttributes: Seq[(XmlName, String)] = element.attributes
+    override def getAttributes: Seq[(XmlName, String)] = element.getAttributes
+
+    override def setChildren(children: Nodes): Element = element.setChildren(children)
+
+    override def setText(text: String): Element = element.setText(text)
+
+    override def isElement(elem: XmlElement): Boolean = element.isElement(elem)
+
+    override def isNamed(name: String): Boolean = element.isNamed(name)
