@@ -1,6 +1,7 @@
 package org.podval.xml
 
 import Xml.given
+import XmlNode.convertElements
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
@@ -32,15 +33,15 @@ final class XmlAstSpec extends AnyFunSuite:
 
   test("to[ZioBlocksHtml.Element] keeps attributes and nesting") {
     val html: ZioBlocksHtml.Element = parse("""<div xml:id="x" class="y"><p>a</p></div>""").to[ZioBlocksHtml.Element]
-    assert(html.isElement(XmlElement.Div))
-    assert(html.get(XmlAttribute.XmlId).contains("x"))
-    assert(html.get(XmlAttribute.CssClass).contains("y"))
+    assert(html.getName.is(XmlElement.Div))
+    assert(html.getAttributes.collectFirst { case (n, v) if n.is(XmlAttribute.XmlId) => v }.contains("x"))
+    assert(html.getAttributes.collectFirst { case (n, v) if n.is(XmlAttribute.CssClass) => v }.contains("y"))
     assert(html.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
   }
 
   test("to[ZioBlocksHtml.Element] keeps empty elements") {
     val html: ZioBlocksHtml.Element = parse("<x/>").to[ZioBlocksHtml.Element]
-    assert(html.isNamed("x"))
+    assert(html.getName.matches("x"))
     assert(html.getChildren.isEmpty)
   }
 
@@ -157,7 +158,7 @@ final class XmlAstSpec extends AnyFunSuite:
     )
     val transformed: Xml.Element = xml.transform(_.rename("y"))
     assert(transformed.getName.qName == "tei:code")
-    assert(transformed.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
+    assert(transformed.childElements.map(_.getName.qName) == Seq("x"))
   }
 
   test("rewrite Keep with default stopAtCode does not rename inside tei:code") {
@@ -166,9 +167,9 @@ final class XmlAstSpec extends AnyFunSuite:
     )
     val rewritten: Xml.Element = xml.rewrite((el, _) => Xml.Rewrite.Keep(el.rename("y")))
     assert(rewritten.getName.qName == "y")
-    val code: Xml.Element = rewritten.getChildren.flatMap(_.asElement).head
+    val code: Xml.Element = rewritten.childElements.head
     assert(code.getName.qName == "tei:code")
-    assert(code.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
+    assert(code.childElements.map(_.getName.qName) == Seq("x"))
   }
 
   test("rewrite Replace of a child runs on a nested element inside the replacement") {
@@ -183,9 +184,9 @@ final class XmlAstSpec extends AnyFunSuite:
       else
         Xml.Rewrite.Keep(el)
     assert(seen == Seq("p", "note", "span", "inner"))
-    val span: Xml.Element = rewritten.getChildren.flatMap(_.asElement).head
+    val span: Xml.Element = rewritten.childElements.head
     assert(span.getName.qName == "span")
-    assert(span.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("done"))
+    assert(span.childElements.map(_.getName.qName) == Seq("done"))
   }
 
   test("rewrite does not double-wrap code when the parent is pre") {
@@ -196,15 +197,15 @@ final class XmlAstSpec extends AnyFunSuite:
         Xml.Rewrite.Keep(el)
 
     val wrapped: Xml.Element = parse("<div><code>x</code></div>").rewrite(wrap, stopAtCode = false)
-    val pre: Xml.Element = wrapped.getChildren.flatMap(_.asElement).head
+    val pre: Xml.Element = wrapped.childElements.head
     assert(pre.getName.qName == "pre")
-    assert(pre.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("code"))
-    assert(pre.getChildren.flatMap(_.asElement).head.getText == "x")
+    assert(pre.childElements.map(_.getName.qName) == Seq("code"))
+    assert(pre.childElements.head.getText == "x")
 
     val already: Xml.Element = parse("<pre><code>x</code></pre>").rewrite(wrap, stopAtCode = false)
     assert(already.getName.qName == "pre")
-    assert(already.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("code"))
-    assert(already.getChildren.flatMap(_.asElement).head.getText == "x")
+    assert(already.childElements.map(_.getName.qName) == Seq("code"))
+    assert(already.childElements.head.getText == "x")
   }
 
   test("rewrite throws when a root Replace is two nodes") {
@@ -221,7 +222,7 @@ final class XmlAstSpec extends AnyFunSuite:
     val xml: Xml.Element = parse("<div><code><x/></code></div>")
     val rewritten: Xml.Element = xml.rewrite((el, _) => Xml.Rewrite.Keep(el.rename("y")))
     assert(rewritten.getName.qName == "y")
-    val code: Xml.Element = rewritten.getChildren.flatMap(_.asElement).head
+    val code: Xml.Element = rewritten.childElements.head
     assert(code.getName.qName == "code")
-    assert(code.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("x"))
+    assert(code.childElements.map(_.getName.qName) == Seq("x"))
   }

@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import Xml.given
 import zio.blocks.schema.Schema
 import zio.blocks.schema.derive.Deriver
 import zio.blocks.typeid.TypeId
@@ -19,7 +18,7 @@ object XmlTree:
 /** Same as [[XmlCodec.xmlElementSchema]]. In this package automatically. */
 given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
 
-/** Document-shaped XML codec over any `XmlAst`.
+/** Document-shaped XML codec for [[Xml.Element]].
   *
   * Derive with `XmlCodec.derived` from a `Schema`. Binding hints are Schema modifiers
   * (`Modifier` is sealed, so `@xmlAttribute` is not visible to `Schema.derived`):
@@ -32,10 +31,12 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   * }}}
   *
   * An unannotated primitive is an attribute named after the field.
+  * `@Modifier.rename("n")` renames that attribute, or the child tag of a record or identity field.
+  * `@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into a child element.
+  * Put that config on the case class when the type has one XML tag.
   * Identity fields are `Xml.Element` (alias [[XmlTree]]). The child tag is the field
-  * name unless `@Modifier.config(XmlCodec.Element, …)` overrides it. `encode` is
-  * polymorphic in the AST; pin it with a type ascription when more than one `XmlAst`
-  * is in scope. `import Xml.given` selects the owned tree.
+  * name unless rename or an element config overrides it.
+  * A foreign tree decodes after `element.to[Xml.Element]`; encode with `codec.encode(value).to[TO]`.
   * Other packages `import XmlCodec.given` (or `import org.podval.xml.given`)
   * for `Schema[Xml.Element]`.
   *
@@ -53,9 +54,13 @@ object XmlCodec:
   /** Attribute qName, or [[UseFieldName]] for `@Modifier.rename` or the field name.
     * A non-empty value (`"xml:id"`) wins over rename.
     * An unannotated primitive is already an attribute of that name.
+    * `@Modifier.rename` is enough to rename it.
     */
   final val Attribute = "xml.attribute"
-  /** Type or field element name: `@Modifier.config(XmlCodec.Element, "persName")`. */
+  /** Element name on a type, or the child tag that forces a primitive into an element.
+    * `@Modifier.config(XmlCodec.Element, "persName")`.
+    * A record sequence renamed to a tag it already is uses `@Modifier.rename`.
+    */
   final val Element = "xml.element"
   /** Character content of this element: `@Modifier.config(XmlCodec.Text, UseFieldName)`. */
   final val Text = "xml.text"
@@ -69,22 +74,14 @@ object XmlCodec:
   /** Identity field `Schema`. `import XmlCodec.given` when deriving outside this package. */
   given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
 
-  /** Identity field: copy a named child as [[Xml.Element]]. Same-AST decode keeps the node. */
+  /** Identity field: copy a named child as [[Xml.Element]]. */
   val elementCodec: XmlCodec[XmlTree] = new XmlCodec[XmlTree]:
     override def elementName: String = "element"
     override def isRecordLike: Boolean = true
     override def isIdentity: Boolean = true
-    override def unsafeDecode[E: XmlAst](element: E): XmlTree = toXmlElement(element)
-    override def encodeNamed[E: XmlAst](name: String, value: XmlTree): E = fromXmlElement(Xml.withName(value, name))
-    override def encode[E: XmlAst](value: XmlTree): E = fromXmlElement(value)
-
-  private def toXmlElement[E: XmlAst](element: E): XmlTree =
-    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[XmlTree]
-    else element.to[Xml.Element]
-
-  private def fromXmlElement[E: XmlAst](element: XmlTree): E =
-    if summon[XmlAst[E]] eq Xml then element.asInstanceOf[E]
-    else element.to[E]
+    override def unsafeDecode(element: Xml.Element): XmlTree = element
+    override def encodeNamed(name: String, value: XmlTree): Xml.Element = Xml.withName(value, name)
+    override def encode(value: XmlTree): Xml.Element = value
 
   val deriver: Deriver[XmlCodec] = XmlCodecDeriver
 
@@ -113,9 +110,8 @@ object XmlCodec:
   extension [A](codec: XmlCodec[A])
     /** Decode each element child of `root`. Whitespace and comments are ignored;
       * leftover character content is an error. */
-    def decodeChildren[E: XmlAst](root: E): Either[XmlError, Seq[A]] =
-      val ast: XmlAst[E] = summon[XmlAst[E]]
-      val nodes: ast.Nodes = ast.getChildren(root)
+    def decodeChildren(root: Xml.Element): Either[XmlError, Seq[A]] =
+      val nodes: Seq[XmlNode] = root.getChildren
       val leftover: Seq[String] = nodes
         .filter(_.asElement.isEmpty)
         .flatMap(_.asAtom)
@@ -132,7 +128,7 @@ object XmlCodec:
 
     /** Require wrapper element `name`, then [[decodeChildren]].
       * `XmlParser.loadCatalog` uses this after loading `name.xml`. */
-    def decodeCatalog[E: XmlAst](root: E, name: String): Either[XmlError, Seq[A]] =
+    def decodeCatalog(root: Xml.Element, name: String): Either[XmlError, Seq[A]] =
       if !root.isNamed(name) then
         Left(XmlError(s"Expected catalog '$name', found '${root.getName.qName}'"))
       else codec.decodeChildren(root)
@@ -140,7 +136,7 @@ object XmlCodec:
 trait XmlCodec[A]:
   def elementName: String
 
-  def decode[E: XmlAst](element: E): Either[XmlError, A] =
+  def decode(element: Xml.Element): Either[XmlError, A] =
     try Right(unsafeDecode(element))
     catch
       case e: XmlError => Left(e)
@@ -148,11 +144,11 @@ trait XmlCodec[A]:
 
   def elementNameOf(value: A): String = elementName
 
-  def encode[E: XmlAst](value: A): E = encodeNamed(elementNameOf(value), value)
+  def encode(value: A): Xml.Element = encodeNamed(elementNameOf(value), value)
 
-  def encodeNamed[E: XmlAst](name: String, value: A): E
+  def encodeNamed(name: String, value: A): Xml.Element
 
-  def unsafeDecode[E: XmlAst](element: E): A
+  def unsafeDecode(element: Xml.Element): A
 
   def unsafeDecodeText(text: String): A =
     throw XmlError("Type does not decode from text")

@@ -7,7 +7,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlParserSpec extends AnyFunSuite:
   private def children(element: Xml.Element): Seq[Xml.Element] =
-    element.getChildren.flatMap(_.asElement)
+    element.childElements
 
   test("string parse does not expand xi:include") {
     val xml: Xml.Element = XmlParser.parseXml(
@@ -66,7 +66,7 @@ final class XmlParserSpec extends AnyFunSuite:
     val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))
     assert(xml.getChildren.flatMap(_.asComment) == Seq("c"))
-    assert(xml.getChildren.flatMap(_.asElement).isEmpty)
+    assert(xml.childElements.isEmpty)
   }
 
   test("keeps a processing instruction as a child") {
@@ -78,7 +78,7 @@ final class XmlParserSpec extends AnyFunSuite:
   test("parseXml into ScalaXml keeps names, text, CDATA, and comments") {
     val xml: ScalaXml.Element = XmlParser.parseXml("""<p xml:id="x">a<![CDATA[b]]><!--c--></p>""").toOption.get
     assert(xml.getName.qName == "p")
-    assert(ScalaXml.get(xml)(XmlAttribute.XmlId).contains("x"))
+    assert(ScalaXml.getAttributes(xml).collectFirst { case (n, v) if n.is(XmlAttribute.XmlId) => v }.contains("x"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("a"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asCData) == Seq("b"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asComment) == Seq("c"))
@@ -86,7 +86,7 @@ final class XmlParserSpec extends AnyFunSuite:
 
   test("parseHtml into ZioBlocksHtml keeps tags and text and drops comments") {
     val html: ZioBlocksHtml.Element = XmlParser.parseHtml("<p>a<!--c--><b>d</b></p>").toOption.get
-    assert(html.isElement(XmlElement.P))
+    assert(html.getName.is(XmlElement.P))
     assert(html.getChildren.flatMap(_.asComment).isEmpty)
     assert(html.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("b"))
     assert(html.getText == "ad")

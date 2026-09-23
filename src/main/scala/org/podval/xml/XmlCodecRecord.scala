@@ -42,11 +42,10 @@ private[xml] trait XmlCodecRecord:
           tag.toName(load(regs, info.offset, info.typeTag))
         case _ => recordName
 
-    override def unsafeDecode[E: XmlAst](element: E): A =
-      val ast: XmlAst[E] = summon[XmlAst[E]]
+    override def unsafeDecode(element: Xml.Element): A =
       val attrs: mutable.LinkedHashMap[XmlName, String] =
         mutable.LinkedHashMap.from(element.getAttributes)
-      val nodes: ast.Nodes = ast.getChildren(element)
+      val nodes: Seq[XmlNode] = element.getChildren
       val available: mutable.BitSet = mutable.BitSet.empty
       nodes.zipWithIndex.foreach: (node, idx) =>
         if node.asElement.isDefined then available += idx
@@ -92,7 +91,7 @@ private[xml] trait XmlCodecRecord:
                 if available.contains(nodeIdx) && node.asElement.exists(_.isInclude) then available -= nodeIdx
               storeSeq(regs, info, hrefs)
             case FieldKind.Child =>
-              val matched: Seq[(E, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
+              val matched: Seq[(Xml.Element, Int)] = nodes.zipWithIndex.flatMap: (node, nodeIdx) =>
                 if !available.contains(nodeIdx) then None
                 else node.asElement.filter(el => el.getName.matchesAny(info.itemNames)).map(_ -> nodeIdx)
               if info.sequence then
@@ -133,30 +132,29 @@ private[xml] trait XmlCodecRecord:
         if leftoverText then throw XmlError("Unparsed character content")
       constructor.construct(regs, 0)
 
-    override def encodeNamed[E: XmlAst](name: String, value: A): E =
-      val ast: XmlAst[E] = summon[XmlAst[E]]
+    override def encodeNamed(name: String, value: A): Xml.Element =
       val regs: Registers = Registers(deconstructor.usedRegisters)
       deconstructor.deconstruct(regs, 0, value)
       val attributes: mutable.ArrayBuffer[(XmlName, String)] = mutable.ArrayBuffer.empty
-      val children: mutable.ArrayBuffer[ast.Node] = mutable.ArrayBuffer.empty
+      val children: mutable.ArrayBuffer[XmlNode] = mutable.ArrayBuffer.empty
       fieldInfos.foreach: info =>
         info.kind match
           case FieldKind.Tag => ()
           case FieldKind.Text =>
-            encodedText(regs, info).filter(_.nonEmpty).foreach(text => children += ast.text(text))
+            encodedText(regs, info).filter(_.nonEmpty).foreach(text => children += Xml.text(text))
           case FieldKind.Attribute(attrName) =>
             encodedText(regs, info).foreach: value =>
               attributes += XmlName.parse(attrName, isAttribute = true) -> value
           case FieldKind.Include =>
             loadItems(regs, info).map(_.asInstanceOf[String]).filter(_.nonEmpty).foreach: href =>
-              children += ast.element(
+              children += Xml.element(
                 XmlName("include", Some(XmlNamespace.xinclude)),
                 Seq(XmlName.parse("href", isAttribute = true) -> href),
                 Seq.empty
               )
           case FieldKind.Child =>
             def appendItem(item: Any): Unit =
-              val encoded: E =
+              val encoded: Xml.Element =
                 if info.codec.caseNames.nonEmpty then info.codec.encode(item)
                 else info.codec.encodeNamed(info.itemNames.head, item)
               children += encoded
@@ -174,7 +172,7 @@ private[xml] trait XmlCodecRecord:
         case Some((uri, _)) => parsedName.copy(namespace = XmlNamespace.of(parsedName.prefix, Some(uri)))
         case None =>
           XmlName.parseDeclared(name, nsAttrs ++ attributes.toSeq)
-      ast.element(expandedName, nsAttrs ++ attributes.toSeq, children.toSeq)
+      Xml.element(expandedName, nsAttrs ++ attributes.toSeq, children.toSeq)
 
   protected def fieldInfo[F[_, _], A](recordTypeId: TypeId[A], field: Term[F, A, ?], offset: RegisterOffset)(using
     F: HasBinding[F],
@@ -271,9 +269,8 @@ private[xml] trait XmlCodecRecord:
     else if info.sequence then deconstructSeq(info, loaded)
     else Iterator(loaded)
 
-  protected def characterData[E: XmlAst](element: E): String =
-    val ast: XmlAst[E] = summon[XmlAst[E]]
-    ast.getChildren(element).flatMap(node => ast.asAtom(node)).mkString.trim
+  protected def characterData(element: Xml.Element): String =
+    element.getChildren.flatMap(_.asAtom).mkString.trim
 
   protected def configValue(modifiers: Seq[Modifier], key: String): Option[String] =
     modifiers.collectFirst { case Modifier.config(`key`, value) => value }

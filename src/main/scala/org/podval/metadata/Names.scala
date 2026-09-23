@@ -1,6 +1,6 @@
 package org.podval.metadata
 
-import org.podval.xml.{XmlAst, XmlCodec, XmlError, XmlParser}
+import org.podval.xml.{Xml, XmlCodec, XmlError, XmlParser}
 
 final case class Names(names: Seq[Name]) extends Language.ToString:
   Names.checkNoDuplicates(names.map(_.name), "names")
@@ -48,12 +48,11 @@ object Names:
     override def elementName: String = "names"
     override def isRecordLike: Boolean = true
 
-    override def unsafeDecode[E: XmlAst](element: E): Names =
+    override def unsafeDecode(element: Xml.Element): Names =
       Names(Name.codec.decodeChildren(element).fold(error => throw error, identity))
 
-    override def encodeNamed[E: XmlAst](elName: String, value: Names): E =
-      val ast: XmlAst[E] = summon[XmlAst[E]]
-      ast.element(elName, Seq.empty, value.names.map(name => Name.codec.encode(name)))
+    override def encodeNamed(elName: String, value: Names): Xml.Element =
+      Xml.element(elName, Seq.empty, value.names.map(name => Name.codec.encode(name)))
 
   def combine(one: Names, other: Names, combiner: (Language.Spec, String, String) => String): Names =
     val specs: Set[Language.Spec] = one.names.map(_.languageSpec).toSet ++ other.names.map(_.languageSpec)

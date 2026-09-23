@@ -20,7 +20,7 @@ final class XmlDocumentSpec extends AnyFunSuite:
     ).toOption.get
     assert(xml.isNamed("Day"))
     assert(xml.getChildren.flatMap(_.asComment).isEmpty)
-    assert(xml.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("names"))
+    assert(xml.childElements.map(_.getName.qName) == Seq("names"))
   }
 
   test("parseXmlDocument keeps prolog and epilogue comments") {

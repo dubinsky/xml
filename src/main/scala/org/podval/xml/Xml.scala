@@ -81,11 +81,27 @@ object XmlNode:
     def markup: String =
       if data.isEmpty then s"<?$target?>" else s"<?$target $data?>"
 
+  /** `flatMap` that builds a `Seq`, so a text node followed by an element does not depend on `Chunk`'s `ClassTag`.
+    * Import `XmlNode.flatMapNodes` or `XmlNode.convertElements` (also exported from `dsl`). No `XmlAst` given.
+    */
+  extension (nodes: Seq[XmlNode])
+    def flatMapNodes(f: XmlNode => Seq[XmlNode]): Seq[XmlNode] =
+      nodes.foldLeft(Seq.empty[XmlNode]): (acc, node) =>
+        f(node).foldLeft(acc)(_ :+ _)
+
+    def convertElements(converter: Element => Option[Seq[XmlNode]]): Seq[XmlNode] =
+      nodes.foldLeft(Seq.empty[XmlNode]): (acc, node) =>
+        node.asElement.flatMap(converter).getOrElse(Seq(node)).foldLeft(acc)(_ :+ _)
+
 // XML AST owned by this library.
-// `import Xml.given` to parse, write, or encode this AST.
+// `import Xml.given` to parse, write, or convert (`to[TO]`).
 // Walk, attribute, and CSS operations are members of `XmlNode.Element`.
-// Convert with `element.to[Xml.Element]`.
+// `import XmlNode.flatMapNodes` (or `convertElements`) for a node list; no given.
 object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
+  /** One element, or the nodes that replace it. The walk then continues into the result. */
+  enum Rewrite:
+    case Keep(element: XmlNode.Element)
+    case Replace(nodes: Seq[XmlNode])
   given Xml.type = this
 
   override type Node = XmlNode
@@ -139,11 +155,3 @@ object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
     override def getChildren: Nodes = element.getChildren
 
     override def getAttributes: Seq[(XmlName, String)] = element.getAttributes
-
-    override def setChildren(children: Nodes): Element = element.setChildren(children)
-
-    override def setText(text: String): Element = element.setText(text)
-
-    override def isElement(elem: XmlElement): Boolean = element.isElement(elem)
-
-    override def isNamed(name: String): Boolean = element.isNamed(name)

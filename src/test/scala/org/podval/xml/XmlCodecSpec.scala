@@ -14,7 +14,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(language.ident == "ru")
     val encoded: Xml.Element = codec.encode(language)
     assert(encoded.get("ident").contains("ru"))
-    assert(encoded.getChildren.flatMap(_.asElement).isEmpty)
+    assert(encoded.childElements.isEmpty)
   }
 
   test("unwrapped sibling sequences") {
@@ -23,8 +23,8 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: LangUsage = codec.decode(parse(xml)).toOption.get
     assert(decoded.languages.map(_.ident) == Seq("ru", "he"))
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("language", "language"))
-    assert(encoded.getChildren.flatMap(_.asElement).flatMap(_.get("ident")) == Seq("ru", "he"))
+    assert(encoded.childElements.map(_.getName.qName) == Seq("language", "language"))
+    assert(encoded.childElements.flatMap(_.get("ident")) == Seq("ru", "he"))
   }
 
   test("text plus attributes on the same element") {
@@ -80,11 +80,11 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.body.getChildren.exists(_.asComment.contains("n")))
     val encoded: Xml.Element = codec.encode(decoded)
     assert(encoded.get(XmlAttribute.Lang).contains("ru"))
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("body"))
-    assert(encoded.getChildren.flatMap(_.asElement).head.getChildren.exists(_.asComment.contains("n")))
-    val scalaEl: ScalaXml.Element = codec.encode(decoded)
+    assert(encoded.childElements.map(_.getName.qName) == Seq("body"))
+    assert(encoded.childElements.head.getChildren.exists(_.asComment.contains("n")))
+    val scalaEl: ScalaXml.Element = codec.encode(decoded).to[ScalaXml.Element]
     assert(scalaEl.getName.qName == "Text")
-    assert(codec.decode(scalaEl).toOption.get.body.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
+    assert(codec.decode(ScalaXml.converted[Xml.Element](scalaEl)).toOption.get.body.childElements.map(_.getName.qName) == Seq("p"))
   }
 
   test("IgnoreUnknown skips leftover attributes, elements, and text") {
@@ -114,7 +114,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(decoded.items.map(_.n) == Seq("a", "b"))
     assert(decoded.items.map(_.kind) == Seq(TaggedKind.person, TaggedKind.place))
     val encoded: Xml.Element = TaggedIndex.codec.encode(decoded)
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("person", "place"))
+    assert(encoded.childElements.map(_.getName.qName) == Seq("person", "place"))
   }
 
   test("identity sequence fields collect mixed sibling tags") {
@@ -134,17 +134,18 @@ final class XmlCodecSpec extends AnyFunSuite:
     val decoded: Lesson = codec.decode(parse(xml)).toOption.get
     assert(decoded.parts == Seq(Positive(1), Negative(2)))
     val encoded: Xml.Element = codec.encode(decoded)
-    assert(encoded.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("positive", "negative"))
+    assert(encoded.childElements.map(_.getName.qName) == Seq("positive", "negative"))
   }
 
-  test("the same codec encodes Xml and Scala XML") {
+  test("encode converts to Scala XML") {
     val codec: XmlCodec[Language] = XmlCodec.derived(using Language.schema)
     val zioEl: Xml.Element = codec.encode(Language("he"))
-    val scalaEl: ScalaXml.Element = codec.encode(Language("he"))
+    val scalaEl: ScalaXml.Element = zioEl.to[ScalaXml.Element]
     assert(zioEl.get("ident").contains("he"))
-    assert(scalaEl.get("ident").contains("he"))
+    val round: Xml.Element = ScalaXml.converted[Xml.Element](scalaEl)
+    assert(round.get("ident").contains("he"))
     assert(codec.decode(zioEl).toOption.get == Language("he"))
-    assert(codec.decode(scalaEl).toOption.get == Language("he"))
+    assert(codec.decode(round).toOption.get == Language("he"))
   }
 
   test("prefixed attribute names") {
@@ -174,7 +175,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(encoded.get("n").contains("1"))
     val decoded: NsBox = codec.decode(parse("""<ex:NsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
     assert(decoded.n == "1")
-    val scalaEl: ScalaXml.Element = codec.encode(NsBox("1"))
+    val scalaEl: ScalaXml.Element = codec.encode(NsBox("1")).to[ScalaXml.Element]
     assert(scalaEl.getName.qName == "ex:NsBox")
     assert(scalaEl.scope.getURI("ex") == "http://example.com/ns")
   }
@@ -247,7 +248,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(encoded.get("comment").isEmpty)
     assert(encoded.get("note").isEmpty)
     assert(encoded.get("tags").isEmpty)
-    val children: Seq[Xml.Element] = encoded.getChildren.flatMap(_.asElement)
+    val children: Seq[Xml.Element] = encoded.childElements
     assert(children.map(_.getName.qName) == Seq("comment", "note", "tags", "tags"))
     assert(children.head.getText.trim == "c")
     assert(children.drop(2).map(_.getText.trim) == Seq("a", "b"))
@@ -261,7 +262,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val renamed: Xml.Element = XmlCodec.derived(using RenamedLabel.schema).encode(RenamedLabel("t"))
     assert(renamed.get("n").contains("t"))
     assert(renamed.get("label").isEmpty)
-    assert(renamed.getChildren.flatMap(_.asElement).isEmpty)
+    assert(renamed.childElements.isEmpty)
 
     val explicit: Xml.Element =
       XmlCodec.derived(using ExplicitQName.schema).encode(ExplicitQName("collection"))

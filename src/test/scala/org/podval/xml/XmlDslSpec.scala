@@ -73,7 +73,7 @@ final class XmlDslSpec extends AnyFunSuite:
   test(".when(true) merges into existing lang and body") {
     val el: Xml.Element = html(langAttr := "en", body("x")).when(true)(className := "wide")
     assert(qNames(el) == Seq("lang" -> "en", "class" -> "wide"))
-    assert(el.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("body"))
+    assert(el.childElements.map(_.getName.qName) == Seq("body"))
   }
 
   test(".when(false) is identity") {

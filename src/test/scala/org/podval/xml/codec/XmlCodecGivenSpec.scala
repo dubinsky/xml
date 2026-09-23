@@ -12,7 +12,7 @@ final class XmlCodecGivenSpec extends AnyFunSuite:
     val decoded: Note = codec.decode(
       XmlParser.parseXml("<Note><body><p>a</p></body></Note>").toOption.get
     ).toOption.get
-    assert(decoded.body.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("p"))
+    assert(decoded.body.childElements.map(_.getName.qName) == Seq("p"))
   }
 
 final case class Note(body: Xml.Element)

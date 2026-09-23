@@ -94,9 +94,9 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
           override def isRecordLike: Boolean = innerCodec.isRecordLike
           override def caseNames: Seq[String] = innerCodec.caseNames
           override def isEnumeration: Boolean = innerCodec.isEnumeration
-          override def unsafeDecode[E: XmlAst](element: E): Option[Any] =
+          override def unsafeDecode(element: Xml.Element): Option[Any] =
             Some(innerCodec.unsafeDecode(element))
-          override def encodeNamed[E: XmlAst](name: String, value: Option[Any]): E = value match
+          override def encodeNamed(name: String, value: Option[Any]): Xml.Element = value match
             case Some(innerValue) => innerCodec.encodeNamed(name, innerValue)
             case None => throw XmlError("Cannot encode None as an element")
           override def unsafeDecodeText(text: String): Option[Any] =
@@ -122,7 +122,7 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         override def isRecordLike: Boolean = true
         override def isEnumeration: Boolean = enumeration
         override def caseNames: Seq[String] = caseCodecs.map(_._1)
-        override def unsafeDecode[E: XmlAst](element: E): A =
+        override def unsafeDecode(element: Xml.Element): A =
           val name: XmlName = element.getName
           caseByName(name) match
             case Some((_, codec, empty)) =>
@@ -130,17 +130,15 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
             case None if enumeration =>
               unsafeDecodeText(characterData(element))
             case None => throw XmlError(s"Unknown variant case: ${name.qName}")
-        override def encodeNamed[E: XmlAst](name: String, value: A): E =
+        override def encodeNamed(name: String, value: A): Xml.Element =
           val idx: Int = discriminator.discriminate(value)
           val (caseName, codec, _) = caseCodecs(idx)
-          if enumeration then
-            val ast: XmlAst[E] = summon[XmlAst[E]]
-            ast.element(name, Seq.empty, Seq(ast.text(caseName)))
+          if enumeration then Xml.element(name, Seq.empty, Seq(Xml.text(caseName)))
           else codec.encodeNamed(caseName, value)
-        override def encode[E: XmlAst](value: A): E =
+        override def encode(value: A): Xml.Element =
           val idx: Int = discriminator.discriminate(value)
           val (caseName, codec, _) = caseCodecs(idx)
-          if enumeration then summon[XmlAst[E]].element(caseName, Seq.empty, Seq.empty)
+          if enumeration then Xml.element(caseName)
           else codec.encodeNamed(caseName, value)
         override def unsafeDecodeText(text: String): A =
           if !enumeration then throw XmlError("Variant does not decode from text")
@@ -168,29 +166,25 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
         val itemCodec: XmlCodec[A] = codec
         new XmlCodec[C[A]]:
           override def elementName: String = typeId.name
-          override def unsafeDecode[E: XmlAst](root: E): C[A] =
-            val ast: XmlAst[E] = summon[XmlAst[E]]
-            val children: Seq[E] = ast.getChildren(root).flatMap(_.asElement)
+          override def unsafeDecode(root: Xml.Element): C[A] =
+            val children: Seq[Xml.Element] = root.childElements
             val names: Seq[String] =
               if itemCodec.caseNames.nonEmpty then itemCodec.caseNames else Seq(itemCodec.elementName)
-            val matched: Seq[E] =
+            val matched: Seq[Xml.Element] =
               if itemCodec.isRecordLike then children.filter(child => child.getName.matchesAny(names))
               else children
             val builder = seqBinding.constructor.newBuilder[A](matched.size)(using itemClassTag)
             matched.foreach: child =>
               seqBinding.constructor.add(builder, itemCodec.unsafeDecode(child))
             seqBinding.constructor.result(builder)
-          override def encodeNamed[E: XmlAst](name: String, value: C[A]): E =
-            val ast: XmlAst[E] = summon[XmlAst[E]]
+          override def encodeNamed(name: String, value: C[A]): Xml.Element =
             val items: Iterator[A] = seqBinding.deconstructor.deconstruct(value)
-            val children: Seq[ast.Node] = items.map: item =>
-              val encoded: E =
-                if itemCodec.caseNames.nonEmpty then itemCodec.encode(item)
-                else itemCodec.encodeNamed(itemCodec.elementName, item)
-              encoded
+            val children: Seq[XmlNode] = items.map: item =>
+              if itemCodec.caseNames.nonEmpty then itemCodec.encode(item)
+              else itemCodec.encodeNamed(itemCodec.elementName, item)
             .toSeq
-            ast.element(name, Seq.empty, children)
-          override def encode[E: XmlAst](value: C[A]): E = encodeNamed(elementName, value)
+            Xml.element(name, Seq.empty, children)
+          override def encode(value: C[A]): Xml.Element = encodeNamed(elementName, value)
 
   override def deriveMap[F[_, _], M[_, _], K, V](
     key: Reflect[F, K],
@@ -232,8 +226,8 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
           override def isRecordLike: Boolean = inner.isRecordLike
           override def caseNames: Seq[String] = inner.caseNames
           override def isEnumeration: Boolean = inner.isEnumeration
-          override def unsafeDecode[E: XmlAst](element: E): A = wrapperBinding.wrap(inner.unsafeDecode(element))
-          override def encodeNamed[E: XmlAst](name: String, value: A): E =
+          override def unsafeDecode(element: Xml.Element): A = wrapperBinding.wrap(inner.unsafeDecode(element))
+          override def encodeNamed(name: String, value: A): Xml.Element =
             inner.encodeNamed(name, wrapperBinding.unwrap(value))
           override def unsafeDecodeText(text: String): A = wrapperBinding.wrap(inner.unsafeDecodeText(text))
           override def encodeText(value: A): String = inner.encodeText(wrapperBinding.unwrap(value))
@@ -281,14 +275,13 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
   private def textCodec[A](name: String, parse: String => A, format: A => String): XmlCodec[A] =
     new XmlCodec[A]:
       override def elementName: String = name
-      override def unsafeDecode[E: XmlAst](element: E): A = unsafeDecodeText(characterData(element))
-      override def encodeNamed[E: XmlAst](elementName: String, value: A): E =
-        val ast: XmlAst[E] = summon[XmlAst[E]]
+      override def unsafeDecode(element: Xml.Element): A = unsafeDecodeText(characterData(element))
+      override def encodeNamed(elementName: String, value: A): Xml.Element =
         val text: String = format(value)
-        ast.element(
+        Xml.element(
           elementName,
           Seq.empty,
-          if text.isEmpty then Seq.empty else Seq(ast.text(text))
+          if text.isEmpty then Seq.empty else Seq(Xml.text(text))
         )
       override def unsafeDecodeText(text: String): A =
         try parse(text)
@@ -300,5 +293,5 @@ class XmlCodecDeriver extends Deriver[XmlCodec], XmlCodecRecord:
 
   private def unsupported[A](what: String): XmlCodec[A] = new XmlCodec[A]:
     override def elementName: String = what
-    override def unsafeDecode[E: XmlAst](element: E): A = throw XmlError(s"$what is not supported")
-    override def encodeNamed[E: XmlAst](name: String, value: A): E = throw XmlError(s"$what is not supported")
+    override def unsafeDecode(element: Xml.Element): A = throw XmlError(s"$what is not supported")
+    override def encodeNamed(name: String, value: A): Xml.Element = throw XmlError(s"$what is not supported")

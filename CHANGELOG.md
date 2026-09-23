@@ -6,8 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Breaking: `XmlCodec` decode and encode take `Xml.Element`.
+  Convert a foreign tree with `to[Xml.Element]` before decode, and the encode result with `to[TO]`.
+- Breaking: walk, attribute, and CSS operations exist only on `Xml.Element`.
+  Parser, writer, rebuild (`withName` / `withAttribute`), and `to[TO]` stay on `XmlAst`.
+- `childElements` lists the element children.
+  `flatMapNodes` and `convertElements` extend `Seq[XmlNode]` and need no `XmlAst` given.
 - Walk, attribute, and CSS operations on `Xml.Element` are members.
-  `import Xml.given` remains for parsing, writing, and codec encode.
+  `import Xml.given` remains for parsing, writing, and `to[TO]`.
 - Breaking: `elementById` is `getById` and returns `Option`.
   A missing id is `None`.
 - `childNamed` is the first `childrenNamed` match.

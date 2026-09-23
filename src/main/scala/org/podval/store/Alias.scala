@@ -1,8 +1,8 @@
 package org.podval.store
 
 import org.podval.metadata.{Name, Names}
-import org.podval.xml.{XmlAst, XmlCodec}
-import zio.blocks.schema.{Modifier, Schema}
+import org.podval.xml.{Xml, XmlCodec}
+import zio.blocks.schema.Schema
 
 final case class Alias(override val names: Names, to: Seq[String]) extends Store derives CanEqual:
   require(to.nonEmpty, "Alias target must not be empty (\"/\" is not legal)")
@@ -14,7 +14,7 @@ object Alias:
 
   private final case class Data(
     n: Option[String] = None,
-    @Modifier.config(XmlCodec.Element, "name") names: Seq[Name] = Seq.empty,
+    names: Seq[Name] = Seq.empty,
     to: String
   ) derives CanEqual
 
@@ -26,11 +26,11 @@ object Alias:
     override def elementName: String = "alias"
     override def isRecordLike: Boolean = true
 
-    override def unsafeDecode[E: XmlAst](element: E): Alias =
+    override def unsafeDecode(element: Xml.Element): Alias =
       val data: Data = Data.codec.unsafeDecode(element)
       Alias(Names.fromDefaultName(data.n, data.names), data.to)
 
-    override def encodeNamed[E: XmlAst](elName: String, value: Alias): E =
+    override def encodeNamed(elName: String, value: Alias): Xml.Element =
       val default: Option[String] = value.names.getDefaultName
       Data.codec.encodeNamed(elName, Data(
         n = default,

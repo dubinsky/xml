@@ -84,8 +84,8 @@ final class XmlBuilderSpec extends AnyFunSuite:
     builder.endElement()
     val xml: Xml.Element = builder.result
     assert(xml.isNamed("outer"))
-    assert(xml.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("inner"))
-    assert(xml.getChildren.flatMap(_.asElement).head.getChildren.flatMap(_.asText) == Seq("a"))
+    assert(xml.childElements.map(_.getName.qName) == Seq("inner"))
+    assert(xml.childElements.head.getChildren.flatMap(_.asText) == Seq("a"))
   }
 
   test("result requires a document element") {

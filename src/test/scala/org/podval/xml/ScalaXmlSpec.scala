@@ -28,7 +28,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
     assert(el.getName.qName == "tei:p")
     assert(el.prefix == "tei")
     assert(el.label == "p")
-    val renamed: ScalaXml.Element = ScalaXml.rename(el)("div")
+    val renamed: ScalaXml.Element = ScalaXml.withName(el, "div")
     assert(renamed.getName.qName == "div")
     assert(renamed.prefix == null)
     assert(renamed.label == "div")
@@ -66,7 +66,7 @@ final class ScalaXmlSpec extends AnyFunSuite:
     val round: Xml.Element = ScalaXml.converted(xml.to[ScalaXml.Element])
     assert(round.isElement(XmlElement.P))
     assert(round.get(XmlAttribute.XmlId).contains("x"))
-    assert(round.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("q"))
+    assert(round.childElements.map(_.getName.qName) == Seq("q"))
     assert(round.getChildren.flatMap(_.asText) == Seq("b"))
   }
 

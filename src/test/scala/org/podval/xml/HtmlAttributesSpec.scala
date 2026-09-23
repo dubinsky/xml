@@ -43,7 +43,7 @@ final class HtmlAttributesSpec extends AnyFunSuite:
       """class="([^"]*)"""".r.findFirstMatchIn(html).map(_.group(1)).getOrElse("")
 
     def check(el: ZioBlocksHtml.Element): Unit =
-      val fromGet = el.get(XmlAttribute.CssClass).getOrElse("")
+      val fromGet = el.getAttributes.collectFirst { case (n, v) if n.is(XmlAttribute.CssClass) => v }.getOrElse("")
       assert(qNames(el).count(_._1 == "class") == 1, el.render)
       assert(fromGet == classOf(el.render), s"get=$fromGet render=${el.render}")
       assert(fromGet == classOf(HtmlXmlWriterConfig.render(el)), s"get=$fromGet xml=${HtmlXmlWriterConfig.render(el)}")

@@ -1,15 +1,16 @@
 package org.podval.xml
 
-/** AST that represents XML and provides operations on it.
+/** AST that represents XML.
   * Abstracts over the underlying representation:
   * - [[Xml]], the tree owned by this library
   * - ZIO Blocks XML
   * - ZIO Blocks HTML
   * - Scala XML
   *
-  * Construction (`div`, `:=`, `.when`) lives on [[Xml]], not on this trait.
+  * Construction (`div`, `:=`, `.when`), walks, attributes, and CSS live on [[Xml]].
+  * This trait is parse, write, rebuild, and `to[TO]`.
   */
-trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
+trait XmlAst[ELEMENT]:
   final type Element = ELEMENT
 
   type Node >: Element
@@ -146,71 +147,11 @@ trait XmlAst[ELEMENT] extends XmlAstWalk[ELEMENT], XmlAstCssClass[ELEMENT]:
   extension (element: Element)
     def getName: XmlName
 
-    def rename(name: String): Element = withName(element, name)
-
-    def renameKeepingClass(name: String): Element =
-      element.addClass(element.getName.localName).rename(name)
-
-    def isElement(elem: XmlElement): Boolean = element.getName.is(elem)
-
-    def isNamed(name: String): Boolean = element.getName.matches(name)
-
-    def isA: Boolean = isElement(XmlElement.A)
-
     def to[TO: XmlAst]: TO = converted(element)
 
     def getChildren: Nodes
 
-    def setChildren(children: Nodes): Element = withChildren(element, children)
-
-    def setText(text: String): Element = element.setChildren(Seq(this.text(text)))
-
-    def getTextOpt: Option[String] = Option.when(element.getChildren.nonEmpty)(element.getText)
-
-    def flatMapElements[A](f: Element => Seq[A]): Seq[A] = element
-      .getChildren
-      .flatMap(_.asElement)
-      .flatMap(element => f(element))
-
     def getAttributes: Seq[(XmlName, String)]
-
-    def setAttributes(attributes: Seq[(XmlName, String)]): Element =
-      withAttributes(element, attributes)
-
-    def get(attribute: XmlAttribute): Option[String] =
-      element.getAttributes.collectFirst:
-        case (n, v) if n.is(attribute) => v
-
-    def get(attribute: String): Option[String] =
-      element.getAttributes.collectFirst:
-        case (n, v) if n.qName == attribute => v
-
-    def set(attribute: XmlAttribute, value: String): Element =
-      withAttribute(element, attribute.name, value)
-
-    def set(attribute: String, value: String): Element =
-      withAttribute(element, attribute, value)
-
-    def set(attribute: XmlAttribute, value: Option[String]): Element =
-      value.fold(element)(element.set(attribute, _))
-
-    def set(attribute: String, value: Option[String]): Element =
-      value.fold(element)(element.set(attribute, _))
-
-    def getId: Option[String] = get(XmlAttribute.Id)
-
-    def setId(value: String): Element = set(XmlAttribute.Id, value)
-
-    def setId(value: Option[String]): Element = set(XmlAttribute.Id, value)
-
-    def copyXmlId: Element =
-      if element.getId.exists(_.nonEmpty)
-      then element
-      else element.setId(element.get(XmlAttribute.XmlId).filter(_.nonEmpty))
-
-    def getHref: Option[String] = get(XmlAttribute.Href)
-
-    def setHref(value: String): Element = set(XmlAttribute.Href, value)
 
 object XmlAst:
   def toId(text: String): String = text.trim.replace(' ', '-')

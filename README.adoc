@@ -142,7 +142,9 @@ on leaf records).
 An unannotated primitive is an attribute named after the field.
 Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`)
 for `Schema[Xml.Element]`.
-Encoding that field needs `import Xml.given` (or `import org.podval.xml.dsl.given`).
+Decode and encode take `Xml.Element`.
+A foreign tree is `element.to[Xml.Element]` before decode (`ScalaXml.converted` when `NodeSeq.to` would shadow it), and
+`codec.encode(value).to[TO]` after encode.
 Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`.
 `@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`.
 Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`,
@@ -155,10 +157,19 @@ Those children are `<name>`: derivation registers `Name.codec` before it snapsho
 `XmlCodec.derived(nested)` so the child codec is initialized (`Schema.derived` inlines nested records).
 `XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources`
 decodes one document per `name.xml`.
-`transform` / `gather` / `rewrite` are members of `Xml.Element` (and still `XmlAst` extensions for other trees).
+`transform` / `gather` / `rewrite`, attributes, and CSS classes are members of `Xml.Element`.
+A foreign tree converts with `to[Xml.Element]` before those operations.
 They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
 `rewrite` can keep one element or replace it with a node list.
 `getById` returns `Option`; `childNamed` is the first `childrenNamed` match.
+`childElements` is the element children.
+`flatMapNodes` and `convertElements` are extensions on `Seq[XmlNode]` (`import XmlNode.flatMapNodes`, or
+`import org.podval.xml.dsl.*`, which exports them).
+They need no `XmlAst` given.
+`@Modifier.rename("chapter")` renames a child or attribute that already has the right kind.
+`@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into an element.
+Put that config on the case class when the type has one tag (`NumberedSpanDto` stays on the field, via rename, because
+one type is several tags).
 
 == Build
 

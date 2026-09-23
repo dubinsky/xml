@@ -18,6 +18,13 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   private def attrName(element: ZioBlocksXml.Element, qualified: String): ZioXmlName =
     element.attributes.find(_._1.qualifiedName == qualified).get._1
 
+  extension (element: ZioBlocksXml.Element)
+    private def attr(attribute: XmlAttribute): Option[String] =
+      element.getAttributes.collectFirst { case (n, v) if n.is(attribute) => v }
+
+    private def attr(name: String): Option[String] =
+      element.getAttributes.collectFirst { case (n, v) if n.qName == name => v }
+
   test("SAX: prefixed element and xmlns:prefix") {
     val xml: ZioBlocksXml.Element = parse(
       s"""<tei:p xmlns:tei="$tei" xml:id="n1">a</tei:p>"""
@@ -27,8 +34,8 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(xml.name.localName == "p")
     assert(xml.name.prefix.contains("tei"))
     assert(xml.name.namespace.contains(tei))
-    assert(xml.get(XmlAttribute.XmlId).contains("n1"))
-    assert(xml.get(XmlAttribute.Xmlns("tei")).contains(tei))
+    assert(xml.attr(XmlAttribute.XmlId).contains("n1"))
+    assert(xml.attr(XmlAttribute.Xmlns("tei")).contains(tei))
     val xmlId: ZioXmlName = attrName(xml, "xml:id")
     assert(xmlId.localName == "id")
     assert(xmlId.prefix.contains("xml"))
@@ -43,12 +50,12 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: ZioBlocksXml.Element = parse(
       s"""<article xmlns="$docbook"><title>Go</title></article>"""
     )
-    assert(xml.isNamed("article"))
+    assert(xml.getName.matches("article"))
     assert(xml.name.prefix.isEmpty)
     assert(xml.name.namespace.contains(docbook))
-    assert(xml.get(XmlAttribute.Xmlns).contains(docbook))
+    assert(xml.attr(XmlAttribute.Xmlns).contains(docbook))
     val title: ZioBlocksXml.Element = children(xml).head
-    assert(title.isElement(XmlElement.Title))
+    assert(title.getName.is(XmlElement.Title))
     assert(title.name.namespace.contains(docbook))
   }
 
@@ -58,7 +65,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     )
     assert(xml.name.namespace.contains(docbook))
     val inner: ZioBlocksXml.Element = children(xml).head
-    assert(inner.isNamed("inner"))
+    assert(inner.getName.matches("inner"))
     assert(inner.name.namespace.contains(tei))
   }
 
@@ -97,7 +104,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
          |</includer>""".stripMargin
     )
     val include: ZioBlocksXml.Element = children(xml).head
-    assert(include.isNamed("include"))
+    assert(include.getName.matches("include"))
     assert(include.name.prefix.contains("xi"))
     assert(include.name.namespace.contains(XmlNamespace.xinclude.uri))
   }
@@ -109,14 +116,14 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("HTML parse drops the XHTML namespace") {
     val xml: ZioBlocksXml.Element = XmlParser.parseHtml("<p id=\"x\">a</p>").toOption.get
-    assert(xml.isElement(XmlElement.P))
+    assert(xml.getName.is(XmlElement.P))
     assert(xml.name.namespace.isEmpty)
-    assert(xml.get(XmlAttribute.Id).contains("x"))
+    assert(xml.attr(XmlAttribute.Id).contains("x"))
   }
 
   test("parseXml keeps the XHTML namespace") {
     val xml: ZioBlocksXml.Element = parse(s"""<p xmlns="${XmlNamespace.xhtml.uri}">a</p>""")
-    assert(xml.isElement(XmlElement.P))
+    assert(xml.getName.is(XmlElement.P))
     assert(xml.name.namespace.contains(XmlNamespace.xhtml.uri))
   }
 
@@ -145,12 +152,12 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   test("Xml rename and set keep an inherited namespace") {
     val child: ZioBlocksXml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
     assert(child.name.namespace.contains(tei))
-    val renamed: ZioBlocksXml.Element = child.rename("p")
-    assert(renamed.isElement(XmlElement.P))
+    val renamed: ZioBlocksXml.Element = ZioBlocksXml.withName(child, "p")
+    assert(renamed.getName.is(XmlElement.P))
     assert(renamed.name.namespace.contains(tei))
-    val withId: ZioBlocksXml.Element = child.set(XmlAttribute.XmlId, "n1")
+    val withId: ZioBlocksXml.Element = ZioBlocksXml.withAttribute(child, XmlAttribute.XmlId.name, "n1")
     assert(withId.name.namespace.contains(tei))
-    assert(withId.get("n").contains("1"))
+    assert(withId.attr("n").contains("1"))
     assert(attrName(withId, "xml:id").namespace.contains(XmlNamespace.xml.uri))
   }
 
@@ -185,8 +192,8 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     assert(round.name.localName == "p")
     assert(round.name.prefix.contains("tei"))
     assert(round.name.namespace.contains(tei))
-    assert(round.get(XmlAttribute.XmlId).contains("n1"))
-    assert(round.get(XmlAttribute.Xmlns("tei")).contains(tei))
+    assert(round.attr(XmlAttribute.XmlId).contains("n1"))
+    assert(round.attr(XmlAttribute.Xmlns("tei")).contains(tei))
     assert(children(round).map(_.getName.qName) == Seq("tei:hi"))
     assert(children(round).head.name.prefix.contains("tei"))
     assert(children(round).head.name.namespace.contains(tei))
@@ -213,9 +220,9 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("set keeps inherited namespace") {
     val child: ZioBlocksXml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
-    val updated: ZioBlocksXml.Element = child.set(XmlAttribute.XmlId, "n1")
+    val updated: ZioBlocksXml.Element = ZioBlocksXml.withAttribute(child, XmlAttribute.XmlId.name, "n1")
     assert(updated.name.namespace.contains(tei))
-    assert(updated.get("n").contains("1"))
+    assert(updated.attr("n").contains("1"))
     assert(attrName(updated, "n").namespace.isEmpty)
   }
 
@@ -284,7 +291,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   test("writer emits xmlns for an inherited namespace on a child written alone") {
     val child: ZioBlocksXml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
     assert(child.name.namespace.contains(tei))
-    assert(child.get(XmlAttribute.Xmlns).isEmpty)
+    assert(child.attr(XmlAttribute.Xmlns).isEmpty)
     val dumped: String = XmlWriterConfig.Plain.render(child)
     assert(dumped.contains("xmlns="), dumped)
     assert(dumped.contains(tei), dumped)
@@ -307,6 +314,6 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     )
     val round: ZioBlocksXml.Element = parse(XmlWriterConfig.Plain.render(xml).trim)
     assert(round.name.namespace.contains(tei))
-    assert(round.get(XmlAttribute.XmlId).contains("n1"))
+    assert(round.attr(XmlAttribute.XmlId).contains("n1"))
     assert(children(round).head.name.namespace.contains(tei))
   }

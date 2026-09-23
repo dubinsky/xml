@@ -1,6 +1,6 @@
 package org.podval.metadata
 
-import org.podval.xml.{XmlAst, XmlCodec, XmlError}
+import org.podval.xml.{Xml, XmlCodec, XmlError}
 import zio.blocks.schema.{Modifier, Schema}
 import zio.blocks.typeid.TypeId
 
@@ -52,8 +52,8 @@ object Name:
     override def elementName: String = "name"
     override def isRecordLike: Boolean = true
 
-    override def unsafeDecode[E: XmlAst](element: E): Name =
+    override def unsafeDecode(element: Xml.Element): Name =
       fromData(Data.codec.unsafeDecode(element))
 
-    override def encodeNamed[E: XmlAst](elName: String, value: Name): E =
+    override def encodeNamed(elName: String, value: Name): Xml.Element =
       Data.codec.encodeNamed(elName, toData(value))

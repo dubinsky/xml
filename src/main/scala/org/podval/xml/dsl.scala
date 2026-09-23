@@ -83,4 +83,5 @@ object dsl:
     aria,
     attr
   }
+  export XmlNode.{flatMapNodes, convertElements}
   export Xml.ToXmlMod.given

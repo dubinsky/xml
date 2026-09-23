@@ -31,10 +31,10 @@ final class SelectorSpec extends AnyFunSuite:
 
   test("Selector codec") {
     def decode(xml: String) =
-      Selector.codec.decode(XmlParser.parseXml(xml).toOption.get)(using Xml)
+      Selector.codec.decode(XmlParser.parseXml(xml).toOption.get)
 
     val book = decode("""<selector><name lang="en" n="book"/></selector>""").toOption.get
     assert(book.names.hasName("book"))
-    val encoded = Selector.codec.encode(book)(using Xml)
-    assert(Selector.codec.decode(encoded)(using Xml).toOption.get.names.hasName("book"))
+    val encoded = Selector.codec.encode(book)
+    assert(Selector.codec.decode(encoded).toOption.get.names.hasName("book"))
   }

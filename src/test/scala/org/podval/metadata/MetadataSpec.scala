@@ -18,7 +18,7 @@ final class MetadataSpec extends AnyFunSuite:
 
   test("Name codec accepts n or text but not both") {
     def decode(xml: String) =
-      Name.codec.decode(XmlParser.parseXml(xml).toOption.get)(using Xml)
+      Name.codec.decode(XmlParser.parseXml(xml).toOption.get)
 
     val fromN = decode("""<name lang="en" n="English"/>""").toOption.get
     assert(fromN.name == "English")
@@ -35,15 +35,15 @@ final class MetadataSpec extends AnyFunSuite:
     val entryCodec: XmlCodec[NamedEntry] = XmlCodec.derived(using NamedEntry.schema)
     val entry = entryCodec.decode(XmlParser.parseXml(
       """<NamedEntry><name lang="en" n="English"/></NamedEntry>"""
-    ).toOption.get)(using Xml).toOption.get
+    ).toOption.get).toOption.get
     assert(entry.names.head.name == "English")
     assert(entry.names.head.languageSpec.language.contains(Language.English))
 
-    val encoded = Name.codec.encode(fromN)(using Xml)
+    val encoded = Name.codec.encode(fromN)
     assert(encoded.get("n").contains("English"))
     assert(encoded.get(XmlAttribute.Lang).contains("en"))
 
-    val encodedEntry = entryCodec.encode(entry)(using Xml)
+    val encodedEntry = entryCodec.encode(entry)
     assert(encodedEntry.childrenNamed("name").flatMap(_.get("n")) == Seq("English"))
   }
 

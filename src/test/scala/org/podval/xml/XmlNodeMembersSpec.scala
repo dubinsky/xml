@@ -13,7 +13,7 @@ final class XmlNodeMembersSpec extends AnyFunSuite:
       span
     ))
     assert(element.getChildren.flatMap(_.asText) == Seq("a"))
-    assert(element.getChildren.flatMap(_.asElement) == Seq(span))
+    assert(element.childElements == Seq(span))
     assert(element.isElement(XmlElement.P))
     assert(!element.isElement(XmlElement.Div))
     assert(element.isNamed("p"))
@@ -73,8 +73,7 @@ final class XmlNodeMembersSpec extends AnyFunSuite:
       Xml.element(XmlElement.Span)
     ))
 
-    def via[E: XmlAst](element: E): (Int, Boolean, String, String) =
-      val replaced: E = element.setChildren(element.getChildren.take(1))
+    def via[E: XmlAst](element: E): (Int, String, String) =
       val kind: String = element.getChildren.head.fold(
         element = _ => "el",
         text = _ => "text",
@@ -83,8 +82,8 @@ final class XmlNodeMembersSpec extends AnyFunSuite:
         processingInstruction = (_, _) => "pi",
         unknown = "unknown"
       )
-      (replaced.getChildren.length, element.isElement(XmlElement.P), kind, element.getText)
+      (element.getChildren.length, kind, element.getText)
 
-    assert(via(element) == (1, true, "text", "a"))
-    assert(element.getChildren.length == 2)
+    assert(via(element) == (2, "text", "a"))
+    assert(element.getName.is(XmlElement.P))
   }
