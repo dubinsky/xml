@@ -2,7 +2,7 @@ package org.podval.xml
 
 /** Element operations. The algorithms live here, on the owned tree.
   *
-  * Parser, writer, and `to[TO]` stay on [[XmlAst]]. A foreign tree converts first.
+  * `to[TO]` rebuilds this element in another [[XmlAst]]. A foreign tree converts first.
   */
 private[xml] trait XmlElementApi:
   this: XmlNode.Element =>
@@ -145,23 +145,6 @@ private[xml] trait XmlElementApi:
   def childrenNamed(name: String): Seq[XmlNode.Element] = childElements.filter(_.isNamed(name))
 
   def childNamed(name: String): Option[XmlNode.Element] = childrenNamed(name).headOption
-
-  def requireName(name: String): Unit =
-    if !isNamed(name) then throw XmlError(s"Expected '$name', found '${getName.qName}'")
-
-  def requireAttr(name: String): String =
-    get(name).map(_.trim).filter(_.nonEmpty).getOrElse:
-      throw XmlError(s"Missing attribute '$name'")
-
-  def requireNoOther(allowed: Set[String]): Unit =
-    val extra: Seq[String] = childElements.map(_.getName.localName).filterNot(allowed.contains)
-    if extra.nonEmpty then throw XmlError(s"Unparsed elements: $extra")
-
-  def positiveInt(name: String): Int =
-    val raw: String = requireAttr(name)
-    val n: Int = raw.toIntOption.getOrElse(throw XmlError(s"Invalid integer for $name: $raw"))
-    if n <= 0 then throw XmlError(s"Non-positive integer: $n")
-    n
 
   def getClasses: Seq[String] = get(XmlAttribute.CssClass)
     .fold(Seq.empty)(_

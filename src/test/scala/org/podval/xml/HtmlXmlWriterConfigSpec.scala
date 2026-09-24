@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import Xml.given
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.chunk.Chunk
@@ -10,7 +11,7 @@ final class HtmlXmlWriterConfigSpec extends AnyFunSuite:
     HtmlXmlWriterConfig.render(element, width)
 
   private def renderHtml(element: ZioBlocksHtml.Element): String =
-    HtmlXmlWriterConfig.render(element)
+    HtmlXmlWriterConfig.render(element.to[Xml.Element])
 
   test("span with two element children is not indented (no HTML space inside)") {
     val ref: Xml.Element = Xml

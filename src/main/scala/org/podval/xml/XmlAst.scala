@@ -8,7 +8,10 @@ package org.podval.xml
   * - Scala XML
   *
   * Construction (`div`, `:=`, `.when`), walks, attributes, and CSS live on [[Xml]].
-  * This trait is parse, write, rebuild, and `to[TO]`.
+  * The parser, writer, and builder build [[Xml]] only.
+  * This trait is rebuild and `to[TO]`.
+  * Each tree implements [[foldNode]], [[nameOf]], [[childrenOf]], and [[attributesOf]].
+  * The extensions below are derived from those four.
   */
 trait XmlAst[ELEMENT]:
   final type Element = ELEMENT
@@ -42,6 +45,23 @@ trait XmlAst[ELEMENT]:
     attributes: Seq[(XmlName, String)],
     children: Nodes
   ): Element
+
+  /** One match over this tree's node kinds. */
+  def foldNode[A](
+    node: Node,
+    element: Element => A,
+    text: String => A,
+    cdata: String => A,
+    comment: String => A,
+    processingInstruction: (String, String) => A,
+    unknown: => A
+  ): A
+
+  def nameOf(element: Element): XmlName
+
+  def childrenOf(element: Element): Nodes
+
+  def attributesOf(element: Element): Seq[(XmlName, String)]
 
   final def withName(element: Element, name: String): Element = this.element(
     name = XmlName.parseDeclared(
@@ -109,6 +129,23 @@ trait XmlAst[ELEMENT]:
     buf.result()
 
   extension (node: Node)
+    def asElement: Option[Element] =
+      foldNode(node, Some(_), _ => None, _ => None, _ => None, (_, _) => None, None)
+
+    def asText: Option[String] =
+      foldNode(node, _ => None, Some(_), _ => None, _ => None, (_, _) => None, None)
+
+    def asCData: Option[String] =
+      foldNode(node, _ => None, _ => None, Some(_), _ => None, (_, _) => None, None)
+
+    def asComment: Option[String] =
+      foldNode(node, _ => None, _ => None, _ => None, Some(_), (_, _) => None, None)
+
+    def asProcessingInstruction: Option[(String, String)] =
+      foldNode(node, _ => None, _ => None, _ => None, _ => None, (target, data) => Some((target, data)), None)
+
+    def asAtom: Option[String] = node.asText.orElse(node.asCData)
+
     def fold[A](
       element: Element => A,
       text: String => A,
@@ -116,42 +153,24 @@ trait XmlAst[ELEMENT]:
       comment: String => A,
       processingInstruction: (String, String) => A,
       unknown: => A
-    ): A = node.asElement.map(element)
-      .orElse(node.asCData.map(cdata))
-      .orElse(node.asText.map(text))
-      .orElse(node.asComment.map(comment))
-      .orElse(node.asProcessingInstruction.map(processingInstruction.tupled))
-      .getOrElse(unknown)
-
-    def asElement: Option[Element]
-
-    def asAtom: Option[String]
-
-    def asText: Option[String]
-
-    def asCData: Option[String]
-
-    def asComment: Option[String]
-
-    def asProcessingInstruction: Option[(String, String)]
+    ): A = foldNode(node, element, text, cdata, comment, processingInstruction, unknown)
 
     def isWhitespace: Boolean = node.asText.exists(_.trim.isEmpty)
 
     def isCharacters: Boolean = node.asCData.isDefined || node.asText.exists(_.trim.nonEmpty)
 
-    def getText: String = node
-      .asAtom
+    def getText: String = node.asAtom
       .orElse(node.asElement.map(_.getChildren).map(toString))
       .getOrElse("")
 
   extension (element: Element)
-    def getName: XmlName
+    def getName: XmlName = nameOf(element)
 
     def to[TO: XmlAst]: TO = converted(element)
 
-    def getChildren: Nodes
+    def getChildren: Nodes = childrenOf(element)
 
-    def getAttributes: Seq[(XmlName, String)]
+    def getAttributes: Seq[(XmlName, String)] = attributesOf(element)
 
 object XmlAst:
   def toId(text: String): String = text.trim.replace(' ', '-')

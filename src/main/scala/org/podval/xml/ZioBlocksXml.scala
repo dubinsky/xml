@@ -1,12 +1,12 @@
 package org.podval.xml
 
+import scala.annotation.unused
 import zio.blocks.chunk.Chunk
 import zio.blocks.schema.xml.Xml as XML
 import zio.blocks.schema.xml.XmlName as ZioXmlName
 
-// XML AST for ZIO Blocks XML
-// `import ZioBlocksXml.given` to parse/write this AST
-// convert with `element.to[ZioBlocksXml.Element]`.
+// XML AST for ZIO Blocks XML.
+// `import ZioBlocksXml.given` to convert (`element.to[ZioBlocksXml.Element]`).
 object ZioBlocksXml extends XmlAst[XML.Element]:
   given ZioBlocksXml.type = this
 
@@ -30,37 +30,27 @@ object ZioBlocksXml extends XmlAst[XML.Element]:
     children = Chunk.from(children)
   )
 
-  extension (node: Node)
-    override def asElement: Option[Element] = node match
-      case element: XML.Element => Some(element)
-      case _ => None
+  override def foldNode[A](
+    node: Node,
+    element: Element => A,
+    text: String => A,
+    cdata: String => A,
+    comment: String => A,
+    processingInstruction: (String, String) => A,
+    @unused unknown: => A
+  ): A = node match
+    case value: XML.Element => element(value)
+    case XML.Text(value) => text(value)
+    case XML.CData(value) => cdata(value)
+    case XML.Comment(value) => comment(value)
+    case XML.ProcessingInstruction(target, data) => processingInstruction(target, data)
 
-    override def asText: Option[String] = node match
-      case XML.Text(value) => Some(value)
-      case _ => None
+  override def nameOf(element: Element): XmlName = fromZio(element.name)
 
-    override def asCData: Option[String] = node match
-      case XML.CData(value) => Some(value)
-      case _ => None
+  override def childrenOf(element: Element): Nodes = element.children
 
-    override def asComment: Option[String] = node match
-      case XML.Comment(value) => Some(value)
-      case _ => None
-
-    override def asProcessingInstruction: Option[(String, String)] = node match
-      case XML.ProcessingInstruction(target, data) => Some((target, data))
-      case _ => None
-
-    override def asAtom: Option[String] = node.asText.orElse(node.asCData)
-
-  extension (element: Element)
-    override def getName: XmlName = fromZio(element.name)
-
-    override def getChildren: Nodes =
-      element.children
-
-    override def getAttributes: Seq[(XmlName, String)] =
-      element.attributes.map((name, value) => (fromZio(name), value))
+  override def attributesOf(element: Element): Seq[(XmlName, String)] =
+    element.attributes.map((name, value) => (fromZio(name), value))
 
   private def toZio(
     name: XmlName,

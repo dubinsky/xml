@@ -30,8 +30,8 @@ object XmlWriter:
     else if name.isDefaultXmlns then Some(None)
     else Some(Some(name.localName))
 
-  private def attributesAndScope[Element: XmlAst](
-    element: Element,
+  private def attributesAndScope(
+    element: Xml.Element,
     parent: NsScope
   ): (Seq[(String, String)], NsScope) =
     val existing: Seq[(XmlName, String)] = element.getAttributes
@@ -64,7 +64,7 @@ object XmlWriter:
   private def closesEmpty(using config: XmlWriterConfig)(name: XmlName): Boolean =
     config.selfCloseEmpty || name.localNameIn(config.selfClose)
 
-  def render[Element: XmlAst](config: XmlWriterConfig, element: Element, width: Int): String =
+  def render(config: XmlWriterConfig, element: Xml.Element, width: Int): String =
     fromElement(
       element,
       canBreakLeft = true,
@@ -75,20 +75,20 @@ object XmlWriter:
       .replace(hiddenNewline, '\n')
       .appended('\n')
 
-  def render[Element: XmlAst](config: XmlWriterConfig, document: XmlDocument[Element], width: Int): String =
+  def render(config: XmlWriterConfig, document: XmlDocument[Xml.Element], width: Int): String =
     document.prefix + render(config, document.root, width) + document.suffix
 
-  private enum Token[N]:
+  private enum Token:
     case Word(value: String)
     case Space()
-    case Tree(node: N)
+    case Tree(node: XmlNode)
 
-  private def fromElement[Element](
-    element: Element,
+  private def fromElement(
+    element: Xml.Element,
     canBreakLeft: Boolean,
     canBreakRight: Boolean,
     scope: NsScope
-  )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
+  )(using config: XmlWriterConfig): Doc =
     val name: XmlName = element.getName
     if name.localNameIn(config.rawText) then
       Doc.text(rawTextElement(element, scope).mkString(hiddenNewline.toString))
@@ -97,12 +97,12 @@ object XmlWriter:
     else
       fromMixedElement(element, canBreakLeft, canBreakRight, scope)
 
-  private def fromMixedElement[Element](
-    element: Element,
+  private def fromMixedElement(
+    element: Xml.Element,
     canBreakLeft: Boolean,
     canBreakRight: Boolean,
     scope: NsScope
-  )(using config: XmlWriterConfig)(using ast: XmlAst[Element]): Doc =
+  )(using config: XmlWriterConfig): Doc =
     val (attributeValues: Seq[(String, String)], childScope: NsScope) = attributesAndScope(element, scope)
     val attributes: Doc =
       if attributeValues.isEmpty then Doc.empty
@@ -111,8 +111,8 @@ object XmlWriter:
         attributeValues.map((name, value) => Doc.text(s"$name=${XmlEncode.quote(value)}"))
       )
 
-    val tokens: List[Token[ast.Node]] = tokenize(element.getChildren.toList)
-    val chunks: List[List[Token[ast.Node]]] = chunkify(tokens)
+    val tokens: List[Token] = tokenize(element.getChildren.toList)
+    val chunks: List[List[Token]] = chunkify(tokens)
     val noText: Boolean = !tokens.exists(hasCharacters)
     val whitespaceLeft: Boolean = tokens.headOption.exists(isSpace)
     val whitespaceRight: Boolean = tokens.lastOption.exists(isSpace)
@@ -174,16 +174,16 @@ object XmlWriter:
         ))
 
   @scala.annotation.tailrec
-  private def tokenize(using ast: XmlAst[?])(
-    nodes: List[ast.Node],
-    acc: List[Token[ast.Node]] = Nil
-  ): List[Token[ast.Node]] = nodes match
+  private def tokenize(
+    nodes: List[XmlNode],
+    acc: List[Token] = Nil
+  ): List[Token] = nodes match
     case Nil => acc.reverse
     case n :: ns => n.asText match
       case None => tokenize(ns, Token.Tree(n) :: acc)
       case Some(_) =>
         val (texts, rest) = nodes.span(_.asText.isDefined)
-        val more = words[ast.Node](squashBigWhitespace(texts.flatMap(_.asText).mkString))
+        val more = words(squashBigWhitespace(texts.flatMap(_.asText).mkString))
         tokenize(rest, more.reverse ::: acc)
 
   private def squashBigWhitespace(what: String): String = what
@@ -191,7 +191,7 @@ object XmlWriter:
     .replace('\t', ' ')
 
   @scala.annotation.tailrec
-  private def words[N](text: String, acc: List[Token[N]] = Nil): List[Token[N]] =
+  private def words(text: String, acc: List[Token] = Nil): List[Token] =
     if text.isEmpty then acc.reverse else
       val (spaces: String, afterSpaces: String) = text.span(_ == ' ')
       val acc1 = if spaces.isEmpty then acc else Token.Space() :: acc
@@ -199,44 +199,44 @@ object XmlWriter:
       if word.isEmpty then acc1.reverse
       else words(afterWord, Token.Word(word) :: acc1)
 
-  private def isSpace[N](token: Token[N]): Boolean = token match
+  private def isSpace(token: Token): Boolean = token match
     case Token.Space() => true
     case _ => false
 
-  private def hasCharacters(using ast: XmlAst[?])(token: Token[ast.Node]): Boolean = token match
+  private def hasCharacters(token: Token): Boolean = token match
     case Token.Word(_) => true
     case Token.Space() => false
     case Token.Tree(node) => node.isCharacters
 
-  private def clings(using ast: XmlAst[?], config: XmlWriterConfig)(
-    prev: Token[ast.Node],
-    next: Token[ast.Node]
+  private def clings(using config: XmlWriterConfig)(
+    prev: Token,
+    next: Token
   ): Boolean =
-    def elementOf(token: Token[ast.Node]): Option[ast.Element] = token match
+    def elementOf(token: Token): Option[Xml.Element] = token match
       case Token.Tree(node) => node.asElement
       case _ => None
-    val nextElement: Option[ast.Element] = elementOf(next)
+    val nextElement: Option[Xml.Element] = elementOf(next)
     elementOf(prev).isEmpty || nextElement.isEmpty ||
       nextElement.exists: el =>
         val name: XmlName = el.getName
         name.localNameIn(config.cling) || name.localNameIn(config.unStack)
 
-  private def chunkify(using ast: XmlAst[?], config: XmlWriterConfig)(
-    tokens: List[Token[ast.Node]]
-  ): List[List[Token[ast.Node]]] =
+  private def chunkify(using config: XmlWriterConfig)(
+    tokens: List[Token]
+  ): List[List[Token]] =
     @scala.annotation.tailrec
     def loop(
-      remaining: List[Token[ast.Node]],
-      acc: List[List[Token[ast.Node]]]
-    ): List[List[Token[ast.Node]]] = remaining.dropWhile(isSpace) match
+      remaining: List[Token],
+      acc: List[List[Token]]
+    ): List[List[Token]] = remaining.dropWhile(isSpace) match
       case Nil => acc.reverse
       case head :: tail =>
         @scala.annotation.tailrec
         def take(
-          prev: Token[ast.Node],
-          rest: List[Token[ast.Node]],
-          acc: List[Token[ast.Node]]
-        ): (List[Token[ast.Node]], List[Token[ast.Node]]) = rest match
+          prev: Token,
+          rest: List[Token],
+          acc: List[Token]
+        ): (List[Token], List[Token]) = rest match
           case Nil => (acc.reverse, Nil)
           case Token.Space() :: ns => (acc.reverse, ns)
           case n :: ns if clings(prev, n) => take(n, ns, n :: acc)
@@ -256,8 +256,8 @@ object XmlWriter:
     case head :: tail =>
       first(head) :: tail.dropRight(1).map(middle) ::: last(tail.last) :: Nil
 
-  private def fromChunk(using config: XmlWriterConfig, ast: XmlAst[?])(
-    tokens: List[Token[ast.Node]],
+  private def fromChunk(using config: XmlWriterConfig)(
+    tokens: List[Token],
     canBreakLeft: Boolean,
     canBreakRight: Boolean,
     scope: NsScope
@@ -268,8 +268,8 @@ object XmlWriter:
     last = token => fromToken(token, canBreakLeft = false, canBreakRight, scope)
   ))
 
-  private def fromToken(using config: XmlWriterConfig, ast: XmlAst[?])(
-    token: Token[ast.Node],
+  private def fromToken(using config: XmlWriterConfig)(
+    token: Token,
     canBreakLeft: Boolean,
     canBreakRight: Boolean,
     scope: NsScope
@@ -278,13 +278,13 @@ object XmlWriter:
     case Token.Space() => Doc.space
     case Token.Tree(node) => fromNode(node, canBreakLeft, canBreakRight, scope)
 
-  private def fromNode(using config: XmlWriterConfig, ast: XmlAst[?])(
-    node: ast.Node,
+  private def fromNode(using config: XmlWriterConfig)(
+    node: XmlNode,
     canBreakLeft: Boolean,
     canBreakRight: Boolean,
     scope: NsScope
   ): Doc = node.fold(
-    element = (element: ast.Element) =>
+    element = (element: Xml.Element) =>
       val result: Doc = fromElement(element, canBreakLeft, canBreakRight, scope)
       // Note: suppressing extra hardLine when lb is in a stack is non-trivial - and not worth it :)
       if canBreakRight && element.getName.localNameIn(config.break) then result + Doc.hardLine else result
@@ -296,12 +296,12 @@ object XmlWriter:
     unknown = Doc.text(XmlEncode.encodeXmlSpecials(node.getText))
   )
 
-  private enum LiteralPart[N]:
+  private enum LiteralPart:
     case Run(text: String)
-    case Other(node: N)
+    case Other(node: XmlNode)
 
-  private def coalesce[N](nodes: Seq[N], asRun: N => Option[String]): List[LiteralPart[N]] =
-    nodes.foldLeft(List.empty[LiteralPart[N]]): (acc, node) =>
+  private def coalesce(nodes: Seq[XmlNode], asRun: XmlNode => Option[String]): List[LiteralPart] =
+    nodes.foldLeft(List.empty[LiteralPart]): (acc, node) =>
       asRun(node) match
         case Some(text) => acc match
           case LiteralPart.Run(prev) :: rest => LiteralPart.Run(prev + text) :: rest
@@ -316,8 +316,8 @@ object XmlWriter:
     if pairs.isEmpty then ""
     else pairs.map((name, value) => s"$name=${XmlEncode.quote(value)}").mkString(" ", " ", "")
 
-  private def wrapLiteral[Element: XmlAst](
-    element: Element,
+  private def wrapLiteral(
+    element: Xml.Element,
     attributes: String,
     children: Seq[String]
   )(using config: XmlWriterConfig): Seq[String] =
@@ -329,8 +329,8 @@ object XmlWriter:
     else if children.length == 1 then Seq(s"<$qName$attributes>${children.head}</$qName>")
     else Seq(s"<$qName$attributes>" + children.head) ++ children.tail.init ++ Seq(children.last + s"</$qName>")
 
-  private def rawTextElement[Element: XmlAst](
-    element: Element,
+  private def rawTextElement(
+    element: Xml.Element,
     scope: NsScope
   )(using config: XmlWriterConfig): Seq[String] =
     val (pairs: Seq[(String, String)], childScope: NsScope) = attributesAndScope(element, scope)
@@ -339,8 +339,8 @@ object XmlWriter:
     if inner.isEmpty then wrapLiteral(element, attributes, Seq.empty)
     else wrapLiteral(element, attributes, splitLines(XmlEncode.protectHtmlRawText(inner)))
 
-  private def rawInner(using ast: XmlAst[?], config: XmlWriterConfig)(
-    nodes: ast.Nodes,
+  private def rawInner(using config: XmlWriterConfig)(
+    nodes: Seq[XmlNode],
     scope: NsScope
   ): String =
     coalesce(nodes, node => node.asText.orElse(node.asCData)).map:
@@ -355,15 +355,15 @@ object XmlWriter:
       )
     .mkString
 
-  private def preformatElement[Element: XmlAst](
-    element: Element,
+  private def preformatElement(
+    element: Xml.Element,
     scope: NsScope
   )(using config: XmlWriterConfig): Seq[String] =
     val (pairs: Seq[(String, String)], childScope: NsScope) = attributesAndScope(element, scope)
     wrapLiteral(element, attributeText(pairs), preformatChildren(element.getChildren, childScope))
 
-  private def preformatChildren(using ast: XmlAst[?], config: XmlWriterConfig)(
-    nodes: ast.Nodes,
+  private def preformatChildren(using config: XmlWriterConfig)(
+    nodes: Seq[XmlNode],
     scope: NsScope
   ): Seq[String] =
     coalesce(nodes, _.asText).flatMap:

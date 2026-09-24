@@ -295,6 +295,31 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(explicit.get("pageTypeName").isEmpty)
   }
 
+  test("transient is not read or written; encodeTransient is read and not written") {
+    val codec: XmlCodec[TransientRow] = XmlCodec.derived(using TransientRow.schema)
+    val decoded: TransientRow = codec.decode(parse("""<TransientRow n="1" note="x"/>""")).toOption.get
+    assert(decoded.n == 1)
+    assert(!decoded.isCollection)
+    assert(decoded.note.contains("x"))
+    val encoded: Xml.Element = codec.encode(decoded.copy(isCollection = true, note = Some("kept")))
+    assert(encoded.get("n").contains("1"))
+    assert(encoded.get("isCollection").isEmpty)
+    assert(encoded.get("note").isEmpty)
+    assert(encoded.childElements.isEmpty)
+
+    val stray: Either[XmlError, TransientRow] =
+      codec.decode(parse("""<TransientRow n="1" isCollection="true"/>"""))
+    assert(stray.swap.toOption.get.getMessage.contains("isCollection"))
+  }
+
+  test("unknown config key fails derivation") {
+    val error: XmlError = intercept[XmlError] {
+      val codec: XmlCodec[BadConfig] = XmlCodec.derived(using BadConfig.schema)
+      codec.encode(BadConfig("x"))
+    }
+    assert(error.getMessage.contains("xml.nope"), error.getMessage)
+  }
+
 final case class Language(
   ident: String
 ) derives CanEqual
@@ -463,6 +488,20 @@ object RequiredLabel:
 final case class RenamedLabel(@Modifier.rename("n") label: String) derives CanEqual
 object RenamedLabel:
   given schema: Schema[RenamedLabel] = Schema.derived
+
+final case class TransientRow(
+  n: Int,
+  @Modifier.transient() isCollection: Boolean = false,
+  @Modifier.encodeTransient() note: Option[String] = None
+) derives CanEqual
+object TransientRow:
+  given schema: Schema[TransientRow] = Schema.derived
+
+final case class BadConfig(
+  @Modifier.config("xml.nope", "") n: String
+) derives CanEqual
+object BadConfig:
+  given schema: Schema[BadConfig] = Schema.derived
 
 final case class ExplicitQName(
   @Modifier.config(XmlCodec.Attribute, "pageType")

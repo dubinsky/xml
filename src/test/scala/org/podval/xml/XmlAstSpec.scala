@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import Xml.given
 import XmlNode.convertElements
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
@@ -24,7 +25,8 @@ final class XmlAstSpec extends AnyFunSuite:
   }
 
   test("to[ZioBlocksHtml.Element] keeps mixed text and elements") {
-    val dumped: String = HtmlXmlWriterConfig.render(parse("<p>a<x/>b</p>").to[ZioBlocksHtml.Element])
+    val html: ZioBlocksHtml.Element = parse("<p>a<x/>b</p>").to[ZioBlocksHtml.Element]
+    val dumped: String = HtmlXmlWriterConfig.render(html.to[Xml.Element])
     assert(dumped.contains("a"), dumped)
     assert(dumped.contains("b"), dumped)
     assert(dumped.contains("<x"), dumped)
@@ -54,7 +56,7 @@ final class XmlAstSpec extends AnyFunSuite:
     val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a<b")))
     val html: ZioBlocksHtml.Element = xml.to[ZioBlocksHtml.Element]
     assert(html.getChildren.flatMap(_.asAtom) == Seq("a<b"))
-    val dumped: String = HtmlXmlWriterConfig.render(html)
+    val dumped: String = HtmlXmlWriterConfig.render(html.to[Xml.Element])
     assert(dumped.contains("a&lt;b"), dumped)
     assert(!dumped.contains("a<b"), dumped)
   }
@@ -69,12 +71,10 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(xml.getById("missing").isEmpty)
   }
 
-  test("requireName and childrenNamed") {
+  test("childrenNamed returns element children with that name") {
     val xml: Xml.Element = parse("""<torah><aliyah n="1"/><aliyah n="2"/></torah>""")
-    xml.requireName("torah")
-    xml.requireNoOther(Set("aliyah"))
-    assert(xml.childrenNamed("aliyah").map(_.requireAttr("n")) == Seq("1", "2"))
-    assert(xml.childrenNamed("aliyah").head.positiveInt("n") == 1)
+    assert(xml.childrenNamed("aliyah").flatMap(_.get("n")) == Seq("1", "2"))
+    assert(xml.childNamed("aliyah").flatMap(_.get("n")).contains("1"))
   }
 
   test("isInclude requires XInclude namespace or xi prefix") {

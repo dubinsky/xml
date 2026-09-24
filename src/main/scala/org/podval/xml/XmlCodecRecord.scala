@@ -24,6 +24,7 @@ private[xml] trait XmlCodecRecord:
     deconstructor: Deconstructor[A],
     xmlTag: Option[XmlTag[Any]]
   ) extends XmlCodec[A]:
+    rejectUnknownConfig(modifiers, typeId.name)
     private val recordName: String =
       nameFor(typeId).getOrElse(configuredElementName(typeId.name, Seq.empty, modifiers))
     private val namespace: Option[(String, String)] = namespaceOf(modifiers)
@@ -56,6 +57,7 @@ private[xml] trait XmlCodecRecord:
       fieldInfos.foreach: info =>
         try
           info.kind match
+            case FieldKind.Transient => storeDefault(regs, info)
             case FieldKind.Tag =>
               val name: XmlName = element.getName
               xmlTag.flatMap(tag => tag.fromName(name.localName).orElse(tag.fromName(name.qName))) match
@@ -141,7 +143,8 @@ private[xml] trait XmlCodecRecord:
       val attributes: mutable.ArrayBuffer[(XmlName, String)] = mutable.ArrayBuffer.empty
       val children: mutable.ArrayBuffer[XmlNode] = mutable.ArrayBuffer.empty
       fieldInfos.foreach: info =>
-        info.kind match
+        if !info.skipEncode then info.kind match
+          case FieldKind.Transient => ()
           case FieldKind.Tag => ()
           case FieldKind.Text =>
             encodedText(regs, info).filter(_.nonEmpty).foreach(text => children += Xml.text(text))
@@ -181,6 +184,7 @@ private[xml] trait XmlCodecRecord:
     F: HasBinding[F],
     D: HasInstance[F]
   ): FieldInfo =
+    rejectUnknownConfig(field.modifiers, field.name)
     val reflect: Reflect[F, ?] = field.value
     val optional: Boolean = reflect.isOption
     val innerReflect: Reflect[F, ?] =
@@ -193,8 +197,12 @@ private[xml] trait XmlCodecRecord:
     // Empty config is not a qName: rename, else the field name. A non-empty value wins over rename.
     def attributeQName(configured: Option[String]): String =
       configured.filter(_.nonEmpty).orElse(renameOf(field.modifiers)).getOrElse(field.name)
+    val transient: Boolean = field.modifiers.exists(_.isInstanceOf[Modifier.transient])
+    val skipEncode: Boolean =
+      transient || field.modifiers.exists(_.isInstanceOf[Modifier.encodeTransient])
     val kind: FieldKind =
-      if tagBinding(recordTypeId).exists(_._1 == field.name) then FieldKind.Tag
+      if transient then FieldKind.Transient
+      else if tagBinding(recordTypeId).exists(_._1 == field.name) then FieldKind.Tag
       else if configValue(field.modifiers, XmlCodec.Include).isDefined then FieldKind.Include
       else if attributeConfig.isDefined then FieldKind.Attribute(attributeQName(attributeConfig))
       else if configValue(field.modifiers, XmlCodec.Text).isDefined then FieldKind.Text
@@ -230,6 +238,7 @@ private[xml] trait XmlCodecRecord:
     FieldInfo(
       fieldName = field.name,
       kind = kind,
+      skipEncode = skipEncode,
       optional = optional,
       sequence = sequence,
       codec = codec,
@@ -271,6 +280,18 @@ private[xml] trait XmlCodecRecord:
         case None => Iterator.empty
     else if info.sequence then deconstructSeq(info, loaded)
     else Iterator(loaded)
+
+  protected def storeDefault(regs: Registers, info: FieldInfo): Unit =
+    info.defaultValue match
+      case Some(value) => store(regs, info.offset, info.typeTag, value)
+      case None if info.optional => store(regs, info.offset, info.typeTag, None)
+      case None if info.sequence => storeSeq(regs, info, Seq.empty)
+      case None => throw XmlError(s"${info.fieldName}: @Modifier.transient requires a default value")
+
+  protected def rejectUnknownConfig(modifiers: Seq[Modifier], where: String): Unit =
+    val unknown: Seq[String] = modifiers.collect:
+      case Modifier.config(key, _) if !XmlCodec.configKeys.contains(key) => key
+    if unknown.nonEmpty then throw XmlError(s"Unknown XmlCodec config on $where: ${unknown.mkString(", ")}")
 
   protected def characterData(element: Xml.Element): String =
     element.getChildren.flatMap(_.asAtom).mkString.trim
@@ -353,10 +374,12 @@ private[xml] trait XmlCodecRecord:
     case Child
     case Tag
     case Include
+    case Transient
 
   protected final class FieldInfo(
     val fieldName: String,
     val kind: FieldKind,
+    val skipEncode: Boolean,
     val optional: Boolean,
     val sequence: Boolean,
     val codec: XmlCodec[Any],

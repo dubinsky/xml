@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import Xml.given
 import ZioBlocksXml.given
 import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
@@ -10,7 +11,10 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   private val docbook: String = "http://docbook.org/ns/docbook"
 
   private def parse(xml: String): ZioBlocksXml.Element =
-    XmlParser.parseXml[ZioBlocksXml.Element](xml).toOption.get
+    XmlParser.parseXml(xml).toOption.get.to[ZioBlocksXml.Element]
+
+  private def render(element: ZioBlocksXml.Element, config: XmlWriterConfig = XmlWriterConfig.Plain): String =
+    config.render(element.to[Xml.Element])
 
   private def children(element: ZioBlocksXml.Element): Seq[ZioBlocksXml.Element] =
     element.getChildren.flatMap(_.asElement)
@@ -110,12 +114,12 @@ final class XmlNamespaceSpec extends AnyFunSuite:
   }
 
   test("SAX: undeclared prefix is an error") {
-    val result: Either[XmlError, ZioBlocksXml.Element] = XmlParser.parseXml[ZioBlocksXml.Element]("<tei:p/>")
+    val result: Either[XmlError, Xml.Element] = XmlParser.parseXml("<tei:p/>")
     assert(result.isLeft)
   }
 
   test("HTML parse drops the XHTML namespace") {
-    val xml: ZioBlocksXml.Element = XmlParser.parseHtml[ZioBlocksXml.Element]("<p id=\"x\">a</p>").toOption.get
+    val xml: ZioBlocksXml.Element = XmlParser.parseHtml("<p id=\"x\">a</p>").toOption.get.to[ZioBlocksXml.Element]
     assert(xml.getName.is(XmlElement.P))
     assert(xml.name.namespace.isEmpty)
     assert(xml.attr(XmlAttribute.Id).contains("x"))
@@ -254,21 +258,21 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("writer does not repeat an in-scope default xmlns") {
     val xml: ZioBlocksXml.Element = parse(s"""<outer xmlns="$tei"><inner n="1">x</inner></outer>""")
-    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    val dumped: String = render(xml)
     assert(dumped.contains(s"""xmlns="$tei""""), dumped)
     assert(dumped.indexOf("xmlns=") == dumped.lastIndexOf("xmlns="), dumped)
   }
 
   test("writer does not repeat an in-scope prefixed xmlns") {
     val xml: ZioBlocksXml.Element = parse(s"""<tei:p xmlns:tei="$tei"><tei:hi>a</tei:hi></tei:p>""")
-    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    val dumped: String = render(xml)
     assert(dumped.contains("<tei:hi>"), dumped)
     assert(dumped.indexOf("xmlns:tei=") == dumped.lastIndexOf("xmlns:tei="), dumped)
   }
 
   test("writer keeps an author-written xmlns undeclare") {
     val xml: ZioBlocksXml.Element = parse(s"""<outer xmlns="$tei"><inner xmlns="">x</inner></outer>""")
-    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    val dumped: String = render(xml)
     assert(dumped.contains("""<inner xmlns="">"""), dumped)
   }
 
@@ -276,15 +280,15 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: ZioBlocksXml.Element = parse(
       s"""<article xmlns="$docbook"><programlisting><co id="x"/></programlisting></article>"""
     )
-    val dumped: String = XmlWriterConfig(preformat = Set("programlisting")).render(xml)
+    val dumped: String = render(xml, XmlWriterConfig(preformat = Set("programlisting")))
     assert(dumped.contains("<co"), dumped)
     assert(dumped.indexOf("xmlns=") == dumped.lastIndexOf("xmlns="), dumped)
   }
 
   test("a small namespaced document is idempotent") {
     val xml: ZioBlocksXml.Element = parse(s"""<tei:p xmlns:tei="$tei" xml:id="n1"><tei:hi>a</tei:hi></tei:p>""")
-    val once: String = XmlWriterConfig.Plain.render(xml)
-    val twice: String = XmlWriterConfig.Plain.render(parse(once.trim))
+    val once: String = render(xml)
+    val twice: String = render(parse(once.trim))
     assert(twice == once, twice)
   }
 
@@ -292,7 +296,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val child: ZioBlocksXml.Element = children(parse(s"""<outer xmlns="$tei"><inner n="1"/></outer>""")).head
     assert(child.name.namespace.contains(tei))
     assert(child.attr(XmlAttribute.Xmlns).isEmpty)
-    val dumped: String = XmlWriterConfig.Plain.render(child)
+    val dumped: String = render(child)
     assert(dumped.contains("xmlns="), dumped)
     assert(dumped.contains(tei), dumped)
     assert(dumped.contains("<inner"), dumped)
@@ -300,7 +304,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
 
   test("writer emits xmlns and prefixed names") {
     val xml: ZioBlocksXml.Element = parse(s"""<tei:p xmlns:tei="$tei" xml:id="n1">a</tei:p>""")
-    val dumped: String = XmlWriterConfig.Plain.render(xml)
+    val dumped: String = render(xml)
     assert(dumped.contains("xmlns:tei="), dumped)
     assert(dumped.contains(tei), dumped)
     assert(dumped.contains("<tei:p"), dumped)
@@ -312,7 +316,7 @@ final class XmlNamespaceSpec extends AnyFunSuite:
     val xml: ZioBlocksXml.Element = parse(
       s"""<tei:p xmlns:tei="$tei" xml:id="n1"><tei:hi>a</tei:hi></tei:p>"""
     )
-    val round: ZioBlocksXml.Element = parse(XmlWriterConfig.Plain.render(xml).trim)
+    val round: ZioBlocksXml.Element = parse(render(xml).trim)
     assert(round.name.namespace.contains(tei))
     assert(round.attr(XmlAttribute.XmlId).contains("n1"))
     assert(children(round).head.name.namespace.contains(tei))

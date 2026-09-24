@@ -52,6 +52,9 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   * `@Modifier.config(XmlCodec.IgnoreUnknown, "")` on a record skips leftover
   * attributes, elements, and character content. `@Modifier.config(XmlCodec.Include, "")`
   * on a `Seq[String]` gathers `xi:include/@href` from the subtree.
+  * `@Modifier.transient` skips a field on decode and encode; the default is used.
+  * `@Modifier.encodeTransient` decodes the field and omits it on encode.
+  * An unknown `@Modifier.config` key fails derivation.
   */
 object XmlCodec:
   /** `@Modifier.config` value with no extra XML name.
@@ -79,6 +82,17 @@ object XmlCodec:
   final val IgnoreUnknown = "xml.ignoreUnknown"
   /** `Seq[String]` field: `xi:include/@href` from this element and descendants. */
   final val Include = "xml.include"
+
+  /** Keys accepted by `@Modifier.config`. Any other key fails derivation. */
+  private[xml] val configKeys: Set[String] = Set(
+    Attribute,
+    Element,
+    Text,
+    NamespaceUri,
+    NamespacePrefix,
+    IgnoreUnknown,
+    Include
+  )
 
   /** Identity field `Schema`. `import XmlCodec.given` when deriving outside this package. */
   given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema

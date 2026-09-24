@@ -1,6 +1,5 @@
 package org.podval.xml
 
-import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlDocumentSpec extends AnyFunSuite:
@@ -117,12 +116,11 @@ final class XmlDocumentSpec extends AnyFunSuite:
     assert(dumped.contains("Each Haftarah is described"))
   }
 
-  test("ScalaXml document parse keeps prolog comments") {
-    val doc: XmlDocument[ScalaXml.Element] = XmlParser.parseXmlDocument[ScalaXml.Element](
-      "<!-- c --><p>a</p>"
-    ).toOption.get
+  test("document parse keeps a prolog comment off the root") {
+    val doc: XmlDocument[Xml.Element] = XmlParser.parseXmlDocument("<!-- c --><p>a</p>").toOption.get
     assert(doc.prolog == Seq(XmlNode.Comment(" c ")))
     assert(doc.root.getName.qName == "p")
+    assert(doc.root.getChildren.flatMap(_.asComment).isEmpty)
   }
 
   test("XmlDocument.xml helper sets the canonical declaration") {

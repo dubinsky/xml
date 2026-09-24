@@ -74,10 +74,10 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(xml.getChildren.flatMap(_.asProcessingInstruction) == Seq(("pi", "d")))
   }
 
-  test("parseXml into ScalaXml keeps names, text, CDATA, and comments") {
-    val xml: ScalaXml.Element = XmlParser.parseXml[ScalaXml.Element](
+  test("to ScalaXml keeps names, text, CDATA, and comments") {
+    val xml: ScalaXml.Element = XmlParser.parseXml(
       """<p xml:id="x">a<![CDATA[b]]><!--c--></p>"""
-    ).toOption.get
+    ).toOption.get.to[ScalaXml.Element]
     assert(xml.getName.qName == "p")
     assert(ScalaXml.getAttributes(xml).collectFirst { case (n, v) if n.is(XmlAttribute.XmlId) => v }.contains("x"))
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("a"))
@@ -85,8 +85,9 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asComment) == Seq("c"))
   }
 
-  test("parseHtml into ZioBlocksHtml keeps tags and text and drops comments") {
-    val html: ZioBlocksHtml.Element = XmlParser.parseHtml[ZioBlocksHtml.Element]("<p>a<!--c--><b>d</b></p>").toOption.get
+  test("to ZioBlocksHtml keeps tags and text and drops comments") {
+    val html: ZioBlocksHtml.Element =
+      XmlParser.parseHtml("<p>a<!--c--><b>d</b></p>").toOption.get.to[ZioBlocksHtml.Element]
     assert(html.getName.is(XmlElement.P))
     assert(html.getChildren.flatMap(_.asComment).isEmpty)
     assert(html.getChildren.flatMap(_.asElement).map(_.getName.qName) == Seq("b"))

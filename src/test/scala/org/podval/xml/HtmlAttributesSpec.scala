@@ -1,5 +1,6 @@
 package org.podval.xml
 
+import Xml.given
 import ZioBlocksHtml.given
 import org.scalatest.funsuite.AnyFunSuite
 import zio.blocks.html.*
@@ -17,7 +18,7 @@ final class HtmlAttributesSpec extends AnyFunSuite:
     val attrs = qNames(el)
     assert(attrs.count(_._1 == "class") == 1)
     assert(attrs.find(_._1 == "class").map(_._2).contains("icon-span grey fa-classic fa-regular fa-file"))
-    val rendered = HtmlXmlWriterConfig.render(el)
+    val rendered = HtmlXmlWriterConfig.render(el.to[Xml.Element])
     assert(rendered.contains("""class="icon-span grey fa-classic fa-regular fa-file""""))
     assert(!rendered.matches("""(?s).*class="[^"]*".*class=".*"""))
   }
@@ -45,7 +46,8 @@ final class HtmlAttributesSpec extends AnyFunSuite:
       val fromGet = el.getAttributes.collectFirst { case (n, v) if n.is(XmlAttribute.CssClass) => v }.getOrElse("")
       assert(qNames(el).count(_._1 == "class") == 1, el.render)
       assert(fromGet == classOf(el.render), s"get=$fromGet render=${el.render}")
-      assert(fromGet == classOf(HtmlXmlWriterConfig.render(el)), s"get=$fromGet xml=${HtmlXmlWriterConfig.render(el)}")
+      val xmlRendered: String = HtmlXmlWriterConfig.render(el.to[Xml.Element])
+      assert(fromGet == classOf(xmlRendered), s"get=$fromGet xml=$xmlRendered")
 
     check(span(className += "icon-span", className += "grey fa-classic fa-regular", className += "fa-file"))
     check(div(className := "base", className += "extra"))

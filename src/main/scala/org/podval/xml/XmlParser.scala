@@ -4,7 +4,7 @@ import org.xml.sax.InputSource
 import scala.util.Using
 import java.io.StringReader
 
-/** Load XML (and HTML) into any [[XmlAst]].
+/** Load XML and HTML into [[Xml]].
   *
   * `xi:include/@href` stays in the tree. Publisher `store`/`collection`
   * indexes treat it as a child page, not an inlined document. HTML uses
@@ -13,11 +13,7 @@ import java.io.StringReader
   * `parseXml` / `parseResource` return the document element. Prolog/epilogue
   * comments, PIs, and the doctype are on [[XmlDocument]] from
   * `parseXmlDocument`.
-  *
-  * The overloads that return [[Xml.Element]] need no given.
-  * A type argument selects another tree (`parseXml[E]`); import that tree's given.
-  * The `asTree` default on those methods is what lets `parseXml(text)` select `Xml.Element`.
-  * Catalog helpers pin [[Xml]].
+  * Another tree is `element.to[TO]` after parse.
   *
   * I/O returns `Either[XmlError, _]`. `loadCatalog` / `loadResources` throw
   * (programmer catalogs, like `Stores.resolve`); use `attemptCatalog` /
@@ -25,61 +21,32 @@ import java.io.StringReader
   */
 object XmlParser:
   def parse(content: String, isXml: Boolean): Either[XmlError, Xml.Element] =
-    if isXml then parseXmlInto(content)(using Xml) else parseHtmlInto(content)(using Xml)
-
-  def parse[E: XmlAst](content: String, isXml: Boolean, asTree: Unit = ()): Either[XmlError, E] =
-    val _ = asTree
-    if isXml then parseXmlInto(content) else parseHtmlInto(content)
+    if isXml then parseXml(content) else parseHtml(content)
 
   def parseHtml(content: String): Either[XmlError, Xml.Element] =
-    parseHtmlInto(content)(using Xml)
-
-  def parseHtml[E: XmlAst](content: String, asTree: Unit = ()): Either[XmlError, E] =
-    val _ = asTree
-    parseHtmlInto(content)
-
-  private def parseHtmlInto[E: XmlAst](content: String): Either[XmlError, E] =
     XmlParserSax.parseDocument(reader = HtmlTagSoup.reader, toInputSource(content)).map(_.root).left.map(asXmlError)
 
   /** SAX, not StAX: JDK SAX preserves CDATA via `LexicalHandler`. */
   def parseXml(content: String): Either[XmlError, Xml.Element] =
-    parseXmlInto(content)(using Xml)
-
-  def parseXml[E: XmlAst](content: String, asTree: Unit = ()): Either[XmlError, E] =
-    val _ = asTree
-    parseXmlInto(content)
-
-  private def parseXmlInto[E: XmlAst](content: String): Either[XmlError, E] =
-    parseXmlDocumentInto(toInputSource(content)).map(_.root)
+    parseXmlDocument(toInputSource(content)).map(_.root)
 
   def parseXmlDocument(content: String): Either[XmlError, XmlDocument[Xml.Element]] =
-    parseXmlDocumentInto(toInputSource(content))(using Xml)
+    parseXmlDocument(toInputSource(content))
 
-  def parseXmlDocument[E: XmlAst](content: String, asTree: Unit = ()): Either[XmlError, XmlDocument[E]] =
-    val _ = asTree
-    parseXmlDocumentInto(toInputSource(content))
-
-  private def parseXmlDocumentInto[E: XmlAst](source: InputSource): Either[XmlError, XmlDocument[E]] = XmlParserSax
+  private def parseXmlDocument(source: InputSource): Either[XmlError, XmlDocument[Xml.Element]] = XmlParserSax
     .parseDocument(XmlParserSax.xmlReader, source)
     .left.map(asXmlError)
     .map(_.copy(declaration = Some(XmlDeclaration())))
 
   /** Classpath resource next to `loader` (`Class.getResource`). */
   def parseResource(loader: Class[?], name: String): Either[XmlError, Xml.Element] =
-    parseResourceInto(loader, name)(using Xml)
-
-  def parseResource[E: XmlAst](loader: Class[?], name: String, asTree: Unit = ()): Either[XmlError, E] =
-    val _ = asTree
-    parseResourceInto(loader, name)
-
-  private def parseResourceInto[E: XmlAst](loader: Class[?], name: String): Either[XmlError, E] =
     Option(loader.getResource(name)) match
       case None => Left(XmlError(s"Resource not found: $name"))
       case Some(url) =>
         Using(url.openStream()): stream =>
           val source: InputSource = InputSource(stream)
           source.setSystemId(url.toString)
-          parseXmlDocumentInto(source).map(_.root)
+          parseXmlDocument(source).map(_.root)
         .fold(e => Left(asXmlError(e)), identity)
 
   private def asXmlError(error: Throwable): XmlError = error match
@@ -120,7 +87,7 @@ object XmlParser:
     codec: XmlCodec[A],
     wrapperName: String
   ): Either[XmlError, Seq[A]] =
-    parseResourceInto(from.getClass, s"$name.xml")(using Xml)
+    parseResource(from.getClass, s"$name.xml")
       .flatMap(root => codec.decodeCatalog(root, wrapperName))
 
   /** Each `name.xml` next to `from` decoded as one document (the root element). Throws. */
@@ -131,6 +98,6 @@ object XmlParser:
     names.foldLeft(Right(Vector.empty[A]): Either[XmlError, Vector[A]]): (acc, name) =>
       for
         items <- acc
-        item <- parseResourceInto(from.getClass, s"$name.xml")(using Xml).flatMap(codec.decode)
+        item <- parseResource(from.getClass, s"$name.xml").flatMap(codec.decode)
       yield items :+ item
     .map(_.toSeq)

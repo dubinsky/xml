@@ -1,14 +1,11 @@
 package org.podval.xml
 
-import Xml.given
-import ZioBlocksHtml.given
-import ScalaXml.given
 import org.scalatest.funsuite.AnyFunSuite
 
 final class XmlBuilderSpec extends AnyFunSuite:
-  private def parse[E: XmlAst](build: XmlBuilder[E] => Unit): E =
-    val builder: XmlBuilder[E] = XmlBuilder()
-    builder.startElement(summon[XmlAst[E]].element(XmlElement.P))
+  private def parse(build: XmlBuilder => Unit): Xml.Element =
+    val builder: XmlBuilder = XmlBuilder()
+    builder.startElement(Xml.element(XmlElement.P))
     build(builder)
     builder.endElement()
     builder.result
@@ -46,24 +43,8 @@ final class XmlBuilderSpec extends AnyFunSuite:
     assert(xml.getChildren.flatMap(_.asCData).isEmpty)
   }
 
-  test("ScalaXml consecutive text chunks merge") {
-    val xml: ScalaXml.Element = parse: b =>
-      b.text("a")
-      b.text("b")
-    assert(ScalaXml.getChildren(xml).flatMap(ScalaXml.asText) == Seq("ab"))
-  }
-
-  test("HTML builder drops comments") {
-    val html: ZioBlocksHtml.Element = parse: b =>
-      b.text("a")
-      b.comment("c")
-      b.text("b")
-    assert(html.getChildren.flatMap(_.asAtom) == Seq("ab"))
-    assert(html.getChildren.flatMap(_.asComment).isEmpty)
-  }
-
   test("comments before and after the root go on the document") {
-    val builder: XmlBuilder[Xml.Element] = XmlBuilder()
+    val builder: XmlBuilder = XmlBuilder()
     builder.comment("before")
     builder.startElement(Xml.element(XmlElement.P))
     builder.comment("inside")
@@ -76,7 +57,7 @@ final class XmlBuilderSpec extends AnyFunSuite:
   }
 
   test("nested elements are built from the child buffer") {
-    val builder: XmlBuilder[Xml.Element] = XmlBuilder()
+    val builder: XmlBuilder = XmlBuilder()
     builder.startElement(Xml.element("outer"))
     builder.startElement(Xml.element("inner"))
     builder.text("a")
@@ -89,14 +70,6 @@ final class XmlBuilderSpec extends AnyFunSuite:
   }
 
   test("result requires a document element") {
-    intercept[IllegalArgumentException](XmlBuilder[Xml.Element]().result)
+    intercept[IllegalArgumentException](XmlBuilder().result)
   }
 
-  test("HTML document keeps prologue comments that the tree drops") {
-    val builder: XmlBuilder[ZioBlocksHtml.Element] = XmlBuilder()
-    builder.comment("c")
-    builder.startElement(ZioBlocksHtml.element(XmlElement.P))
-    builder.endElement()
-    assert(builder.document.prolog == Seq(XmlNode.Comment("c")))
-    assert(builder.result.getChildren.flatMap(_.asComment).isEmpty)
-  }

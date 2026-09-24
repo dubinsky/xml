@@ -1,11 +1,11 @@
 package org.podval.xml
 
+import scala.annotation.unused
 import zio.blocks.chunk.Chunk
 import zio.blocks.html.Dom as XML
 
-// XML AST for ZIO Blocks HTML
-// `import ZioBlocksHtml.given` to parse/write this AST
-// convert with `element.to[ZioBlocksHtml.Element]`.
+// XML AST for ZIO Blocks HTML.
+// `import ZioBlocksHtml.given` to convert (`element.to[ZioBlocksHtml.Element]`).
 object ZioBlocksHtml extends XmlAst[XML.Element]:
   given ZioBlocksHtml.type = this
 
@@ -33,37 +33,31 @@ object ZioBlocksHtml extends XmlAst[XML.Element]:
     ))
   )
 
-  extension (node: Node)
-    override def asElement: Option[Element] = node match
-      case element: XML.Element => Some(element)
-      case _ => None
+  override def foldNode[A](
+    node: Node,
+    element: Element => A,
+    text: String => A,
+    @unused cdata: String => A,
+    @unused comment: String => A,
+    @unused processingInstruction: (String, String) => A,
+    unknown: => A
+  ): A = node match
+    case value: XML.Element => element(value)
+    case XML.Text(content) => text(content)
+    case _ => unknown
 
-    override def asCData: Option[String] = None
+  override def nameOf(element: Element): XmlName = XmlName.parseQName(element.tag)
 
-    override def asText: Option[String] = node match
-      case XML.Text(content) => Some(content)
-      case _ => None
+  override def childrenOf(element: Element): Nodes = element.children
 
-    override def asAtom: Option[String] = node.asText
-
-    override def asComment: Option[String] = None
-
-    override def asProcessingInstruction: Option[(String, String)] = None
-
-  extension (element: Element)
-    override def getName: XmlName = XmlName.parseQName(element.tag)
-
-    override def getChildren: Nodes = element.children
-
-    /**
-     * Merge ZIO Blocks multi-valued attrs (`className += …` is an AppendValue)
-     * as Dom.render does: last `:=` is the base, then every `+=` in order.
-     * One pair per name, sorted by name. Boolean attributes pass through.
-     */
-    override def getAttributes: Seq[(XmlName, String)] =
-      Chunk.from(element.attributes.groupBy(attributeName).view.mapValues(mergeAttribute))
-        .sortBy(_._1)
-        .map((name, value) => (XmlName.parse(name, isAttribute = true), value))
+  /** Merge ZIO Blocks multi-valued attrs (`className += …` is an AppendValue)
+    * as Dom.render does: last `:=` is the base, then every `+=` in order.
+    * One pair per name, sorted by name. Boolean attributes pass through.
+    */
+  override def attributesOf(element: Element): Seq[(XmlName, String)] =
+    Chunk.from(element.attributes.groupBy(attributeName).view.mapValues(mergeAttribute))
+      .sortBy(_._1)
+      .map((name, value) => (XmlName.parse(name, isAttribute = true), value))
 
   private def mergeAttribute(attributes: Chunk[XML.Attribute]): String =
     val base: Option[String] = attributes.collect {

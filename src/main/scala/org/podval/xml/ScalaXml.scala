@@ -3,9 +3,9 @@ package org.podval.xml
 import scala.xml.{Attribute, Comment, Elem, MetaData, NamespaceBinding, NodeSeq, PCData, PrefixedAttribute, ProcInstr,
   Text, TopScope}
 
-// XML AST for Scala XML
-// `import ScalaXml.given` to parse/write this AST
-// convert with `element.to[ScalaXml.Element]`.
+// XML AST for Scala XML.
+// `import ScalaXml.given` to convert (`element.to[ScalaXml.Element]`).
+// `NodeSeq.to` shadows the extension; use `ScalaXml.converted`.
 object ScalaXml extends XmlAst[Elem]:
   given ScalaXml.type = this
 
@@ -32,50 +32,42 @@ object ScalaXml extends XmlAst[Elem]:
     child = children*
   )
 
-  extension (node: Node)
-    override def asElement: Option[Element] = node match
-      case element: Elem => Some(element)
-      case _ => None
+  override def foldNode[A](
+    node: Node,
+    element: Element => A,
+    text: String => A,
+    cdata: String => A,
+    comment: String => A,
+    processingInstruction: (String, String) => A,
+    unknown: => A
+  ): A = node match
+    case elem: Elem => element(elem)
+    case value: Text => text(value.data)
+    case value: PCData => cdata(value.data)
+    case value: Comment => comment(value.commentText)
+    case value: ProcInstr => processingInstruction(value.target, value.proctext)
+    case _ => unknown
 
-    override def asText: Option[String] = node match
-      case text: Text => Some(text.data)
-      case _ => None
+  override def nameOf(element: Element): XmlName = fromScope(
+    element.scope,
+    element.prefix,
+    element.label,
+    isAttribute = false
+  )
 
-    override def asCData: Option[String] = node match
-      case cdata: PCData => Some(cdata.data)
-      case _ => None
+  override def childrenOf(element: Element): Nodes = element.child
 
-    override def asComment: Option[String] = node match
-      case comment: Comment => Some(comment.commentText)
-      case _ => None
-
-    override def asProcessingInstruction: Option[(String, String)] = node match
-      case pi: ProcInstr => Some((pi.target, pi.proctext))
-      case _ => None
-
-    override def asAtom: Option[String] = node.asText.orElse(node.asCData)
-
-  extension (element: Element)
-    override def getChildren: Nodes = element.child
-
-    override def getName: XmlName = fromScope(
-      element.scope, 
-      element.prefix, 
-      element.label, 
-      isAttribute = false
-    )
-
-    override def getAttributes: Seq[(XmlName, String)] = element.attributes.toSeq.map(attribute => (
-      fromScope(
-        element.scope,
-        attribute match
-          case prefixed: PrefixedAttribute => prefixed.pre
-          case _ => null,
-        attribute.key,
-        isAttribute = true
-      ),
-      NodeSeq.fromSeq(attribute.value).text
-    ))
+  override def attributesOf(element: Element): Seq[(XmlName, String)] = element.attributes.toSeq.map(attribute => (
+    fromScope(
+      element.scope,
+      attribute match
+        case prefixed: PrefixedAttribute => prefixed.pre
+        case _ => null,
+      attribute.key,
+      isAttribute = true
+    ),
+    NodeSeq.fromSeq(attribute.value).text
+  ))
 
   // scala.xml rejects prefix ""; unprefixed names use null.
   private def toMetaData(attributes: Seq[(XmlName, String)]): MetaData = attributes.foldRight(scala.xml.Null: MetaData):

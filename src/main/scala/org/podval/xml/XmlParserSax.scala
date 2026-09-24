@@ -21,10 +21,10 @@ private[xml] object XmlParserSax:
     catch case _: Exception => ()
     reader
   
-  def parseDocument[E: XmlAst](
+  def parseDocument(
     reader: XMLReader,
     source: InputSource
-  ): Either[Throwable, XmlDocument[E]] =
+  ): Either[Throwable, XmlDocument[Xml.Element]] =
     try
       reader.setFeature("http://xml.org/sax/features/namespaces", true)
       // Include xmlns:* in the attribute list so namespace declarations become attributes
@@ -34,8 +34,8 @@ private[xml] object XmlParserSax:
       reader.setFeature("http://xml.org/sax/features/external-general-entities", false)
       reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
 
-      val builder: XmlBuilder[E] = XmlBuilder()
-      val handler: XmlParserSax[E] = XmlParserSax(builder)
+      val builder: XmlBuilder = XmlBuilder()
+      val handler: XmlParserSax = XmlParserSax(builder)
 
       reader.setContentHandler(handler)
       reader.setErrorHandler(handler)
@@ -46,8 +46,8 @@ private[xml] object XmlParserSax:
     catch
       case e: Throwable => Left(e)
 
-private final class XmlParserSax[E](
-  builder: XmlBuilder[E]
+private final class XmlParserSax(
+  builder: XmlBuilder
 ) extends DefaultHandler with LexicalHandler:
   private var inCData: Boolean = false
   private var inDtd: Boolean = false

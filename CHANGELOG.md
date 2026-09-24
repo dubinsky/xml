@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `@Modifier.transient` fields are not read or written.
+  Decode uses the default.
+  `@Modifier.encodeTransient` fields are read and omitted on encode.
+  An unknown `@Modifier.config` key fails derivation.
+- Breaking: `requireName`, `requireNoOther`, `requireAttr`, and `positiveInt` are removed from `Xml.Element`.
+- Breaking: `XmlParser`, `XmlWriter`, and `XmlBuilder` take `Xml` only.
+  A foreign tree is `element.to[TO]`, and `to[Xml.Element]` the other way.
+  `XmlWriterConfig.render` no longer accepts another AST.
 - Construction DSL functions cover every `XmlElement`, named by local name.
   `import org.podval.xml.dsl.{*, given}` exports them.
   `object` and `var` are backtick names.
@@ -15,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Pass a child codec when inlining would drop it: a tagged derivation, or a hand-written codec.
 - `XmlParser.parse`, `parseXml`, `parseXmlDocument`, `parseHtml`, and `parseResource` return `Xml.Element` with no
   given.
-  The same names with a type argument still parse into another `XmlAst`.
 - `XmlWriterConfig.render` of an `Xml.Element` or `XmlDocument[Xml.Element]` needs no given.
 - `rewrite` accepts `Emit`, which inserts nodes and does not walk them.
   `Keep` and `Replace` are still walked.
@@ -29,16 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Breaking: `XmlCodec` decode and encode take `Xml.Element`.
   Convert a foreign tree with `to[Xml.Element]` before decode, and the encode result with `to[TO]`.
 - Breaking: walk, attribute, and CSS operations exist only on `Xml.Element`.
-  Parser, writer, rebuild (`withName` / `withAttribute`), and `to[TO]` stay on `XmlAst`.
+  Rebuild (`withName` / `withAttribute`) and `to[TO]` stay on `XmlAst`.
 - `childElements` lists the element children.
   `flatMapNodes` and `convertElements` extend `Seq[XmlNode]` and need no `XmlAst` given.
 - Walk, attribute, and CSS operations on `Xml.Element` are members.
-  `import Xml.given` remains for parsing, writing, and `to[TO]`.
+  `import Xml.given` is for `to[Xml.Element]` from another tree.
 - Breaking: `elementById` is `getById` and returns `Option`.
   A missing id is `None`.
 - `childNamed` is the first `childrenNamed` match.
 - Breaking: removed `intAttr`, `intOpt`, `positiveIntOpt`, and `booleanOpt`.
-  `requireAttr`, `requireName`, `requireNoOther`, and `positiveInt` stay.
 - `Seq[Name]` binds repeated `<name>` elements without `@Modifier.config(XmlCodec.Element, "name")`.
   Derivation registers `Name.codec` before it snapshots type overrides.
 - Breaking: `Xml2Html.is`, `get`, and `convert` take `Xml.Element`.

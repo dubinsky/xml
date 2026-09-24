@@ -14,7 +14,8 @@ implementation 'org.podval:org.podval.xml:0.3.0'
 `zio-blocks-schema-xml` does not: it is only for the `ZioBlocksXml` adapter.
 Each AST given is on its object, not in the package.
 Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or `import ScalaXml.given`.
-`import Xml.given` is for converting with `to[Xml.Element]` from another tree.
+`import Xml.given` is for `element.to[Xml.Element]` from another tree.
+The parser, writer, and builder take `Xml` only.
 Parse and `render` of `Xml.Element` need no given.
 Walk, attribute, and class operations on the owned `Xml.Element` are members and need no given.
 `import org.podval.xml.dsl.given` summons `Xml`.
@@ -36,8 +37,10 @@ packages they need.
 
 `org.podval.xml`:: owned AST `Xml`, plus `XmlAst` adapters for ZIO Blocks XML, Scala XML, and ZIO Blocks HTML.
 Construction DSL (`org.podval.xml.dsl`) builds `Xml` only.
-SAX parser (CDATA preserved) and builder, both over any `XmlAst`; writer; `Xml2Html`; Schema-derived document binder
-(`XmlCodec`).
+SAX parser (CDATA preserved), builder, and writer take `Xml`.
+Another tree is `element.to[TO]`.
+`Xml2Html` renames reserved HTML names.
+`XmlCodec` is the Schema-derived document binder.
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
 key).
 `org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the
@@ -50,11 +53,10 @@ Numbered URL names stay digits; extra names in `number2names` still round-trip.
 
 == Parse
 
-`XmlParser` loads from a string or classpath resource.
+`XmlParser` loads from a string or classpath resource into `Xml`.
 `parseXml`, `parseXmlDocument`, `parseHtml`, `parse`, and `parseResource` return `Xml.Element` and need no given.
-Pass a type argument, and import that tree's given, for another AST:
-`import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or `import ScalaXml.given`.
 Convert with `element.to[TO]` (`element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`).
+`element.to[Xml.Element]` from another tree needs `import Xml.given`.
 `parseHtml` uses TagSoup (HTML only: no namespaces, names are lower-cased; not for TEI).
 `xi:include` is not expanded (`xi:include/@href` stays a page ref).
 `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and
@@ -147,6 +149,9 @@ A foreign tree is `element.to[Xml.Element]` before decode (`ScalaXml.converted` 
 `codec.encode(value).to[TO]` after encode.
 Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`.
 `@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`.
+`@Modifier.transient` skips a field on decode and encode; the default is used.
+`@Modifier.encodeTransient` decodes the field and omits it on encode.
+An unknown `@Modifier.config` key fails derivation.
 Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`,
 `XmlCodec.NamespaceUri`, `XmlCodec.NamespacePrefix`).
 `Name` / `Language` / `Language.Spec` have `Schema` givens (`Names` has `XmlCodec` only); catalog DTOs use
@@ -218,8 +223,8 @@ Another AST is `element.to[TO]`.
 
 Convert another AST with `element.to[TO]`
 (HTML: `element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`).
-`HtmlXmlWriterConfig.render` is the inherited generic `XmlWriterConfig.render[E: XmlAst]`.
-Write a `ZioBlocksHtml.Element` with `import ZioBlocksHtml.given`.
+`HtmlXmlWriterConfig.render` writes `Xml.Element`.
+A `ZioBlocksHtml.Element` is `element.to[Xml.Element]` first (`import Xml.given`).
 
 === XML pretty-printing
 

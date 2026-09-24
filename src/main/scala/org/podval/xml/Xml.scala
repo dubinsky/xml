@@ -1,5 +1,7 @@
 package org.podval.xml
 
+import scala.annotation.unused
+
 /** Node of the XML tree owned by this library. */
 sealed trait XmlNode derives CanEqual:
   def asElement: Option[XmlNode.Element] = this match
@@ -30,13 +32,8 @@ sealed trait XmlNode derives CanEqual:
     cdata: String => A,
     comment: String => A,
     processingInstruction: (String, String) => A,
-    unknown: => A
-  ): A = asElement.map(element)
-    .orElse(asCData.map(cdata))
-    .orElse(asText.map(text))
-    .orElse(asComment.map(comment))
-    .orElse(asProcessingInstruction.map(processingInstruction.tupled))
-    .getOrElse(unknown)
+    @unused unknown: => A
+  ): A = XmlNode.fold(this, element, text, cdata, comment, processingInstruction)
 
   def isWhitespace: Boolean = asText.exists(_.trim.isEmpty)
 
@@ -51,6 +48,20 @@ sealed trait XmlMisc extends XmlNode derives CanEqual:
   def markup: String
 
 object XmlNode:
+  def fold[A](
+    node: XmlNode,
+    element: Element => A,
+    text: String => A,
+    cdata: String => A,
+    comment: String => A,
+    processingInstruction: (String, String) => A
+  ): A = node match
+    case elementNode: Element => element(elementNode)
+    case Text(value) => text(value)
+    case CData(value) => cdata(value)
+    case Comment(value) => comment(value)
+    case ProcessingInstruction(target, data) => processingInstruction(target, data)
+
   final case class Element(
     name: XmlName,
     attributes: Seq[(XmlName, String)],
@@ -97,8 +108,8 @@ object XmlNode:
       buf.result()
 
 // XML AST owned by this library.
-// `XmlParser.parseXml` and `XmlWriterConfig.render` take `Xml.Element` with no given.
-// `import Xml.given` to parse or write another AST, or to convert (`to[TO]`).
+// `XmlParser` and `XmlWriterConfig.render` take `Xml.Element` and need no given.
+// `import Xml.given` to convert another tree with `to[Xml.Element]`.
 // Walk, attribute, and CSS operations are members of `XmlNode.Element`.
 // `import XmlNode.flatMapNodes` (or `convertElements`) for a node list; no given.
 object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
@@ -130,37 +141,18 @@ object Xml extends XmlAst[XmlNode.Element], XmlAstDsl[XmlNode.Element]:
     children: Nodes
   ): Element = XmlNode.Element(name, attributes, children)
 
-  extension (node: Node)
-    override def asElement: Option[Element] = node.asElement
+  override def foldNode[A](
+    node: Node,
+    element: Element => A,
+    text: String => A,
+    cdata: String => A,
+    comment: String => A,
+    processingInstruction: (String, String) => A,
+    @unused unknown: => A
+  ): A = XmlNode.fold(node, element, text, cdata, comment, processingInstruction)
 
-    override def asText: Option[String] = node.asText
+  override def nameOf(element: Element): XmlName = element.name
 
-    override def asCData: Option[String] = node.asCData
+  override def childrenOf(element: Element): Nodes = element.children
 
-    override def asComment: Option[String] = node.asComment
-
-    override def asProcessingInstruction: Option[(String, String)] = node.asProcessingInstruction
-
-    override def asAtom: Option[String] = node.asAtom
-
-    override def fold[A](
-      element: Element => A,
-      text: String => A,
-      cdata: String => A,
-      comment: String => A,
-      processingInstruction: (String, String) => A,
-      unknown: => A
-    ): A = node.fold(element, text, cdata, comment, processingInstruction, unknown)
-
-    override def isWhitespace: Boolean = node.isWhitespace
-
-    override def isCharacters: Boolean = node.isCharacters
-
-    override def getText: String = node.getText
-
-  extension (element: Element)
-    override def getName: XmlName = element.getName
-
-    override def getChildren: Nodes = element.getChildren
-
-    override def getAttributes: Seq[(XmlName, String)] = element.getAttributes
+  override def attributesOf(element: Element): Seq[(XmlName, String)] = element.attributes
