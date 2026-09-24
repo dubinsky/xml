@@ -83,7 +83,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(encoded.childElements.map(_.getName.qName) == Seq("body"))
     assert(encoded.childElements.head.getChildren.exists(_.asComment.contains("n")))
     val scalaEl: ScalaXml.Element = codec.encode(decoded).to[ScalaXml.Element]
-    assert(scalaEl.getName.qName == "Text")
+    assert(scalaEl.getName.qName == "text")
     assert(codec.decode(ScalaXml.converted[Xml.Element](scalaEl)).toOption.get.body.childElements.map(_.getName.qName) == Seq("p"))
   }
 
@@ -116,7 +116,7 @@ final class XmlCodecSpec extends AnyFunSuite:
     val encoded: Xml.Element = TaggedIndex.codec.encode(decoded)
     assert(encoded.childElements.map(_.getName.qName) == Seq("person", "place"))
     val plain: Xml.Element = PlainIndex.codec.encode(PlainIndex(Seq(TaggedItem(TaggedKind.person, "a"))))
-    assert(plain.childElements.map(_.getName.qName) == Seq("TaggedItem"))
+    assert(plain.childElements.map(_.getName.qName) == Seq("taggedItem"))
   }
 
   test("Schema[Xml.Element] does not carry the tree") {
@@ -191,23 +191,23 @@ final class XmlCodecSpec extends AnyFunSuite:
   test("namespace modifiers encode xmlns and a prefixed name") {
     val codec: XmlCodec[NsBox] = XmlCodec.derived(using NsBox.schema)
     val encoded: Xml.Element = codec.encode(NsBox("1"))
-    assert(encoded.getName.qName == "ex:NsBox")
-    assert(encoded.name.localName == "NsBox")
+    assert(encoded.getName.qName == "ex:nsBox")
+    assert(encoded.name.localName == "nsBox")
     assert(encoded.name.prefix.contains("ex"))
     assert(encoded.name.uri.contains("http://example.com/ns"))
     assert(encoded.get(XmlAttribute.Xmlns("ex")).contains("http://example.com/ns"))
     assert(encoded.get("n").contains("1"))
-    val decoded: NsBox = codec.decode(parse("""<ex:NsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
+    val decoded: NsBox = codec.decode(parse("""<ex:nsBox xmlns:ex="http://example.com/ns" n="1"/>""")).toOption.get
     assert(decoded.n == "1")
     val scalaEl: ScalaXml.Element = codec.encode(NsBox("1")).to[ScalaXml.Element]
-    assert(scalaEl.getName.qName == "ex:NsBox")
+    assert(scalaEl.getName.qName == "ex:nsBox")
     assert(scalaEl.scope.getURI("ex") == "http://example.com/ns")
   }
 
   test("optional child is absent when missing") {
     val codec: XmlCodec[Book] = XmlCodec.derived(using Book.schema)
-    assert(codec.decode(parse("<Book/>")).toOption.get.title.isEmpty)
-    val withTitle: Book = codec.decode(parse("<Book><Title>Go</Title></Book>")).toOption.get
+    assert(codec.decode(parse("<book/>")).toOption.get.title.isEmpty)
+    val withTitle: Book = codec.decode(parse("<book><title>Go</title></book>")).toOption.get
     assert(withTitle.title.map(_.value).contains("Go"))
   }
 
@@ -312,6 +312,14 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(stray.swap.toOption.get.getMessage.contains("isCollection"))
   }
 
+  test("record tag defaults to the class name, dropping a trailing Dto") {
+    val codec: XmlCodec[ChapterDto] = XmlCodec.derived(using ChapterDto.schema)
+    val encoded: Xml.Element = codec.encode(ChapterDto(4))
+    assert(encoded.getName.qName == "chapter")
+    assert(encoded.get("n").contains("4"))
+    assert(codec.decode(parse("""<chapter n="4"/>""")).toOption.get == ChapterDto(4))
+  }
+
   test("unknown config key fails derivation") {
     val error: XmlError = intercept[XmlError] {
       val codec: XmlCodec[BadConfig] = XmlCodec.derived(using BadConfig.schema)
@@ -366,9 +374,7 @@ object Text:
   given schema: Schema[Text] = Schema.derived
 
 sealed trait Part derives CanEqual
-@Modifier.config(XmlCodec.Element, "positive")
 final case class Positive(n: Int) extends Part derives CanEqual
-@Modifier.config(XmlCodec.Element, "negative")
 final case class Negative(n: Int) extends Part derives CanEqual
 object Part:
   given schema: Schema[Part] = Schema.derived
@@ -496,6 +502,10 @@ final case class TransientRow(
 ) derives CanEqual
 object TransientRow:
   given schema: Schema[TransientRow] = Schema.derived
+
+final case class ChapterDto(n: Int) derives CanEqual
+object ChapterDto:
+  given schema: Schema[ChapterDto] = Schema.derived
 
 final case class BadConfig(
   @Modifier.config("xml.nope", "") n: String

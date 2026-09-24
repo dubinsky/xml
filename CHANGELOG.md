@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Breaking: `XmlName.matches` and `isNamed` treat a pattern that contains `:` as a qualified name.
+  A pattern with no colon matches the local name, so `tei:p` matches `p`, and an unprefixed `p` does not match
+  `tei:p`.
+- A codec record's tag defaults to its class name with a trailing `Dto` removed and the first character lower-cased.
+  Two leading capitals are left as written.
+  `@Modifier.config(XmlCodec.Element, …)` on the class still overrides that default.
+  `XmlCodec.derived(element = …)` still wins over the annotation.
 - `@Modifier.transient` fields are not read or written.
   Decode uses the default.
   `@Modifier.encodeTransient` fields are read and omitted on encode.

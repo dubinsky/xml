@@ -158,7 +158,10 @@ Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, 
 `Seq[Name]`.
 Those children are `<name>`: derivation registers `Name.codec` before it snapshots overrides, so the field needs no
 `@Modifier.config(XmlCodec.Element, "name")`.
-A type with one tag names it on the class: `@Modifier.config(XmlCodec.Element, "chapter")`.
+A record's tag defaults to its class name with a trailing `Dto` removed and the first character lower-cased
+(`ChapterDto` is `chapter`).
+Two leading capitals are left as written.
+`@Modifier.config(XmlCodec.Element, "week")` on the class overrides that default.
 A parent `XmlCodec.derived` inlines that tag and does not take the child codec.
 `XmlCodec.derived(element = "wrapper")` names that derivation, and wins over the class annotation.
 `XmlCodec.derived[A, K](tagField, tag)` is the tagged form.
@@ -173,6 +176,8 @@ A foreign tree converts with `to[Xml.Element]` before those operations.
 They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
 `rewrite` can keep one element, replace it with a node list, or emit finished nodes.
 `getById` returns `Option`; `childNamed` is the first `childrenNamed` match.
+`isNamed("p")` matches local name `p`, including a prefixed `tei:p`.
+`isNamed("tei:p")` matches that qualified name only.
 `childElements` is the element children.
 `flatMapNodes` and `convertElements` are extensions on `Seq[XmlNode]` (`import XmlNode.flatMapNodes`, or
 `import org.podval.xml.dsl.*`, which exports them).

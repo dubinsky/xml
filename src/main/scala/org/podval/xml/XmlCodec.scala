@@ -37,8 +37,10 @@ given xmlElementSchema: Schema[Xml.Element] = XmlTree.schema
   * An unannotated primitive is an attribute named after the field.
   * `@Modifier.rename("n")` renames that attribute, or the child tag of a record or identity field.
   * `@Modifier.config(XmlCodec.Element, "comment")` on a field forces a primitive into a child element.
-  * A type with one tag names it on the class: `@Modifier.config(XmlCodec.Element, "chapter")`.
-  * A parent `XmlCodec.derived` inlines that tag and does not take the child codec.
+  * A record's tag defaults to its class name with a trailing `Dto` removed and the first character lower-cased.
+  * Two leading capitals are left as written.
+  * `@Modifier.config(XmlCodec.Element, "week")` on the class overrides that default.
+  * A parent `XmlCodec.derived` inlines the tag and does not take the child codec.
   * `XmlCodec.derived(element = "wrapper")` names that derivation, and wins over the class annotation.
   * Pass a child codec when inlining would drop it: `XmlCodec.derived(tagField, tag)`, or a hand-written codec.
   * `Name` is registered, so `Seq[Name]` needs no annotation and no passed codec.
@@ -70,7 +72,7 @@ object XmlCodec:
     */
   final val Attribute = "xml.attribute"
   /** Element name on a type, or the child tag that forces a primitive into an element.
-    * `@Modifier.config(XmlCodec.Element, "persName")`.
+    * `@Modifier.config(XmlCodec.Element, "week")` when the default class-name tag is wrong.
     * A record sequence renamed to a tag it already is uses `@Modifier.rename`.
     */
   final val Element = "xml.element"

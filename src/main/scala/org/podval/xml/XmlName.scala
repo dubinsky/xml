@@ -44,9 +44,11 @@ final case class XmlName(
   /** Catalog attribute: Clark identity (`xml:id` ≠ `id`). */
   def is(attr: XmlAttribute): Boolean = sameAs(attr.name)
 
+  /** A pattern that contains `:` matches this qualified name.
+    * A pattern with no colon matches this local name, whatever the prefix.
+    */
   def matches(expected: String): Boolean =
-    val exp: XmlName = XmlName.parseQName(expected)
-    qName == expected || localName == expected || localName == exp.localName
+    if expected.contains(':') then qName == expected else localName == expected
 
   def matchesAny(expected: Iterable[String]): Boolean = expected.exists(matches)
 

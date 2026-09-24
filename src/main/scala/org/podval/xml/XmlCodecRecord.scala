@@ -302,6 +302,16 @@ private[xml] trait XmlCodecRecord:
   protected def renameOf(modifiers: Seq[Modifier.Term]): Option[String] =
     modifiers.collectFirst { case Modifier.rename(name) => name }
 
+  /** Class name with a trailing `Dto` removed and the first character lower-cased.
+    * `ChapterDto` is `chapter`. Two leading capitals stay (`URL` stays `URL`).
+    */
+  private[xml] def defaultElementName(typeName: String): String =
+    val stripped: String =
+      if typeName.endsWith("Dto") && typeName.length > 3 then typeName.dropRight(3) else typeName
+    if stripped.length >= 2 && stripped.head.isUpper && stripped.tail.head.isUpper then stripped
+    else if stripped.nonEmpty && stripped.head.isUpper then s"${stripped.head.toLower}${stripped.tail}"
+    else stripped
+
   protected def configuredElementName(
     defaultName: String,
     termModifiers: Seq[Modifier.Term],
@@ -310,7 +320,7 @@ private[xml] trait XmlCodecRecord:
     configValue(termModifiers, XmlCodec.Element).filter(_.nonEmpty)
       .orElse(renameOf(termModifiers))
       .orElse(configValue(reflectModifiers, XmlCodec.Element).filter(_.nonEmpty))
-      .getOrElse(defaultName)
+      .getOrElse(defaultElementName(defaultName))
 
   protected def namespaceOf(modifiers: Seq[Modifier.Reflect]): Option[(String, String)] =
     configValue(modifiers, XmlCodec.NamespaceUri).map: uri =>
