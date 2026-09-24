@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.4.0] - 2026-09-23
 - Breaking: `XmlName.matches` and `isNamed` treat a pattern that contains `:` as a qualified name.
   A pattern with no colon matches the local name, so `tei:p` matches `p`, and an unprefixed `p` does not match
   `tei:p`.
