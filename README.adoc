@@ -13,19 +13,21 @@ implementation 'org.podval:org.podval.xml:0.4.0'
 `zio-blocks-schema` comes in transitively (`XmlCodec`).
 `zio-blocks-schema-xml` does not: it is only for the `ZioBlocksXml` adapter.
 Each AST given is on its object, not in the package.
-Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, or `import ScalaXml.given`.
+Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, `import ScalaXml.given`, or
+`import ScalaTags.given`.
 `import Xml.given` is for `element.to[Xml.Element]` from another tree.
 The parser, writer, and builder take `Xml` only.
 Parse and `render` of `Xml.Element` need no given.
 Walk, attribute, and class operations on the owned `Xml.Element` are members and need no given.
 `import org.podval.xml.dsl.given` summons `Xml`.
-ZIO Blocks XML, ZIO Blocks HTML, and Scala XML need an extra dependency, not pulled in by default.
+ZIO Blocks XML, ZIO Blocks HTML, Scala XML, and ScalaTags need an extra dependency, not pulled in by default.
 `parseHtml` needs TagSoup (also not on the POM):
 
 ----
 implementation "dev.zio:zio-blocks-schema-xml_3:0.0.56"
 implementation "dev.zio:zio-blocks-html_3:0.0.56"
 implementation 'org.scala-lang.modules:scala-xml_3:2.5.0'
+implementation 'com.lihaoyi:scalatags_3:0.13.1'
 implementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
 ----
 
@@ -35,7 +37,8 @@ One artifact (`org.podval:org.podval.xml`).
 It will not be split into separate Gradle or Maven modules; consumers depend on this coordinate and import the packages
 they need.
 
-`org.podval.xml`:: owned AST `Xml`, plus `XmlAst` adapters for ZIO Blocks XML, Scala XML, and ZIO Blocks HTML.
+`org.podval.xml`:: owned AST `Xml`, plus `XmlAst` adapters for ZIO Blocks XML, Scala XML, ZIO Blocks HTML, and
+                   ScalaTags.
                    Construction DSL (`org.podval.xml.dsl`) builds `Xml` only.
                    SAX parser (CDATA preserved), builder, and writer take `Xml`.
                    Another tree is `element.to[TO]`.
@@ -219,14 +222,15 @@ script(typeAttr := "module").inlineJs(code)
 element("urlset", xmlns := ns, urls)
 ----
 
-I tried https://com-lihaoyi.github.io/scalatags/[ScalaTags] for generation, and they work, but there is no clean
-https://github.com/lihaoyi/scalatags/issues/102[interoperability] with parsed XML, so generating HTML wrappers for XML
-parsed from files is not pleasant.
+I tried https://com-lihaoyi.github.io/scalatags/[ScalaTags] for generation, and they work, but ScalaTags has no parser,
+so generating HTML wrappers for XML parsed from files is not pleasant (https://github.com/lihaoyi/scalatags/issues/102[issue 102]).
+`ScalaTags` converts that tree (`element.to[ScalaTags.Element]` after `import ScalaTags.given`).
 A second HTML AST (including zio-blocks-html as a construction-only tree) has the same problem.
 This DSL builds `Xml.Element`.
 Another AST is `element.to[TO]`.
 
-Convert another AST with `element.to[TO]` (HTML: `element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`).
+Convert another AST with `element.to[TO]` (HTML: `element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`;
+ScalaTags: `element.to[ScalaTags.Element]` after `import ScalaTags.given`).
 `HtmlXmlWriterConfig.render` writes `Xml.Element`.
 A `ZioBlocksHtml.Element` is `element.to[Xml.Element]` first (`import Xml.given`).
 

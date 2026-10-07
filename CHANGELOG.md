@@ -1,18 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- `ScalaTags` adapts Li Haoyi's ScalaTags (`scalatags.Text`).
+  `import ScalaTags.given`.
+  Comments, processing instructions, and CDATA are not represented; CDATA becomes text.
+  `raw` is dropped.
+  A prefix URI is kept with an `xmlns` attribute.
+  The dependency is `compileOnly`.
 - cleanup;
 - chore: dependency updates;
 
 ## [0.4.0] - 2026-09-23
 - Breaking: `XmlName.matches` and `isNamed` treat a pattern that contains `:` as a qualified name.
-  A pattern with no colon matches the local name, so `tei:p` matches `p`, and an unprefixed `p` does not match
-  `tei:p`.
+  A pattern with no colon matches the local name, so `tei:p` matches `p`, and an unprefixed `p` does not match `tei:p`.
 - A codec record's tag defaults to its class name with a trailing `Dto` removed and the first character lower-cased.
   Two leading capitals are left as written.
   `@Modifier.config(XmlCodec.Element, …)` on the class still overrides that default.
@@ -108,8 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XML / `Plain` still encodes `<script>` bodies.
 
 ## [0.1.1] - 2026-09-10
-- README: TagSoup extra dependency for `parseHtml`; `Selector.plural` / `pluralOrNames`; `Names` has `XmlCodec` only
-  (no `Schema` given); `transform` / `gather` default `stopAtCode = true`.
+- README: TagSoup extra dependency for `parseHtml`; `Selector.plural` / `pluralOrNames`; `Names` has `XmlCodec` only (no
+  `Schema` given); `transform` / `gather` default `stopAtCode = true`.
 - README: drop leftover Markdown `#` on AsciiDoc headings.
 
 ## [0.1.0] - 2026-09-10

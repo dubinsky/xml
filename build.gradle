@@ -24,6 +24,7 @@ podvalPublish {
 
 String zioBlocksVersion = '0.0.56'
 String scalaXmlVersion = '2.5.0'
+String scalaTagsVersion = '0.13.1'
 String tagsoupVersion = '1.2.1'
 
 dependencies {
@@ -34,6 +35,8 @@ dependencies {
   testImplementation "dev.zio:zio-blocks-html_3:$zioBlocksVersion"
   compileOnly "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
   testImplementation "org.scala-lang.modules:scala-xml_3:$scalaXmlVersion"
+  compileOnly "com.lihaoyi:scalatags_3:$scalaTagsVersion"
+  testImplementation "com.lihaoyi:scalatags_3:$scalaTagsVersion"
   compileOnly "org.ccil.cowan.tagsoup:tagsoup:$tagsoupVersion"
   testImplementation "org.ccil.cowan.tagsoup:tagsoup:$tagsoupVersion"
   implementation 'org.typelevel:paiges-core_3:0.4.4'

@@ -6,6 +6,7 @@ package org.podval.xml
   * - ZIO Blocks XML
   * - ZIO Blocks HTML
   * - Scala XML
+  * - ScalaTags
   *
   * Construction (`div`, `:=`, `.when`), walks, attributes, and CSS live on [[Xml]].
   * The parser, writer, and builder build [[Xml]] only.
