@@ -19,6 +19,8 @@ enum Language(code: String) extends
   case Lithuanian extends Language("lt")
   case Hebrew     extends Language("he") with Language.Hebrew
   case Latin      extends Language("la")
+  case Swedish    extends Language("sv")
+  case Yiddish    extends Language("yi")
 
 object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Language], HasValues.FindByName[Language]:
   override val valuesSeq: Seq[Language] = values.toIndexedSeq

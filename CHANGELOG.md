@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Language catalog adds `sv` (svenska) and `yi` (ייִדיש).
 
 ## [0.5.0] - 2026-10-07
 - `ScalaTags` adapts Li Haoyi's ScalaTags (`scalatags.Text`).

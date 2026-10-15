@@ -13,6 +13,22 @@ final class MetadataSpec extends AnyFunSuite:
     assert(Language.Latin.names.hasName("la"))
     assert(Language.Latin.names.hasName("Latin"))
     assert(Language.getForDefaultName("la") == Language.Latin)
+    assert(Language.getForDefaultName("sv") == Language.Swedish)
+    assert(Language.getForDefaultName("yi") == Language.Yiddish)
+    assert(Language.Swedish.names.hasName("Swedish"))
+    assert(Language.Swedish.names.hasName("sv"))
+    assert(Language.Swedish.names.hasName("шведский"))
+    assert(Language.Swedish.names.hasName("שוודית"))
+    assert(Language.Swedish.names.hasName("svenska"))
+    assert(Language.Yiddish.names.hasName("Yiddish"))
+    assert(Language.Yiddish.names.hasName("yi"))
+    assert(Language.Yiddish.names.hasName("идиш"))
+    assert(Language.Yiddish.names.hasName("יידיש"))
+    assert(Language.Yiddish.names.hasName("ייִדיש"))
+    assert(Language.Swedish.names.find(Language.Swedish.toSpec).get.name == "svenska")
+    assert(Language.Yiddish.names.find(Language.Yiddish.toSpec).get.name == "ייִדיש")
+    assert(Language.French.names.find(Language.Hebrew.toSpec).get.name == "צָרְפָתִית")
+    assert(Language.German.names.find(Language.Hebrew.toSpec).get.name == "גֶרמָנִיָת")
   }
 
   test("Name codec accepts n or text but not both") {

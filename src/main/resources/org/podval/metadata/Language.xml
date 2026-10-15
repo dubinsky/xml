@@ -48,4 +48,18 @@
         <name lang="ru" n="латинский"/>
         <name lang="he" n="לטינית"/>
     </names>
+    <names>
+        <name lang="en" n="Swedish"/>
+        <name lang="en" n="sv"/>
+        <name lang="ru" n="шведский"/>
+        <name lang="he" n="שוודית"/>
+        <name lang="sv" n="svenska"/>
+    </names>
+    <names>
+        <name lang="en" n="Yiddish"/>
+        <name lang="en" n="yi"/>
+        <name lang="ru" n="идиш"/>
+        <name lang="he" n="יידיש"/>
+        <name lang="yi" n="ייִדיש"/>
+    </names>
 </Language>
