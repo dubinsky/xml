@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 - Language catalog adds `sv` (svenska) and `yi` (ייִדיש).
+- Hebrew names in the language catalog are unpointed.
+  French is `צרפתית` and German is `גרמנית`.
 
 ## [0.5.0] - 2026-10-07
 - `ScalaTags` adapts Li Haoyi's ScalaTags (`scalatags.Text`).

@@ -27,8 +27,8 @@ final class MetadataSpec extends AnyFunSuite:
     assert(Language.Yiddish.names.hasName("ייִדיש"))
     assert(Language.Swedish.names.find(Language.Swedish.toSpec).get.name == "svenska")
     assert(Language.Yiddish.names.find(Language.Yiddish.toSpec).get.name == "ייִדיש")
-    assert(Language.French.names.find(Language.Hebrew.toSpec).get.name == "צָרְפָתִית")
-    assert(Language.German.names.find(Language.Hebrew.toSpec).get.name == "גֶרמָנִיָת")
+    assert(Language.French.names.find(Language.Hebrew.toSpec).get.name == "צרפתית")
+    assert(Language.German.names.find(Language.Hebrew.toSpec).get.name == "גרמנית")
   }
 
   test("Name codec accepts n or text but not both") {
