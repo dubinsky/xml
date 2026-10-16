@@ -73,11 +73,15 @@ private[xml] trait XmlCodecRecord:
               store(regs, info.offset, info.typeTag, value)
             case FieldKind.Attribute(attrName) =>
               val wanted: XmlName = XmlName.parse(attrName, isAttribute = true)
+              // Clark identity for an unprefixed field. `matches` only when the field
+              // name is a qName, so `id` does not consume `xml:id` and `xlink:href` still binds.
+              def takesAttribute(key: XmlName): Boolean =
+                key.sameAs(wanted) || (attrName.contains(':') && key.matches(attrName))
               attrs.collectFirst:
-                case (key, value) if key.sameAs(wanted) || key.matches(attrName) => (key, value)
+                case (key, value) if takesAttribute(key) => (key, value)
               match
                 case Some((_, raw)) =>
-                  attrs.filterInPlace((n, _) => !(n.sameAs(wanted) || n.matches(attrName)))
+                  attrs.filterInPlace((n, _) => !takesAttribute(n))
                   val decoded: Any = info.codec.unsafeDecodeText(raw)
                   store(regs, info.offset, info.typeTag, if info.optional then Some(decoded) else decoded)
                 case None =>

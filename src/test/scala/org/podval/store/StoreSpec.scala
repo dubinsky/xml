@@ -250,6 +250,20 @@ final class StoreSpec extends AnyFunSuite:
       case Left(_: ResolveError.Cycle) => true
       case other => fail(other.toString)
     )
+    assert(Root.attempt("/%") match
+      case Left(ResolveError.BadEncoding("/%")) => true
+      case other => fail(other.toString)
+    )
+    assert(Root.attempt("%2") match
+      case Left(ResolveError.BadEncoding("%2")) => true
+      case other => fail(other.toString)
+    )
+    assert(Root.attempt("%ZZ") match
+      case Left(ResolveError.BadEncoding("%ZZ")) => true
+      case other => fail(other.toString)
+    )
+    assert(Root.resolveOption("/%").isEmpty)
+    assert(Root.attempt("/I%20Samuel").exists(_.last eq Root.samuel))
   }
 
   test("number2names extra names round-trip toUrl") {

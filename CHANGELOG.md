@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Language catalog adds `sv` (svenska) and `yi` (ייִדיש).
 - Hebrew names in the language catalog are unpointed.
   French is `צרפתית` and German is `גרמנית`.
+- Hebrew `numberToString` accepts 400–999 and a thousands remainder of 400 or more.
+  Values that already succeeded are unchanged, including `טו`, `טז`, `תקנה`, `תתקצט`, and `ו׳`.
+  The argument must satisfy `0 <= n < 10000`.
+- A codec attribute matches by Clark identity (`XmlName.sameAs`).
+  Qualified-name equality is used only when the field name contains `:`.
+  An unprefixed `id` does not consume `xml:id`.
+- `Stores.attempt` on a bad percent-escape returns `Left(ResolveError.BadEncoding)` instead of throwing.
+- CDATA containing `]]>` is written by replacing that sequence with `]]]]><![CDATA[>`, so `]]]>` round-trips.
+- `parseHtml` of a second top-level element is `Left(XmlError)` instead of keeping the last element.
 
 ## [0.5.0] - 2026-10-07
 - `ScalaTags` adapts Li Haoyi's ScalaTags (`scalatags.Text`).

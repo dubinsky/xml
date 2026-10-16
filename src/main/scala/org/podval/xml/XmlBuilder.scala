@@ -46,7 +46,13 @@ final class XmlBuilder:
     val element: Xml.Element = Xml.element(frame.name, frame.attributes, frame.children.toSeq)
     if frames.nonEmpty
     then addChild(element)
-    else root = Some(element)
+    else root match
+      case Some(existing) =>
+        throw XmlError(
+          s"Multiple top-level elements: ${existing.getName.localName}, ${element.getName.localName}"
+        )
+      case None =>
+        root = Some(element)
 
   private def addChild(child: XmlNode): Unit =
     if frames.nonEmpty then appendChild(frames.top.children, child)

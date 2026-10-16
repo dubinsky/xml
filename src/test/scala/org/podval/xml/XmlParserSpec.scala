@@ -61,6 +61,19 @@ final class XmlParserSpec extends AnyFunSuite:
     assert(xml.getText == "ac")
   }
 
+  test("parseHtml rejects a second top-level element") {
+    val two: Either[XmlError, Xml.Element] = XmlParser.parseHtml("<p>a</p><div>b</div>")
+    assert(two.isLeft)
+    assert(two.swap.toOption.get.getMessage.contains("Multiple top-level elements"))
+
+    val wrappedFragment: Xml.Element = XmlParser.parseHtml("<div><p>a</p><div>b</div></div>").toOption.get
+    assert(wrappedFragment.isElement(XmlElement.Div))
+
+    val document: String = "<html><head><title>t</title></head><body><p>a</p><p>b</p></body></html>"
+    assert(XmlParser.parseHtml(document).isLeft)
+    assert(XmlParser.parseHtml(s"<div>$document</div>").isLeft)
+  }
+
   test("keeps text on both sides of a comment") {
     val xml: Xml.Element = XmlParser.parseXml("<p>a<!--c-->b</p>").toOption.get
     assert(xml.getChildren.flatMap(_.asText) == Seq("a", "b"))

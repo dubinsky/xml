@@ -60,7 +60,7 @@ object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Lang
 
     override def numberToString(number: Int): String =
       // to display 0 as empty string :)      require(number > 0)
-      require(number <= 10000)
+      require(0 <= number && number < 10000)
 
       val result: scala.collection.mutable.StringBuilder = new scala.collection.mutable.StringBuilder
       var remainder: Int = number
@@ -76,8 +76,9 @@ object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Lang
       val addThousandsSeparator: Boolean = remainder >= 1000
       digit(1000, units)
       if addThousandsSeparator then result.append("׳")
-      step(_ >= 900, _ => "תת", _ - 800)
-      step(_ >= 500, _ => "ת", _ - 400)
+      while remainder >= 400 do
+        result.append("ת")
+        remainder = remainder - 400
       digit(100, hundreds)
 
       if remainder == 15 then result.append("טו") else

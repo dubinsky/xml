@@ -71,13 +71,25 @@ final class MetadataSpec extends AnyFunSuite:
     check(  5, "ה")
     check( 10, "י")
     check( 15, "טו")
+    check( 16, "טז")
     check( 20, "כ")
     check(100, "ק")
     check(116, "קטז")
     check(119, "קיט")
+    check(400, "ת")
+    check(499, "תצט")
     check(555, "תקנה")
+    check(800, "תת")
+    check(899, "תתצט")
     check(999, "תתקצט")
+    check(1400, "א׳ת")
+    check(1800, "א׳תת")
+    check(5400, "ה׳ת")
+    check(5800, "ה׳תת")
     check(6000, "ו׳")
+
+    intercept[IllegalArgumentException] { Language.Hebrew.numberToString(10000) }
+    intercept[IllegalArgumentException] { Language.Hebrew.numberToString(-1) }
 
     assert(Language.Hebrew.numberFromString("הה").isEmpty)
     assert(Language.Hebrew.numberFromString("ק׳").isEmpty)

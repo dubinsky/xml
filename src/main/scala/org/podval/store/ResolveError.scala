@@ -18,3 +18,7 @@ object ResolveError:
   final case class Cycle(alias: Alias) extends ResolveError(
     s"Alias cycle: ${alias.names}"
   )
+
+  final case class BadEncoding(path: String) extends ResolveError(
+    s"Bad percent-encoding in '$path'"
+  )

@@ -51,7 +51,12 @@ trait Stores[+T <: Store] extends Store:
 
   final def resolveOption(path: Seq[String]): Option[Path] = attempt(path).toOption
 
-  final def attempt(path: String): Either[ResolveError, Path] = attempt(Stores.splitAndDecodeUrl(path))
+  final def attempt(path: String): Either[ResolveError, Path] =
+    decodeUrl(path).flatMap(attempt)
+
+  private def decodeUrl(path: String): Either[ResolveError, Seq[String]] =
+    try Right(Stores.splitAndDecodeUrl(path))
+    catch case _: IllegalArgumentException => Left(ResolveError.BadEncoding(path))
 
   final def attempt(path: Seq[String]): Either[ResolveError, Path] =
     if path.isEmpty then Right(Path(Seq(this)))

@@ -36,9 +36,16 @@ final class XmlWriterSpec extends AnyFunSuite:
   }
 
   test("]]> inside CDATA is split into legal sections") {
-    val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata("a]]>b")))
-    val dumped: String = render(xml)
-    assert(dumped.contains("<![CDATA[a]]]]><![CDATA[>b]]>"), dumped)
+    def roundTrip(value: String, markup: String): Unit =
+      val xml: Xml.Element = Xml.element(XmlElement.P.qName, Seq.empty, Seq(Xml.cdata(value)))
+      val dumped: String = render(xml)
+      assert(dumped.contains(markup), dumped)
+      val parsed: Xml.Element = XmlParser.parseXml(dumped).toOption.get
+      assert(parsed.getChildren.flatMap(_.asAtom).mkString == value)
+
+    roundTrip("a]]>b", "<![CDATA[a]]]]><![CDATA[>b]]>")
+    roundTrip("]" * 3 + ">", "<![CDATA[" + "]" * 5 + "><![CDATA[>" + "]" + "]>")
+    roundTrip("a]]]>b", "<![CDATA[a]]]]]><![CDATA[>b]]>")
   }
 
   test("whitespace-only CDATA is not dropped") {

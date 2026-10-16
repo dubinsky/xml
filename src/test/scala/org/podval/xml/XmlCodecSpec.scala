@@ -172,6 +172,30 @@ final class XmlCodecSpec extends AnyFunSuite:
     assert(codec.decode(round).toOption.get == Language("he"))
   }
 
+  test("unprefixed attribute does not consume xml:id or xml:lang") {
+    val strict: XmlCodec[PlainAttrs] = XmlCodec.derived(using PlainAttrs.schema)
+    val raw: String = """<PlainAttrs xml:id="xml" id="plain" xml:lang="he" lang="en"/>"""
+    val rejected: Either[XmlError, PlainAttrs] = strict.decode(parse(raw))
+    assert(rejected.isLeft)
+    val message: String = rejected.swap.toOption.get.getMessage
+    assert(message.contains("Unparsed attributes"))
+    assert(message.contains("xml:id"))
+    assert(message.contains("xml:lang"))
+
+    val open: XmlCodec[OpenAttrs] = XmlCodec.derived(using OpenAttrs.schema)
+    val kept: OpenAttrs = open.decode(parse(
+      """<OpenAttrs xml:id="xml" id="plain" xml:lang="he" lang="en"/>"""
+    )).toOption.get
+    assert(kept.id == "plain")
+    assert(kept.lang == "en")
+
+    val linked: XmlCodec[XlinkHref] = XmlCodec.derived(using XlinkHref.schema)
+    val href: XlinkHref = linked.decode(parse(
+      """<XlinkHref xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="a.xml"/>"""
+    )).toOption.get
+    assert(href.href == "a.xml")
+  }
+
   test("prefixed attribute names") {
     val codec: XmlCodec[Named] = XmlCodec.derived(using Named.schema)
     val decoded: Named = codec.decode(parse("""<Named xml:id="x">Ada</Named>""")).toOption.get
@@ -405,6 +429,21 @@ final case class Named(
 ) derives CanEqual
 object Named:
   given schema: Schema[Named] = Schema.derived
+
+final case class PlainAttrs(id: String, lang: String) derives CanEqual
+object PlainAttrs:
+  given schema: Schema[PlainAttrs] = Schema.derived
+
+@Modifier.config(XmlCodec.IgnoreUnknown, "")
+final case class OpenAttrs(id: String, lang: String) derives CanEqual
+object OpenAttrs:
+  given schema: Schema[OpenAttrs] = Schema.derived
+
+final case class XlinkHref(
+  @Modifier.config(XmlCodec.Attribute, "xlink:href") href: String
+) derives CanEqual
+object XlinkHref:
+  given schema: Schema[XlinkHref] = Schema.derived
 
 @Modifier.config(XmlCodec.NamespaceUri, "http://example.com/ns")
 @Modifier.config(XmlCodec.NamespacePrefix, "ex")

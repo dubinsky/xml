@@ -387,12 +387,4 @@ object XmlWriter:
 
   /** `]]>` is illegal inside one CDATA section; split so the bytes round-trip. */
   private def cdataMarkup(value: String): String =
-    def parts(rest: String): List[String] = rest.indexOf("]]>") match
-      case -1 => rest :: Nil
-      case i =>
-        val (left, right) = rest.splitAt(i + 2)
-        left :: parts(right)
-    hideNewlines(parts(value)
-      .map(part => s"<![CDATA[$part]]>")
-      .mkString
-    )
+    hideNewlines(s"<![CDATA[${value.replace("]]>", "]]]]><![CDATA[>")}]]>")
