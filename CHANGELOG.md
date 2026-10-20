@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+- Breaking: `Xml2Html` is removed.
+  Reserved-name rewriting for TEI and DocBook lives in site-publisher.
+  `renameKeepingClass` stays on `Xml.Element`.
+- Breaking: `XmlAst.toId` is removed.
+- `Xml.Element.xmlId` is the non-empty `id`, otherwise the non-empty `xml:id`.
+  `copyXmlId` still writes `id` from `xml:id` when `id` is empty.
+
 ## [0.6.0] - 2026-10-15
 - Language catalog adds `sv` (svenska) and `yi` (ייִדיש).
 - Hebrew names in the language catalog are unpointed.

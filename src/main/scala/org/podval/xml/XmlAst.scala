@@ -174,8 +174,6 @@ trait XmlAst[ELEMENT]:
     def getAttributes: Seq[(XmlName, String)] = attributesOf(element)
 
 object XmlAst:
-  def toId(text: String): String = text.trim.replace(' ', '-')
-
   def parseBoolean(raw: String): Boolean = raw.trim.toLowerCase match
     case "true" | "yes" | "1" => true
     case "false" | "no" | "0" => false

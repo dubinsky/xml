@@ -51,9 +51,12 @@ private[xml] trait XmlElementApi:
 
   def setId(value: Option[String]): XmlNode.Element = set(XmlAttribute.Id, value)
 
+  def xmlId: Option[String] =
+    getId.filter(_.nonEmpty).orElse(get(XmlAttribute.XmlId).filter(_.nonEmpty))
+
   def copyXmlId: XmlNode.Element =
     if getId.exists(_.nonEmpty) then this
-    else setId(get(XmlAttribute.XmlId).filter(_.nonEmpty))
+    else setId(xmlId)
 
   def getHref: Option[String] = get(XmlAttribute.Href)
 

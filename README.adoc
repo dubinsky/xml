@@ -42,7 +42,6 @@ they need.
                    Construction DSL (`org.podval.xml.dsl`) builds `Xml` only.
                    SAX parser (CDATA preserved), builder, and writer take `Xml`.
                    Another tree is `element.to[TO]`.
-                   `Xml2Html` renames reserved HTML names.
                    `XmlCodec` is the Schema-derived document binder.
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
                         key).

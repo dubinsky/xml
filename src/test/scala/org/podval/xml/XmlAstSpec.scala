@@ -61,8 +61,13 @@ final class XmlAstSpec extends AnyFunSuite:
     assert(!dumped.contains("a<b"), dumped)
   }
 
-  test("toId trims and replaces spaces") {
-    assert(XmlAst.toId("  a b  ") == "a-b")
+  test("xmlId is the non-empty id, otherwise the non-empty xml:id") {
+    assert(parse("""<p id="keep" xml:id="other"/>""").xmlId.contains("keep"))
+    assert(parse("""<p xml:id="n1"/>""").xmlId.contains("n1"))
+    assert(parse("""<p id="" xml:id="n1"/>""").xmlId.contains("n1"))
+    assert(parse("<p/>").xmlId.isEmpty)
+    assert(parse("""<p xml:id="n1"/>""").copyXmlId.getId.contains("n1"))
+    assert(parse("""<p id="keep" xml:id="other"/>""").copyXmlId.getId.contains("keep"))
   }
 
   test("getById finds a descendant") {
