@@ -1,39 +1,56 @@
 package org.podval.store
 
-import org.podval.metadata.{Name, Names}
-import org.podval.xml.{XmlParser, Xml}
+import org.podval.metadata.{Language, Name, Names, Term, TermCatalog}
+import org.podval.store.selector
 import org.scalatest.funsuite.AnyFunSuite
 
 final class SelectorSpec extends AnyFunSuite:
   private val catalog: Selectors = Selectors(
-    Selector(Names("book")),
-    Selector(
-      Names(Seq(
-        Name("names", org.podval.metadata.Language.English.toSpec),
-        Name("имена", org.podval.metadata.Language.Russian.toSpec)
-      )),
-      plural = Some(Names(Seq(Name("Имена", org.podval.metadata.Language.Russian.toSpec))))
-    ),
-    Selector(Names("inventory"))
+    Selector("book", Names(Seq(
+      Name("book", Language.English.toSpec),
+      Name("книга", Language.Russian.toSpec)
+    ))),
+    Selector("inventory"),
+    Selector("day of the week", Names(Seq(
+      Name("day of the week", Language.English.toSpec)
+    )))
   )
 
-  test("Selectors.forName and getForName") {
-    assert(catalog.forName("book").isDefined)
-    assert(catalog.getForName("inventory").names.hasName("inventory"))
-    assert(catalog.getForName("names").plural.exists(_.hasName("Имена")))
-    assert(catalog.getForName("names").pluralOrNames.hasName("Имена"))
-    assert(catalog.getForName("inventory").plural.isEmpty)
-    assert(catalog.getForName("inventory").pluralOrNames.hasName("inventory"))
+  test("getById is the id; forName still matches names") {
+    assert(catalog.getById("book").id == "book")
+    assert(catalog.getById("book").names.hasName("книга"))
+    assert(catalog.getById("day of the week").id == "day of the week")
+    assert(catalog.forName("книга").exists(_.id == "book"))
+    assert(catalog.forName("inventory").exists(_.id == "inventory"))
     assert(catalog.forName("item").isEmpty)
+    val missing: IllegalArgumentException = intercept[IllegalArgumentException] { catalog.getById("item") }
+    assert(missing.getMessage.contains("Unknown term: item"))
     intercept[IllegalArgumentException] { catalog.getForName("item") }
   }
 
-  test("Selector codec") {
-    def decode(xml: String) =
-      Selector.codec.decode(XmlParser.parseXml(xml).toOption.get)
+  test("By(id) uses getById") {
+    assert(By("book", Seq.empty)(using catalog).selector.id == "book")
+    intercept[IllegalArgumentException] { By("item", Seq.empty)(using catalog) }
+    intercept[IllegalArgumentException] { By("книга", Seq.empty)(using catalog) }
+  }
 
-    val book = decode("""<selector><name lang="en" n="book"/></selector>""").toOption.get
-    assert(book.names.hasName("book"))
-    val encoded = Selector.codec.encode(book)
-    assert(Selector.codec.decode(encoded).toOption.get.names.hasName("book"))
+  test("TermCatalog.selector") {
+    val terms: TermCatalog = TermCatalog(Seq(
+      Term(
+        "book",
+        Names(Seq(
+          Name("book", Language.English.toSpec),
+          Name("книга", Language.Russian.toSpec)
+        )),
+        selector = true
+      ),
+      Term("nav.menu", Names(Seq(Name("Menu", Language.English.toSpec))))
+    ))
+    val found: Selector = terms.selector("book")
+    assert(found.id == "book")
+    assert(found.names.hasName("книга"))
+    val rejected: IllegalArgumentException = intercept[IllegalArgumentException] { terms.selector("nav.menu") }
+    assert(rejected.getMessage.contains("nav.menu"))
+    val unknown: IllegalArgumentException = intercept[IllegalArgumentException] { terms.selector("missing") }
+    assert(unknown.getMessage.contains("Unknown term: missing"))
   }

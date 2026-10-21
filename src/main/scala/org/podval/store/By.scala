@@ -1,6 +1,6 @@
 package org.podval.store
 
-import org.podval.metadata.Names
+import org.podval.metadata.{Names, Term, TermCatalog}
 
 trait By[+T <: Store] extends Stores[T]:
   def selector: Selector
@@ -13,9 +13,9 @@ object By:
     new Stores.With[T](stores) with By[T]:
       override def selector: Selector = sel
 
-  /** Looks up `selectorName` in the catalog in scope. Unknown name throws. */
-  def apply[T <: Store](selectorName: String, stores: Seq[T])(using Selectors): By[T] =
-    apply(summon[Selectors].getForName(selectorName), stores)
+  /** Looks up `id` in the catalog in scope. Unknown id throws. */
+  def apply[T <: Store](id: String, stores: Seq[T])(using Selectors): By[T] =
+    apply(summon[Selectors].getById(id), stores)
 
   abstract class Numbered[+T <: NumberedStore](
     override val selector: Selector,
@@ -40,20 +40,26 @@ object By:
         override def length: Int = max - min + 1
         override protected def createNumberedStore(number: Int): T = create(number, this)
 
-    /** Looks up `selectorName` in the catalog in scope. Unknown name throws. */
+    /** Looks up `id` in the catalog in scope. Unknown id throws. */
     def apply[T <: NumberedStore](
-      selectorName: String,
+      id: String,
       min: Int,
       max: Int
     )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
-      apply(summon[Selectors].getForName(selectorName), min, max)(create)
+      apply(summon[Selectors].getById(id), min, max)(create)
 
-    /** Looks up `selectorName` in the catalog in scope. Unknown name throws. */
+    /** Looks up `id` in the catalog in scope. Unknown id throws. */
     def apply[T <: NumberedStore](
-      selectorName: String,
+      id: String,
       min: Int,
       max: Int,
       name2number: String => Option[Int],
       number2names: Int => Names
     )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
-      apply(summon[Selectors].getForName(selectorName), min, max, name2number, number2names)(create)
+      apply(summon[Selectors].getById(id), min, max, name2number, number2names)(create)
+
+extension (catalog: TermCatalog)
+  def selector(id: String): Selector =
+    val term: Term = catalog.getById(id)
+    require(term.selector, s"Not a selector: $id")
+    Selector(term.id, term.names)

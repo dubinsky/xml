@@ -4,10 +4,24 @@ import org.podval.xml.{Xml, XmlCodec, XmlError}
 import zio.blocks.schema.{Modifier, Schema}
 import zio.blocks.typeid.TypeId
 
-final case class Name(name: String, languageSpec: Language.Spec) derives CanEqual:
+final case class Name(
+  name: String,
+  languageSpec: Language.Spec,
+  plural: Option[String] = None,
+  few: Option[String] = None,
+  many: Option[String] = None,
+  two: Option[String] = None
+) derives CanEqual:
   def satisfies(spec: Language.Spec): Boolean =
     def satisfies[T](f: Language.Spec => Option[T])(using CanEqual[T, T]): Boolean = f(spec).isEmpty || (f(languageSpec) == f(spec))
     satisfies(_.language) && satisfies(_.isTransliterated) && satisfies(_.flavour)
+
+  def form(category: PluralCategory): Option[String] = category match
+    case PluralCategory.One => Some(name)
+    case PluralCategory.Two => two
+    case PluralCategory.Few => few
+    case PluralCategory.Many => many
+    case PluralCategory.Other => plural
 
 object Name:
   /** XML shape of `<name>` (`n` xor text, spec as attributes). Domain `Name`
@@ -17,7 +31,11 @@ object Name:
     @Modifier.config(XmlCodec.Text, "") text: Option[String] = None,
     lang: Option[String] = None,
     transliterated: Option[Boolean] = None,
-    flavour: Option[String] = None
+    flavour: Option[String] = None,
+    plural: Option[String] = None,
+    few: Option[String] = None,
+    many: Option[String] = None,
+    two: Option[String] = None
   ) derives CanEqual
 
   private object Data:
@@ -35,15 +53,29 @@ object Name:
         language = data.lang.map(Language.getForDefaultName),
         isTransliterated = data.transliterated,
         flavour = data.flavour
-      )
+      ),
+      plural = grammatical(data.plural, "plural"),
+      few = grammatical(data.few, "few"),
+      many = grammatical(data.many, "many"),
+      two = grammatical(data.two, "two")
     )
+
+  private def grammatical(value: Option[String], what: String): Option[String] =
+    value.map: raw =>
+      val trimmed: String = raw.trim
+      if trimmed.isEmpty then throw XmlError(s"Blank '$what'")
+      trimmed
 
   private def toData(value: Name): Data = Data(
     n = Some(value.name),
     text = None,
     lang = value.languageSpec.language.map(_.name),
     transliterated = value.languageSpec.isTransliterated,
-    flavour = value.languageSpec.flavour
+    flavour = value.languageSpec.flavour,
+    plural = value.plural,
+    few = value.few,
+    many = value.many,
+    two = value.two
   )
 
   given schema: Schema[Name] = Data.schema.transform(fromData, toData)(using TypeId.of[Name])

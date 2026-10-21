@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+- Breaking: `Selector.plural`, `pluralOrNames`, and nested `<plural>` are removed.
+  `Selector` is an id plus `names`.
+  `Selector(id)` is `Selector(id, Names(id))`.
+  Axis catalogs are `<Terms>` / `<term id="...">` in `Terms.xml`, not `<Selector>` / `<selector>`.
+  `By(id)` resolves that id.
+  `By("книга")` throws.
+  `forName` still matches names of selector terms.
+  While the major version is 0, a break ships as a minor bump (0.7.0), not 1.0.0.
+- `<name>` takes optional `plural`, `few`, `many`, and `two`.
+  `one` is the `n` (or text).
+  There is no `one` attribute.
+  `hasName` matches `n` and text only.
+  A grammatical attribute has to be on the first `<name>` of its language spec.
+  Blank text in a present attribute is an error.
+- `Term` and `TermCatalog` live in `org.podval.metadata`.
+  Absent `selector` is false.
+  Catalogs author `selector="yes"`.
+  `getById` throws `Unknown term: <id>`.
+  `forName` sees terms with `selector` set, so messages may share an `n` and axes may not.
+  `word`, `heading`, `pluralWord`, `pluralHeading`, and `cardinal` return strings.
+  `heading` and `pluralHeading` use `Language.sentenceCase`.
+- `Language.sentenceCase` capitalizes the first character for languages that have case and leaves the rest untouched.
+  Hebrew and Yiddish are unchanged.
+- `Language.pluralCategory` picks `one`, `two`, `few`, `many`, or `other` for a count.
+  Russian `21` is `one`.
+  Polish `21` is `many`.
+  French `0` is `one`.
+  Hebrew `2` is `two`.
+  Lithuanian's integer remainder is `many` (the stored attribute), not CLDR `other`.
+  A missing form is reported when `cardinal` is called, not when the term is loaded.
 - Breaking: `Xml2Html` is removed.
   Reserved-name rewriting for TEI and DocBook lives in site-publisher.
   `renameKeepingClass` stays on `Xml.Element`.

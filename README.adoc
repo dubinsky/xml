@@ -4,10 +4,10 @@
 
 Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
 
-Maven coordinates: `org.podval:org.podval.xml:0.6.0`
+Maven coordinates: `org.podval:org.podval.xml:0.7.0`
 
 ----
-implementation 'org.podval:org.podval.xml:0.6.0'
+implementation 'org.podval:org.podval.xml:0.7.0'
 ----
 
 `zio-blocks-schema` comes in transitively (`XmlCodec`).
@@ -45,14 +45,19 @@ they need.
                    `XmlCodec` is the Schema-derived document binder.
 `org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
                         key).
+                        `Term` is an id plus `Names`.
+                        `selector` marks a store axis.
+                        `TermCatalog` looks terms up by id.
 `org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the
                      encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop
                      when the name is unique).
                      Numbered URL names stay digits; extra names in `number2names` still round-trip.
-                     `Selector` is data (`plural` / `pluralOrNames`); each consumer has a `Selectors` catalog.
-                     `object Selectors extends Selectors` loads `Selector.xml` / `<Selector>` next to that class.
-                     `By(name)` and `By.Numbered(name, min, max, name2number, number2names)` need `given Selectors`;
-                     unknown names fail.
+                     `Selector` is an id plus `names`.
+                     Each consumer has a `Selectors` catalog.
+                     `object Selectors extends Selectors` loads `Terms.xml` / `<Terms>` next to that class.
+                     `By(id)` and `By.Numbered(id, min, max, name2number, number2names)` need `given Selectors`.
+                     An unknown id fails.
+                     `forName` still matches a selector name in any language.
 
 == Parse
 
@@ -66,7 +71,7 @@ Convert with `element.to[TO]` (`element.to[ZioBlocksHtml.Element]` after `import
 after the root so a document can round-trip through the writer.
 Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps the cause.
 `loadCatalog` / `loadResources` throw (programmer catalogs); `attemptCatalog` / `attemptResources` stay in `Either`.
-Unknown `By` names and unmatched catalog keys throw.
+Unknown `By` ids and unmatched catalog keys throw.
 
 == Catalogs
 
@@ -84,27 +89,60 @@ Catalog helpers pin `Xml`.
 * wrapper: element named `name` (local name / qName)
 
 So `object Foo` looks for `Foo.xml` with root `<Foo>`.
-Child tags come from the codec (`Selector.codec` → `<selector>`, `Names.codec` → `<names>`).
+Child tags come from the codec (`Term.codec` → `<term>`, `Names.codec` → `<names>`).
 Comments and whitespace between children are ignored; leftover character content is an error.
 
-When the Scala object is not named after the file, pass the name (`loadCatalog(this, "Selector", codec)`).
+When the Scala object is not named after the file, pass the name (`loadCatalog(this, "Terms", codec)`).
 `object Selectors extends Selectors` does that by default.
-`loadCatalog(this, Selector.codec)` from `object Selectors` would look for `Selectors.xml` / `<Selectors>` and fail.
+`loadCatalog(this, Term.codec)` from `object Selectors` would look for `Selectors.xml` / `<Selectors>` and fail.
 
 `loadCatalog` is `parseResource` plus `decodeCatalog`.
 Use `decodeCatalog(root, name)` when the tree is already in hand.
 
-=== Selectors (store axes)
+=== Terms
 
-`Selector` is data.
-This library has no `Selector.xml`.
-Each consumer owns a catalog.
-Put `Selector.xml` next to the class (`src/main/resources/org/example/Selector.xml`).
-`forName` / `getForName` match any language name (`книга` finds `book`).
-`getForName` throws if missing.
-Optional `<plural>` children are `Selector.plural`; `pluralOrNames` is that plural, or singular `names` when absent.
+`Term` (`org.podval.metadata`) is an `id`, child `<name>` elements, and optional `selector`.
+Absent `selector` is false.
+Catalogs author `selector="yes"`.
+Ids keep dots and spaces (`nav.menu`, `day of the week`).
+Ends are trimmed.
+They are not slugified.
+A term with no `<name>` is an error.
 
-`By("book", stores)` and `By.Numbered("chapter", min, max)` summon `given Selectors`.
+`plural`, `few`, `many`, and `two` are attributes of `<name>`, in lexicon case.
+`one` is the name itself.
+There is no `one` attribute.
+`hasName` / `forName` match `n` and text only.
+A grammatical attribute sits on the first `<name>` of that language spec.
+A later synonym of the same spec may omit it, and may not set it.
+Blank text in a present attribute is an error.
+
+This library has no `Terms.xml`.
+A consumer axis catalog is `Terms.xml` with root `<Terms>` next to `object Selectors`.
+The trait loads it with `loadCatalog(this, "Terms", Term.codec)` and builds `Selector(id, names)`.
+Every term in that file must have `selector`.
+The first English name of a selector term equals its id.
+`Selector(id)` is `Selector(id, Names(id))`.
+
+`getById` and `By(id)` use the id.
+`By("книга")` throws.
+`forName` / `getForName` still match any name of a selector term (`книга` finds `book`).
+`TermCatalog.forName` does the same and does not see a term whose `selector` is false, so a message may reuse an axis
+translation.
+Two selector terms with the same `n` fail.
+Duplicate ids fail.
+`TermCatalog.merge` is that check.
+
+`word`, `heading`, `pluralWord`, `pluralHeading`, and `cardinal` on `TermCatalog` return strings.
+`heading` and `pluralHeading` use `Language.sentenceCase` (first character only, for languages that have case; Hebrew
+and Yiddish are unchanged; the rest of the string is not lowercased).
+`cardinal` uses `Language.pluralCategory`.
+A missing form throws when `cardinal` is called.
+It is not checked at load.
+`org.podval.store` adds `TermCatalog.selector(id)`, which requires a selector term and returns `Selector(id, names)`.
+
+`By(selector, stores)` and `By.Numbered(selector, min, max)` do not use a catalog.
+`By.Numbered(id, min, max, name2number, number2names)` looks the id up, then passes custom names.
 A nested package does not see a parent-package given; keep the given on the object and `export` it (`export` of `given`
 from a *package* is not allowed):
 
@@ -118,10 +156,7 @@ package tanach:
   export org.example.Selectors.given
 ----
 
-`By(selector, stores)` and `By.Numbered(selector, min, max)` do not use a catalog.
-`By.Numbered(name, min, max, name2number, number2names)` looks the selector up, then passes custom names.
-
-Tests can skip XML: `given Selectors = Selectors(Selector(Names("book")), Selector(Names("part")))`.
+Tests can skip XML: `given Selectors = Selectors(Selector("book"), Selector("part"))`.
 
 === Names catalogs
 

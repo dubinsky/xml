@@ -63,7 +63,7 @@ object XmlParser:
     * Throws on a missing resource or decode error (programmer catalog).
     * I/O without throwing is [[attemptCatalog]].
     * When the Scala object is not named after the file, pass the name:
-    * `loadCatalog(from, "Selector", codec)` (`object Selectors` → `Selector.xml`). */
+    * `loadCatalog(from, "Terms", codec)` (`object Selectors` → `Terms.xml`). */
   def loadCatalog[A](from: AnyRef, codec: XmlCodec[A]): Seq[A] =
     loadCatalog(from, className(from.getClass), codec)
 

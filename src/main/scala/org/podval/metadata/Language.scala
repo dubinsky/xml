@@ -3,6 +3,8 @@ package org.podval.metadata
 import zio.blocks.schema.Schema
 import zio.blocks.typeid.TypeId
 
+import java.util.Locale
+
 enum Language(code: String) extends
   HasNames.ByLoader[Language](loader = Language, nameOverride = Some(code)),
   HasName.Enum derives CanEqual:
@@ -10,6 +12,45 @@ enum Language(code: String) extends
   final def toSpec: Language.Spec = Language.Spec(language = Some(this), isTransliterated = None, flavour = None)
 
   def numberToString(number: Int): String = number.toString
+
+  def sentenceCase(text: String): String =
+    if text.isEmpty then text
+    else this match
+      case Hebrew | Yiddish => text
+      case _ =>
+        val first: Int = text.offsetByCodePoints(0, 1)
+        text.substring(0, first).toUpperCase(Locale.ROOT) + text.substring(first)
+
+  def pluralCategory(n: Int): PluralCategory =
+    require(n >= 0, s"n must be >= 0: $n")
+    this match
+      case French =>
+        if n == 0 || n == 1 then PluralCategory.One else PluralCategory.Other
+      case Russian =>
+        val mod10: Int = n % 10
+        val mod100: Int = n % 100
+        if mod10 == 1 && mod100 != 11 then PluralCategory.One
+        else if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) then PluralCategory.Few
+        else PluralCategory.Many
+      case Polish =>
+        val mod10: Int = n % 10
+        val mod100: Int = n % 100
+        if n == 1 then PluralCategory.One
+        else if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) then PluralCategory.Few
+        else PluralCategory.Many
+      case Lithuanian =>
+        val mod10: Int = n % 10
+        val mod100: Int = n % 100
+        val teen: Boolean = mod100 >= 11 && mod100 <= 19
+        if mod10 == 1 && !teen then PluralCategory.One
+        else if mod10 >= 2 && mod10 <= 9 && !teen then PluralCategory.Few
+        else PluralCategory.Many
+      case Hebrew =>
+        if n == 1 then PluralCategory.One
+        else if n == 2 then PluralCategory.Two
+        else PluralCategory.Other
+      case English | German | Swedish | Latin | Yiddish =>
+        if n == 1 then PluralCategory.One else PluralCategory.Other
 
   case English    extends Language("en")
   case Russian    extends Language("ru")

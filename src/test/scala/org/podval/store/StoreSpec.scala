@@ -4,10 +4,10 @@ import org.podval.metadata.Names
 import org.scalatest.funsuite.AnyFunSuite
 
 given Selectors = Selectors(
-  Selector(Names("book")),
-  Selector(Names("part")),
-  Selector(Names("verse")),
-  Selector(Names("chapter"))
+  Selector("book"),
+  Selector("part"),
+  Selector("verse"),
+  Selector("chapter")
 )
 
 final class StoreSpec extends AnyFunSuite:
@@ -53,8 +53,9 @@ final class StoreSpec extends AnyFunSuite:
   }
 
   test("By unknown selector fails; Selector instance does not need a catalog") {
+    assert(summon[Selectors].getById("book").id == "book")
     intercept[IllegalArgumentException] { By("item", Seq(Root.genesis)) }
-    val by: By[Store] = By(Selector(Names("item")), Seq(Root.genesis))
+    val by: By[Store] = By(Selector("item"), Seq(Root.genesis))
     assert(by.names.hasName("item"))
     assert(by.findByName("Genesis").contains(Root.genesis))
   }

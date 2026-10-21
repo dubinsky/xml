@@ -31,7 +31,7 @@ final case class Names(names: Seq[Name]) extends Language.ToString:
 object Names:
   def apply(name: String): Names = Names(Seq(Name(name, Language.Spec.empty)))
 
-  /** Parent `n` as the default name, plus child `<name>` elements (Selector / Alias). */
+  /** Parent `n` as the default name, plus child `<name>` elements (Alias). */
   def fromDefaultName(n: Option[String], names: Seq[Name]): Names =
     val merged: Seq[Name] = mergeDefaultName(n, names)
     if merged.isEmpty then throw XmlError("No names and no default name")
