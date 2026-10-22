@@ -6,20 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-21
+
 - Breaking: `trait Selectors` and `Selectors.apply` are removed.
   The string overloads of `By` and `By.Numbered` take `selectorId: String` and `using TermCatalog`, and call
   `TermCatalog.selector`.
   `By(selector, stores)` is unchanged.
   `By("книга")` still throws.
   `By("book")` still resolves the id.
-  While the major version is 0, a break ships as a minor bump (0.8.0), not 1.0.0.
 - `Language.sentenceCase` is the default method.
   Hebrew and Yiddish override it with identity.
   `pluralCategory` stays one match.
   `Locale.ROOT` stays.
-
-## [0.7.0] - 2026-10-21
-
 - Breaking: `Selector.plural`, `pluralOrNames`, and nested `<plural>` are removed.
   `Selector` is an id plus `names`.
   `Selector(id)` is `Selector(id, Names(id))`.
