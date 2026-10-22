@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-21
+
 - Breaking: `trait Selectors` and `Selectors.apply` are removed.
   The string overloads of `By` and `By.Numbered` take `selectorId: String` and `using TermCatalog`, and call
   `TermCatalog.selector`.
