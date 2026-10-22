@@ -13,9 +13,11 @@ object By:
     new Stores.With[T](stores) with By[T]:
       override def selector: Selector = sel
 
-  /** Looks up `id` in the catalog in scope. Unknown id throws. */
-  def apply[T <: Store](id: String, stores: Seq[T])(using Selectors): By[T] =
-    apply(summon[Selectors].getById(id), stores)
+  /** Looks up `selectorId` in the catalog in scope.
+    * The string is a term id, not a name in any language.
+    * Unknown id throws. */
+  def apply[T <: Store](selectorId: String, stores: Seq[T])(using catalog: TermCatalog): By[T] =
+    apply(catalog.selector(selectorId), stores)
 
   abstract class Numbered[+T <: NumberedStore](
     override val selector: Selector,
@@ -40,23 +42,27 @@ object By:
         override def length: Int = max - min + 1
         override protected def createNumberedStore(number: Int): T = create(number, this)
 
-    /** Looks up `id` in the catalog in scope. Unknown id throws. */
+    /** Looks up `selectorId` in the catalog in scope.
+      * The string is a term id, not a name in any language.
+      * Unknown id throws. */
     def apply[T <: NumberedStore](
-      id: String,
+      selectorId: String,
       min: Int,
       max: Int
-    )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
-      apply(summon[Selectors].getById(id), min, max)(create)
+    )(create: (Int, NumberedStores[T]) => T)(using catalog: TermCatalog): Numbered[T] =
+      apply(catalog.selector(selectorId), min, max)(create)
 
-    /** Looks up `id` in the catalog in scope. Unknown id throws. */
+    /** Looks up `selectorId` in the catalog in scope.
+      * The string is a term id, not a name in any language.
+      * Unknown id throws. */
     def apply[T <: NumberedStore](
-      id: String,
+      selectorId: String,
       min: Int,
       max: Int,
       name2number: String => Option[Int],
       number2names: Int => Names
-    )(create: (Int, NumberedStores[T]) => T)(using Selectors): Numbered[T] =
-      apply(summon[Selectors].getById(id), min, max, name2number, number2names)(create)
+    )(create: (Int, NumberedStores[T]) => T)(using catalog: TermCatalog): Numbered[T] =
+      apply(catalog.selector(selectorId), min, max, name2number, number2names)(create)
 
 extension (catalog: TermCatalog)
   def selector(id: String): Selector =

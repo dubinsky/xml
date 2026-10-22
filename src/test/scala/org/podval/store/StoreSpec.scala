@@ -1,14 +1,18 @@
 package org.podval.store
 
-import org.podval.metadata.Names
+import org.podval.metadata.{Language, Name, Names, Term, TermCatalog}
+import org.podval.store.selector
 import org.scalatest.funsuite.AnyFunSuite
 
-given Selectors = Selectors(
-  Selector("book"),
-  Selector("part"),
-  Selector("verse"),
-  Selector("chapter")
-)
+private def axis(id: String): Term =
+  Term(id, Names(Seq(Name(id, Language.English.toSpec))), selector = true)
+
+given TermCatalog = TermCatalog(Seq(
+  axis("book"),
+  axis("part"),
+  axis("verse"),
+  axis("chapter")
+))
 
 final class StoreSpec extends AnyFunSuite:
   private final class Leaf(n: String) extends Store:
@@ -53,7 +57,7 @@ final class StoreSpec extends AnyFunSuite:
   }
 
   test("By unknown selector fails; Selector instance does not need a catalog") {
-    assert(summon[Selectors].getById("book").id == "book")
+    assert(summon[TermCatalog].getById("book").id == "book")
     intercept[IllegalArgumentException] { By("item", Seq(Root.genesis)) }
     val by: By[Store] = By(Selector("item"), Seq(Root.genesis))
     assert(by.names.hasName("item"))
@@ -271,7 +275,7 @@ final class StoreSpec extends AnyFunSuite:
     object NamedNumbers extends Stores[?]:
       override def names: Names = Names("NamedNumbers")
       val nums: By.Numbered[Num] = By.Numbered(
-        summon[Selectors].getForName("verse"),
+        summon[TermCatalog].selector("verse"),
         1,
         3,
         number2names = n => Names(s"n$n")

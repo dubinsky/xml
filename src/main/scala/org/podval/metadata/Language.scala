@@ -5,6 +5,11 @@ import zio.blocks.typeid.TypeId
 
 import java.util.Locale
 
+// Enum cases reject a template body, so the identity override is a mixin.
+private trait IdentitySentenceCase:
+  self: Language =>
+  override def sentenceCase(text: String): String = text
+
 enum Language(code: String) extends
   HasNames.ByLoader[Language](loader = Language, nameOverride = Some(code)),
   HasName.Enum derives CanEqual:
@@ -15,11 +20,9 @@ enum Language(code: String) extends
 
   def sentenceCase(text: String): String =
     if text.isEmpty then text
-    else this match
-      case Hebrew | Yiddish => text
-      case _ =>
-        val first: Int = text.offsetByCodePoints(0, 1)
-        text.substring(0, first).toUpperCase(Locale.ROOT) + text.substring(first)
+    else
+      val first: Int = text.offsetByCodePoints(0, 1)
+      text.substring(0, first).toUpperCase(Locale.ROOT) + text.substring(first)
 
   def pluralCategory(n: Int): PluralCategory =
     require(n >= 0, s"n must be >= 0: $n")
@@ -58,10 +61,10 @@ enum Language(code: String) extends
   case French     extends Language("fr")
   case German     extends Language("de")
   case Lithuanian extends Language("lt")
-  case Hebrew     extends Language("he") with Language.Hebrew
+  case Hebrew     extends Language("he") with Language.Hebrew with IdentitySentenceCase
   case Latin      extends Language("la")
   case Swedish    extends Language("sv")
-  case Yiddish    extends Language("yi")
+  case Yiddish    extends Language("yi") with IdentitySentenceCase
 
 object Language extends Names.Loader[Language], HasValues.FindByDefaultName[Language], HasValues.FindByName[Language]:
   override val valuesSeq: Seq[Language] = values.toIndexedSeq

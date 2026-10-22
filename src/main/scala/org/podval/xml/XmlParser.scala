@@ -55,15 +55,15 @@ object XmlParser:
 
   private def toInputSource(content: String): InputSource = InputSource(StringReader(content))
 
-  /** Class simple name without a trailing `$` (`Selectors$` → `Selectors`). */
+  /** Class simple name without a trailing `$` (`Terms$` → `Terms`). */
   def className(loader: Class[?]): String = loader.getSimpleName.replace("$", "")
 
   /** Catalog of `codec` children. File and wrapper name come from
-    * `from.getClass` (`object Foo` → `Foo.xml` / `<Foo>` next to that class).
+    * `from.getClass` (`object Terms` → `Terms.xml` / `<Terms>` next to that class).
     * Throws on a missing resource or decode error (programmer catalog).
     * I/O without throwing is [[attemptCatalog]].
-    * When the Scala object is not named after the file, pass the name:
-    * `loadCatalog(from, "Terms", codec)` (`object Selectors` → `Terms.xml`). */
+    * Pass an explicit name when the Scala object is not named after the file
+    * (`loadCatalog(from, name, codec)`). */
   def loadCatalog[A](from: AnyRef, codec: XmlCodec[A]): Seq[A] =
     loadCatalog(from, className(from.getClass), codec)
 

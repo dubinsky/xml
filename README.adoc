@@ -4,10 +4,10 @@
 
 Dialect-aware XML for Scala 3: parse, write, transform, and bind documents.
 
-Maven coordinates: `org.podval:org.podval.xml:0.7.0`
+Maven coordinates: `org.podval:org.podval.xml:0.8.0`
 
 ----
-implementation 'org.podval:org.podval.xml:0.7.0'
+implementation 'org.podval:org.podval.xml:0.8.0'
 ----
 
 `zio-blocks-schema` comes in transitively (`XmlCodec`).
@@ -53,9 +53,8 @@ they need.
                      when the name is unique).
                      Numbered URL names stay digits; extra names in `number2names` still round-trip.
                      `Selector` is an id plus `names`.
-                     Each consumer has a `Selectors` catalog.
-                     `object Selectors extends Selectors` loads `Terms.xml` / `<Terms>` next to that class.
-                     `By(id)` and `By.Numbered(id, min, max, name2number, number2names)` need `given Selectors`.
+                     The string overloads of `By` and `By.Numbered` need `given TermCatalog` and look up `selectorId`
+                     through `TermCatalog.selector`.
                      An unknown id fails.
                      `forName` still matches a selector name in any language.
 
@@ -82,8 +81,8 @@ Catalog helpers pin `Xml`.
 
 === File and wrapper name
 
-`loadCatalog(from, codec)` takes the name from `XmlParser.className(from.getClass)` (trailing `$` stripped: `Selectors$`
-→ `Selectors`):
+`loadCatalog(from, codec)` takes the name from `XmlParser.className(from.getClass)` (trailing `$` stripped: `Terms$` →
+`Terms`):
 
 * resource: `from.getClass.getResource(name + ".xml")` — next to *that class*, not a library-wide path
 * wrapper: element named `name` (local name / qName)
@@ -92,9 +91,7 @@ So `object Foo` looks for `Foo.xml` with root `<Foo>`.
 Child tags come from the codec (`Term.codec` → `<term>`, `Names.codec` → `<names>`).
 Comments and whitespace between children are ignored; leftover character content is an error.
 
-When the Scala object is not named after the file, pass the name (`loadCatalog(this, "Terms", codec)`).
-`object Selectors extends Selectors` does that by default.
-`loadCatalog(this, Term.codec)` from `object Selectors` would look for `Selectors.xml` / `<Selectors>` and fail.
+Pass a name when the Scala object is not named after the file (`loadCatalog(from, name, codec)`).
 
 `loadCatalog` is `parseResource` plus `decodeCatalog`.
 Use `decodeCatalog(root, name)` when the tree is already in hand.
@@ -118,17 +115,15 @@ A later synonym of the same spec may omit it, and may not set it.
 Blank text in a present attribute is an error.
 
 This library has no `Terms.xml`.
-A consumer axis catalog is `Terms.xml` with root `<Terms>` next to `object Selectors`.
-The trait loads it with `loadCatalog(this, "Terms", Term.codec)` and builds `Selector(id, names)`.
-Every term in that file must have `selector`.
+`object Terms` uses `loadCatalog(this, Term.codec)` (`Terms.xml` / `<Terms>`).
 The first English name of a selector term equals its id.
+That check is `requireSelectorEnglish` on decode and in the `TermCatalog` constructor.
 `Selector(id)` is `Selector(id, Names(id))`.
 
-`getById` and `By(id)` use the id.
+`getById` and `By(selectorId)` use the id.
 `By("книга")` throws.
-`forName` / `getForName` still match any name of a selector term (`книга` finds `book`).
-`TermCatalog.forName` does the same and does not see a term whose `selector` is false, so a message may reuse an axis
-translation.
+`TermCatalog.forName` returns `Option[Term]` and only sees selector terms (`книга` finds `book`), so a message may reuse
+an axis translation.
 Two selector terms with the same `n` fail.
 Duplicate ids fail.
 `TermCatalog.merge` is that check.
@@ -142,21 +137,38 @@ It is not checked at load.
 `org.podval.store` adds `TermCatalog.selector(id)`, which requires a selector term and returns `Selector(id, names)`.
 
 `By(selector, stores)` and `By.Numbered(selector, min, max)` do not use a catalog.
-`By.Numbered(id, min, max, name2number, number2names)` looks the id up, then passes custom names.
+`By.Numbered(selectorId, min, max, name2number, number2names)` looks the id up, then passes custom names.
 A nested package does not see a parent-package given; keep the given on the object and `export` it (`export` of `given`
 from a *package* is not allowed):
 
 ----
 package org.example
 
-object Selectors extends org.podval.store.Selectors:
-  given org.podval.store.Selectors = this
+import org.podval.metadata.{Term, TermCatalog}
+import org.podval.xml.XmlParser
+
+object Terms:
+  given catalog: TermCatalog = TermCatalog(XmlParser.loadCatalog(this, Term.codec))
 
 package tanach:
-  export org.example.Selectors.given
+  export org.example.Terms.given
 ----
 
-Tests can skip XML: `given Selectors = Selectors(Selector("book"), Selector("part"))`.
+Tests can skip XML:
+
+----
+import org.podval.metadata.{Language, Name, Names, Term, TermCatalog}
+
+given TermCatalog = TermCatalog(Seq(
+  Term("book", Names(Seq(Name("book", Language.English.toSpec))), selector = true),
+  Term("part", Names(Seq(Name("part", Language.English.toSpec))), selector = true)
+))
+----
+
+`Names` is `final case class Names(names: Seq[Name])`.
+`Names(name: String)` builds `Name(name, Language.Spec.empty)`.
+There is no `apply(Name)`.
+`Names(id)` is not an English name and throws from `requireSelectorEnglish`.
 
 === Names catalogs
 

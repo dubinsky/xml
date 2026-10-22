@@ -5,16 +5,16 @@ import org.podval.store.selector
 import org.scalatest.funsuite.AnyFunSuite
 
 final class SelectorSpec extends AnyFunSuite:
-  private val catalog: Selectors = Selectors(
-    Selector("book", Names(Seq(
+  private val catalog: TermCatalog = TermCatalog(Seq(
+    Term("book", Names(Seq(
       Name("book", Language.English.toSpec),
       Name("книга", Language.Russian.toSpec)
-    ))),
-    Selector("inventory"),
-    Selector("day of the week", Names(Seq(
+    )), selector = true),
+    Term("inventory", Names(Seq(Name("inventory", Language.English.toSpec))), selector = true),
+    Term("day of the week", Names(Seq(
       Name("day of the week", Language.English.toSpec)
-    )))
-  )
+    )), selector = true)
+  ))
 
   test("getById is the id; forName still matches names") {
     assert(catalog.getById("book").id == "book")
@@ -25,10 +25,9 @@ final class SelectorSpec extends AnyFunSuite:
     assert(catalog.forName("item").isEmpty)
     val missing: IllegalArgumentException = intercept[IllegalArgumentException] { catalog.getById("item") }
     assert(missing.getMessage.contains("Unknown term: item"))
-    intercept[IllegalArgumentException] { catalog.getForName("item") }
   }
 
-  test("By(id) uses getById") {
+  test("By(selectorId) uses catalog.selector") {
     assert(By("book", Seq.empty)(using catalog).selector.id == "book")
     intercept[IllegalArgumentException] { By("item", Seq.empty)(using catalog) }
     intercept[IllegalArgumentException] { By("книга", Seq.empty)(using catalog) }
