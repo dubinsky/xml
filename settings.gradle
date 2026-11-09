@@ -3,11 +3,15 @@ pluginManagement {
     mavenCentral()
     gradlePluginPortal()
   }
-  // Pass a String to pluginManagement.includeBuild. A File hits Settings.includeBuild
-  // (regular composite) and settings plugins are not visible.
-  final String conventionsDir = providers.gradleProperty('podvalGradleDir').getOrElse('../podval-gradle')
-  if (file(conventionsDir).isDirectory() && file("${conventionsDir}/settings.gradle").isFile()) {
-    includeBuild conventionsDir
+  // A parent build has already included this directory; Gradle rejects a second include.
+  if (gradle.parent == null) {
+    // Pass a String to pluginManagement.includeBuild. A File hits Settings.includeBuild
+    // (regular composite) and settings plugins are not visible.
+    final String conventionsDir =
+      providers.gradleProperty('podvalGradleDir').getOrElse('../podval-gradle')
+    if (file(conventionsDir).isDirectory() && file("${conventionsDir}/settings.gradle").isFile()) {
+      includeBuild conventionsDir
+    }
   }
 }
 
