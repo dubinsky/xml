@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.8.0] - 2026-11-10
 - `Names.doFind` on an empty list throws `IllegalArgumentException` naming the requested spec and the names present,
   instead of `NoSuchElementException("None.get")`.
 - DSL functions `button`, `option`, `audio`, `picture`, and `noscript`.
