@@ -3,20 +3,17 @@ pluginManagement {
     mavenCentral()
     gradlePluginPortal()
   }
-  // A parent build has already included this directory; Gradle rejects a second include.
-  if (gradle.parent == null) {
-    // Pass a String to pluginManagement.includeBuild. A File hits Settings.includeBuild
-    // (regular composite) and settings plugins are not visible.
-    final String conventionsDir =
-      providers.gradleProperty('podvalGradleDir').getOrElse('../podval-gradle')
-    if (file(conventionsDir).isDirectory() && file("${conventionsDir}/settings.gradle").isFile()) {
-      includeBuild conventionsDir
-    }
+  // String path: a File would call Settings.includeBuild (not a plugin build).
+  // An included build does not see its parent's pluginManagement include.
+  final String conventionsDir =
+    providers.gradleProperty('podvalGradleDir').getOrElse('../podval-gradle')
+  if (file(conventionsDir).isDirectory() && file("${conventionsDir}/settings.gradle").isFile()) {
+    includeBuild conventionsDir
   }
 }
 
 plugins {
-  id 'org.podval.conventions.settings' version '0.3.0'
+  id 'org.podval.conventions.settings' version '0.4.0'
 }
 
 rootProject.name = 'org.podval.xml'

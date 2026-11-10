@@ -237,7 +237,7 @@ They need no `XmlAst` given.
 
 == Build
 
-Scala 3.10, JDK 25 (`-release:25`).
+Scala 3.10, JDK 25 (`-java-output-version:25`).
 
 ----
 ./gradlew build
