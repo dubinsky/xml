@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 - `Names.doFind` on an empty list throws `IllegalArgumentException` naming the requested spec and the names present,
   instead of `NoSuchElementException("None.get")`.
+- DSL functions `button`, `option`, `audio`, `picture`, and `noscript`.
+  `button` is in `unStack`, so a one-element button does not take a text-node break when the line does not fit.
 - chore: podval-gradle 0.4.0;
 - chore: Gradle 9.9.0
 

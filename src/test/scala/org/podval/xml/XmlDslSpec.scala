@@ -100,6 +100,12 @@ final class XmlDslSpec extends AnyFunSuite:
     assert(!dumped.contains("&lt;"), dumped)
   }
 
+  test("button does not take a text-node break around one element child") {
+    val dumped: String = HtmlXmlWriterConfig.render(button(span("x")), 10)
+    assert(!dumped.contains(">\n<span"), dumped)
+    assert(!dumped.contains("</span>\n</button>"), dumped)
+  }
+
   test("every catalog element is a DSL function of that local name") {
     val catalog: Set[String] = XmlElement.getClass.getDeclaredClasses.flatMap { cls =>
       if !classOf[XmlElement].isAssignableFrom(cls) then None

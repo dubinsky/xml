@@ -15,6 +15,7 @@ object XmlElement:
   object Area extends XmlElement("area")
   object Article extends XmlElement("article")
   object Aside extends XmlElement("aside")
+  object Audio extends XmlElement("audio")
   object B extends XmlElement("b")
   object Base extends XmlElement("base")
   object Bdi extends XmlElement("bdi")
@@ -22,6 +23,7 @@ object XmlElement:
   object Blockquote extends XmlElement("blockquote")
   object Body extends XmlElement("body")
   object Br extends XmlElement("br")
+  object Button extends XmlElement("button")
   object Cite extends XmlElement("cite")
   object Code extends XmlElement("code")
   object Col extends XmlElement("col")
@@ -57,10 +59,13 @@ object XmlElement:
   object Mark extends XmlElement("mark")
   object Meta extends XmlElement("meta")
   object Nav extends XmlElement("nav")
+  object Noscript extends XmlElement("noscript")
   // HTML `object` element. A bare `Object` is `java.lang.Object`.
   object Object extends XmlElement("object")
   object Ol extends XmlElement("ol")
+  object Option extends XmlElement("option")
   object P extends XmlElement("p")
+  object Picture extends XmlElement("picture")
   object Pre extends XmlElement("pre")
   object Q extends XmlElement("q")
   object S extends XmlElement("s")
@@ -96,7 +101,7 @@ object XmlElement:
   // Phrasing wrappers: never indent children (that would become a visible HTML space),
   // and glue to the previous element so `<em>a</em><strong>b</strong>` stays inline.
   val unStack: Seq[XmlElement] = Seq(
-    A, Abbr, B, Bdi, Bdo, Cite, Code, Data, Del, Dfn,
+    A, Abbr, B, Bdi, Bdo, Button, Cite, Code, Data, Del, Dfn,
     Em, I, Kbd, Mark, Q, S, Samp, Small, Span, Strong, Sub,
     Sup, Time, U, Var
   )
