@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   instead of `NoSuchElementException("None.get")`.
 - DSL functions `button`, `option`, `audio`, `picture`, and `noscript`.
   `button` is in `unStack`, so a one-element button does not take a text-node break when the line does not fit.
+- README leads with the owned `Xml` tree.
+  Adapter coordinates move to a later section.
 - chore: podval-gradle 0.4.0;
 - chore: Gradle 9.9.0
 

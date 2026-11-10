@@ -11,52 +11,6 @@ implementation 'org.podval:org.podval.xml:0.7.0'
 ----
 
 `zio-blocks-schema` comes in transitively (`XmlCodec`).
-`zio-blocks-schema-xml` does not: it is only for the `ZioBlocksXml` adapter.
-Each AST given is on its object, not in the package.
-Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, `import ScalaXml.given`, or
-`import ScalaTags.given`.
-`import Xml.given` is for `element.to[Xml.Element]` from another tree.
-The parser, writer, and builder take `Xml` only.
-Parse and `render` of `Xml.Element` need no given.
-Walk, attribute, and class operations on the owned `Xml.Element` are members and need no given.
-`import org.podval.xml.dsl.given` summons `Xml`.
-ZIO Blocks XML, ZIO Blocks HTML, Scala XML, and ScalaTags need an extra dependency, not pulled in by default.
-`parseHtml` needs TagSoup (also not on the POM):
-
-----
-implementation "dev.zio:zio-blocks-schema-xml_3:0.0.56"
-implementation "dev.zio:zio-blocks-html_3:0.0.56"
-implementation 'org.scala-lang.modules:scala-xml_3:2.5.0'
-implementation 'com.lihaoyi:scalatags_3:0.13.1'
-implementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
-----
-
-== Packages
-
-One artifact (`org.podval:org.podval.xml`).
-It will not be split into separate Gradle or Maven modules; consumers depend on this coordinate and import the packages
-they need.
-
-`org.podval.xml`:: owned AST `Xml`, plus `XmlAst` adapters for ZIO Blocks XML, Scala XML, ZIO Blocks HTML, and
-                   ScalaTags.
-                   Construction DSL (`org.podval.xml.dsl`) builds `Xml` only.
-                   SAX parser (CDATA preserved), builder, and writer take `Xml`.
-                   Another tree is `element.to[TO]`.
-                   `XmlCodec` is the Schema-derived document binder.
-`org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
-                        key).
-                        `Term` is an id plus `Names`.
-                        `selector` marks a store axis.
-                        `TermCatalog` looks terms up by id.
-`org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the
-                     encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop
-                     when the name is unique).
-                     Numbered URL names stay digits; extra names in `number2names` still round-trip.
-                     `Selector` is an id plus `names`.
-                     The string overloads of `By` and `By.Numbered` need `given TermCatalog` and look up `selectorId`
-                     through `TermCatalog.selector`.
-                     An unknown id fails.
-                     `forName` still matches a selector name in any language.
 
 == Parse
 
@@ -68,9 +22,86 @@ Convert with `element.to[TO]` (`element.to[ZioBlocksHtml.Element]` after `import
 `xi:include` is not expanded (`xi:include/@href` stays a page ref).
 `parseXml` returns the document element; `parseXmlDocument` keeps the declaration, doctype, and comments/PIs before and
 after the root so a document can round-trip through the writer.
+SAX does not report the XML declaration, so `parseXmlDocument` stores the canonical `XmlDeclaration` (`<?xml version="1.0" encoding="UTF-8"?>`,
+standalone omitted) on every successful parse, and that is what PrettyPrint writes back.
+Every authored `*.xml` file PrettyPrint would rewrite already has that declaration, so this stays.
 Parse/decode I/O is `Either[XmlError, _]`; `XmlError` wraps the cause.
 `loadCatalog` / `loadResources` throw (programmer catalogs); `attemptCatalog` / `attemptResources` stay in `Either`.
 Unknown `By` ids and unmatched catalog keys throw.
+
+== XML generation
+
+Construction is `private trait XmlAstDsl`, mixed only into `object Xml`.
+`XmlAst` is rebuild and `to[TO]`.
+The DSL was inspired by https://github.com/zio/zio-blocks[ZIO Blocks HTML] (`zio-blocks-html` 0.0.56: tag functions,
+`:=` / `+=`, `ToModifier` flattening, `.when`, `inlineJs` / `externalJs`).
+`import org.podval.xml.dsl.{*, given}` (or `Xml.div`) builds the same tree as parsed markup.
+
+----
+div(className := "toc", h3("Table of Contents"), ul(items))
+script(typeAttr := "module").inlineJs(code)
+element("urlset", xmlns := ns, urls)
+----
+
+I tried https://com-lihaoyi.github.io/scalatags/[ScalaTags] for generation, and they work, but ScalaTags has no parser,
+so generating HTML wrappers for XML parsed from files is not pleasant (https://github.com/lihaoyi/scalatags/issues/102[issue 102]).
+`ScalaTags` converts that tree (`element.to[ScalaTags.Element]` after `import ScalaTags.given`).
+A second HTML AST (including zio-blocks-html as a construction-only tree) has the same problem.
+This DSL builds `Xml.Element`.
+Another AST is `element.to[TO]`.
+
+Convert another AST with `element.to[TO]` (HTML: `element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`;
+ScalaTags: `element.to[ScalaTags.Element]` after `import ScalaTags.given`).
+`HtmlXmlWriterConfig.render` writes `Xml.Element`.
+A `ZioBlocksHtml.Element` is `element.to[Xml.Element]` first (`import Xml.given`).
+
+== Codec
+
+`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes
+on leaf records).
+An unannotated primitive is an attribute named after the field.
+Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`)
+for `Schema[Xml.Element]`.
+Decode and encode take `Xml.Element`.
+A foreign tree is `element.to[Xml.Element]` before decode (`ScalaXml.converted` when `NodeSeq.to` would shadow it), and
+`codec.encode(value).to[TO]` after encode.
+Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`.
+`@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`.
+`@Modifier.transient` skips a field on decode and encode; the default is used.
+`@Modifier.encodeTransient` decodes the field and omits it on encode.
+An unknown `@Modifier.config` key fails derivation.
+Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`, `XmlCodec.NamespaceUri`,
+`XmlCodec.NamespacePrefix`).
+`Name` / `Language` / `Language.Spec` have `Schema` givens (`Names` has `XmlCodec` only); catalog DTOs use `Seq[Name]`.
+Those children are `<name>`: derivation registers `Name.codec` before it snapshots overrides, so the field needs no
+`@Modifier.config(XmlCodec.Element, "name")`.
+A record's tag defaults to its class name with a trailing `Dto` removed and the first character lower-cased (`ChapterDto`
+is `chapter`).
+Two leading capitals are left as written.
+`@Modifier.config(XmlCodec.Element, "week")` on the class overrides that default.
+A parent `XmlCodec.derived` inlines that tag and does not take the child codec.
+`XmlCodec.derived(element = "wrapper")` names that derivation, and wins over the class annotation.
+`XmlCodec.derived[A, K](tagField, tag)` is the tagged form.
+Pass that codec, or a hand-written codec, when inlining would drop it.
+Those overrides apply only to that derivation.
+`Schema[Xml.Element]` does not carry the tree.
+`XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources`
+decodes one document per `name.xml`.
+`transform` / `gather` / `elements` / `rewrite`, attributes, and CSS classes are members of `Xml.Element`.
+`Emit` inserts finished nodes; `Keep` and `Replace` are walked again.
+A foreign tree converts with `to[Xml.Element]` before those operations.
+They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
+`rewrite` can keep one element, replace it with a node list, or emit finished nodes.
+`getById` returns `Option`; `childNamed` is the first `childrenNamed` match.
+`isNamed("p")` matches local name `p`, including a prefixed `tei:p`.
+`isNamed("tei:p")` matches that qualified name only.
+`childElements` is the element children.
+`flatMapNodes` and `convertElements` are extensions on `Seq[XmlNode]` (`import XmlNode.flatMapNodes`, or
+`import org.podval.xml.dsl.*`, which exports them).
+They need no `XmlAst` given.
+`@Modifier.rename("chapter")` renames a child or attribute that already has the right kind.
+`@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into an element.
+`NumberedSpanDto` stays on the field, via rename, because one type is several tags.
 
 == Catalogs
 
@@ -180,60 +211,39 @@ Pass `resourceNameOverride` for a different file.
 
 `HasNames.ByLoader` is the per-value hook (`Language.English.names`).
 
+== Packages
+
+One artifact (`org.podval:org.podval.xml`).
+It will not be split into separate Gradle or Maven modules; consumers depend on this coordinate and import the packages
+they need.
+
+`org.podval.xml`:: owned AST `Xml`, plus `XmlAst` adapters for ZIO Blocks XML, Scala XML, ZIO Blocks HTML, and
+                   ScalaTags.
+                   Construction DSL (`org.podval.xml.dsl`) builds `Xml` only.
+                   SAX parser (CDATA preserved), builder, and writer take `Xml`.
+                   Another tree is `element.to[TO]`.
+                   `XmlCodec` is the Schema-derived document binder.
+`org.podval.metadata`:: multilingual `Name` / `Names` / `HasNames` / `Language` catalogs (`HasName` is the default-name
+                        key).
+                        `Term` is an id plus `Names`.
+                        `selector` marks a store axis.
+                        `TermCatalog` looks terms up by id.
+`org.podval.store`:: in-memory named tree; `resolve` / `attempt` / `resolveOption` / `getPaths` (`Path.toUrl` is the
+                     encoded English-name URL from the node you called, with selector hops; `resolve` may omit a hop
+                     when the name is unique).
+                     Numbered URL names stay digits; extra names in `number2names` still round-trip.
+                     `Selector` is an id plus `names`.
+                     The string overloads of `By` and `By.Numbered` need `given TermCatalog` and look up `selectorId`
+                     through `TermCatalog.selector`.
+                     An unknown id fails.
+                     `forName` still matches a selector name in any language.
+
 == XInclude
 
 This library does not expand `xi:include`.
 JDK SAX is XInclude-unaware.
 Publisher `store`/`collection` indexes treat `xi:include/@href` as a child page reference.
 Xerces nested `xml:base` is still wrong (https://issues.apache.org/jira/browse/XERCESJ-1102); see CHANGELOG.
-
-== Codec
-
-`XmlCodec` is a ZIO Schema `Deriver` that binds Scala records to XML documents (unwrapped sibling sequences, attributes
-on leaf records).
-An unannotated primitive is an attribute named after the field.
-Identity fields are `Xml.Element` (child tag = field name); `import XmlCodec.given` (or `import org.podval.xml.given`)
-for `Schema[Xml.Element]`.
-Decode and encode take `Xml.Element`.
-A foreign tree is `element.to[Xml.Element]` before decode (`ScalaXml.converted` when `NodeSeq.to` would shadow it), and
-`codec.encode(value).to[TO]` after encode.
-Leftover parent content is an error unless `@Modifier.config(XmlCodec.IgnoreUnknown, "")`.
-`@Modifier.config(XmlCodec.Include, "")` on `Seq[String]` gathers `xi:include/@href`.
-`@Modifier.transient` skips a field on decode and encode; the default is used.
-`@Modifier.encodeTransient` decodes the field and omits it on encode.
-An unknown `@Modifier.config` key fails derivation.
-Binding hints are `@Modifier.config` (`XmlCodec.Attribute`, `XmlCodec.Element`, `XmlCodec.Text`, `XmlCodec.NamespaceUri`,
-`XmlCodec.NamespacePrefix`).
-`Name` / `Language` / `Language.Spec` have `Schema` givens (`Names` has `XmlCodec` only); catalog DTOs use `Seq[Name]`.
-Those children are `<name>`: derivation registers `Name.codec` before it snapshots overrides, so the field needs no
-`@Modifier.config(XmlCodec.Element, "name")`.
-A record's tag defaults to its class name with a trailing `Dto` removed and the first character lower-cased (`ChapterDto`
-is `chapter`).
-Two leading capitals are left as written.
-`@Modifier.config(XmlCodec.Element, "week")` on the class overrides that default.
-A parent `XmlCodec.derived` inlines that tag and does not take the child codec.
-`XmlCodec.derived(element = "wrapper")` names that derivation, and wins over the class annotation.
-`XmlCodec.derived[A, K](tagField, tag)` is the tagged form.
-Pass that codec, or a hand-written codec, when inlining would drop it.
-Those overrides apply only to that derivation.
-`Schema[Xml.Element]` does not carry the tree.
-`XmlParser.loadCatalog(from, resourceName, codec, wrapperName)` when the file and root tag differ; `loadResources`
-decodes one document per `name.xml`.
-`transform` / `gather` / `elements` / `rewrite`, attributes, and CSS classes are members of `Xml.Element`.
-`Emit` inserts finished nodes; `Keep` and `Replace` are walked again.
-A foreign tree converts with `to[Xml.Element]` before those operations.
-They skip `<code>` subtrees by default (`stopAtCode = true`); pass `false` to walk into them (publisher IR).
-`rewrite` can keep one element, replace it with a node list, or emit finished nodes.
-`getById` returns `Option`; `childNamed` is the first `childrenNamed` match.
-`isNamed("p")` matches local name `p`, including a prefixed `tei:p`.
-`isNamed("tei:p")` matches that qualified name only.
-`childElements` is the element children.
-`flatMapNodes` and `convertElements` are extensions on `Seq[XmlNode]` (`import XmlNode.flatMapNodes`, or
-`import org.podval.xml.dsl.*`, which exports them).
-They need no `XmlAst` given.
-`@Modifier.rename("chapter")` renames a child or attribute that already has the right kind.
-`@Modifier.config(XmlCodec.Element, "comment")` forces a primitive into an element.
-`NumberedSpanDto` stays on the field, via rename, because one type is several tags.
 
 == Build
 
@@ -254,31 +264,6 @@ Publish to Maven Central (local, `USER_MANAGED`):
 Then release the deployment at https://central.sonatype.com/publishing/deployments .
 
 == XML processing
-
-=== XML generation
-
-Construction of wrappers around parsed XML lives on `XmlAst`.
-The DSL was inspired by https://github.com/zio/zio-blocks[ZIO Blocks HTML] (`zio-blocks-html` 0.0.51: tag functions,
-`:=` / `+=`, `ToModifier` flattening, `.when`, `inlineJs` / `externalJs`).
-`import org.podval.xml.dsl.{*, given}` (or `Xml.div`) builds the same tree as parsed markup.
-
-----
-div(className := "toc", h3("Table of Contents"), ul(items))
-script(typeAttr := "module").inlineJs(code)
-element("urlset", xmlns := ns, urls)
-----
-
-I tried https://com-lihaoyi.github.io/scalatags/[ScalaTags] for generation, and they work, but ScalaTags has no parser,
-so generating HTML wrappers for XML parsed from files is not pleasant (https://github.com/lihaoyi/scalatags/issues/102[issue 102]).
-`ScalaTags` converts that tree (`element.to[ScalaTags.Element]` after `import ScalaTags.given`).
-A second HTML AST (including zio-blocks-html as a construction-only tree) has the same problem.
-This DSL builds `Xml.Element`.
-Another AST is `element.to[TO]`.
-
-Convert another AST with `element.to[TO]` (HTML: `element.to[ZioBlocksHtml.Element]` after `import ZioBlocksHtml.given`;
-ScalaTags: `element.to[ScalaTags.Element]` after `import ScalaTags.given`).
-`HtmlXmlWriterConfig.render` writes `Xml.Element`.
-A `ZioBlocksHtml.Element` is `element.to[Xml.Element]` first (`import Xml.given`).
 
 === XML pretty-printing
 
@@ -304,3 +289,25 @@ A declaration is written only when that prefix is not already bound to the same 
 A name with no URI does not gain a synthesized `xmlns=""`.
 An empty element is `<e></e>` unless its local name is in `selfClose`, or `selfCloseEmpty` is set.
 `HtmlXmlWriterConfig` leaves `selfCloseEmpty` off, so an empty `script` stays `<script></script>` and `br` stays `<br/>`.
+
+== Adapter dependencies
+
+`zio-blocks-schema-xml` does not: it is only for the `ZioBlocksXml` adapter.
+Each AST given is on its object, not in the package.
+Bring one in with `import ZioBlocksXml.given`, `import ZioBlocksHtml.given`, `import ScalaXml.given`, or
+`import ScalaTags.given`.
+`import Xml.given` is for `element.to[Xml.Element]` from another tree.
+The parser, writer, and builder take `Xml` only.
+Parse and `render` of `Xml.Element` need no given.
+Walk, attribute, and class operations on the owned `Xml.Element` are members and need no given.
+`import org.podval.xml.dsl.given` summons `Xml`.
+ZIO Blocks XML, ZIO Blocks HTML, Scala XML, and ScalaTags need an extra dependency, not pulled in by default.
+`parseHtml` needs TagSoup (also not on the POM):
+
+----
+implementation "dev.zio:zio-blocks-schema-xml_3:0.0.56"
+implementation "dev.zio:zio-blocks-html_3:0.0.56"
+implementation 'org.scala-lang.modules:scala-xml_3:2.5.0'
+implementation 'com.lihaoyi:scalatags_3:0.13.1'
+implementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
+----
