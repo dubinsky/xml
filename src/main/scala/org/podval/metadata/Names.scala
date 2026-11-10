@@ -22,7 +22,11 @@ final case class Names(names: Seq[Name]) extends Language.ToString:
       .orElse(find(spec.dropFlavour))
       .orElse(find(spec.dropFlavour.dropIsTransliterated))
       .orElse(find(spec.dropFlavour.dropIsTransliterated.dropLanguage))
-      .get
+      .getOrElse:
+        val present: String =
+          if names.isEmpty then "(none)"
+          else names.map(name => s"${name.name} [${name.languageSpec}]").mkString(", ")
+        throw IllegalArgumentException(s"No name for $spec; present: $present")
 
   def name: String = doFind(Language.Spec.empty).name
 

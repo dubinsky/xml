@@ -401,6 +401,16 @@ final class MetadataSpec extends AnyFunSuite:
     intercept[IllegalArgumentException] { Language.Russian.pluralCategory(-1) }
   }
 
+  test("doFind names an empty name list and still falls back when any name exists") {
+    val missing: IllegalArgumentException = intercept[IllegalArgumentException] {
+      Names(Seq.empty).doFind(ru)
+    }
+    assert(missing.getMessage.contains(ru.toString))
+    assert(missing.getMessage.contains("present: (none)"))
+    val onlyEnglish: Names = Names(Seq(Name("book", en)))
+    assert(onlyEnglish.doFind(ru).name == "book")
+  }
+
   private val en: Language.Spec = Language.English.toSpec
   private val ru: Language.Spec = Language.Russian.toSpec
   private val he: Language.Spec = Language.Hebrew.toSpec

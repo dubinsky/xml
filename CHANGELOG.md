@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- `Names.doFind` on an empty list throws `IllegalArgumentException` naming the requested spec and the names present,
+  instead of `NoSuchElementException("None.get")`.
 - chore: podval-gradle 0.4.0;
 - chore: Gradle 9.9.0
 
