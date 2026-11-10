@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- chore: podval-gradle 0.4.0;
+- chore: Gradle 9.9.0
 
 ## [0.7.0] - 2026-10-21
 
