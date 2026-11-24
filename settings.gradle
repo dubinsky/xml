@@ -3,8 +3,10 @@ pluginManagement {
     mavenCentral()
     gradlePluginPortal()
   }
-  // String path: a File would call Settings.includeBuild (not a plugin build).
-  // An included build does not see its parent's pluginManagement include.
+  // String path: a File would call Settings.includeBuild (not a plugin build)
+  // and `org.podval.conventions.settings` would not resolve.
+  // An included build does not see its parent's pluginManagement include,
+  // and a second include of this same directory is accepted on Gradle 9.8.2 and 9.9.0.
   final String conventionsDir =
     providers.gradleProperty('podvalGradleDir').getOrElse('../podval-gradle')
   if (file(conventionsDir).isDirectory() && file("${conventionsDir}/settings.gradle").isFile()) {
