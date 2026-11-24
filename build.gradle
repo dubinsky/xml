@@ -14,7 +14,6 @@ description = 'XML AST, codecs, named catalogs, and store path model'
 group = 'org.podval'
 
 podvalPublish {
-  gitHubRepository = 'dubinsky/xml'
   name = 'Podval XML'
   inceptionYear = '2026'
 }
