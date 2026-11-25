@@ -33,7 +33,8 @@ final case class TermCatalog(terms: Seq[Term]):
   def word(id: String)(using Language.Spec): String = getById(id).toLanguageString
 
   def heading(id: String)(using spec: Language.Spec): String =
-    spec.language.get.sentenceCase(word(id))
+    spec.language.getOrElse(throw IllegalArgumentException(s"No language for term $id ($spec)"))
+      .sentenceCase(word(id))
 
   def pluralWord(id: String)(using spec: Language.Spec): String =
     val term: Term = getById(id)
@@ -41,7 +42,8 @@ final case class TermCatalog(terms: Seq[Term]):
       throw IllegalArgumentException(s"No plural for term ${term.id} ($spec)")
 
   def pluralHeading(id: String)(using spec: Language.Spec): String =
-    spec.language.get.sentenceCase(pluralWord(id))
+    spec.language.getOrElse(throw IllegalArgumentException(s"No language for term $id ($spec)"))
+      .sentenceCase(pluralWord(id))
 
   def cardinal(id: String, n: Int)(using spec: Language.Spec): String =
     getById(id).cardinal(n, spec)

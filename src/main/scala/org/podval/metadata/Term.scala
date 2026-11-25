@@ -11,7 +11,9 @@ final case class Term(
   def plural(spec: Language.Spec): Option[String] = names.doFind(spec).plural
 
   def cardinal(n: Int, spec: Language.Spec): String =
-    val category: PluralCategory = spec.language.get.pluralCategory(n)
+    val category: PluralCategory = spec.language.getOrElse(
+      throw IllegalArgumentException(s"No language for term $id ($spec)")
+    ).pluralCategory(n)
     names.doFind(spec).form(category).getOrElse:
       throw IllegalArgumentException(s"Missing $category for term $id ($spec)")
 

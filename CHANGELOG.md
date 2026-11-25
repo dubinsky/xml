@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+- `TermCatalog.heading`, `TermCatalog.pluralHeading`, and `Term.cardinal` throw `IllegalArgumentException` (`No language for term <id> (<spec>)`)
+  when `Language.Spec.language` is missing, instead of `NoSuchElementException`.
+  A missing plural category is unchanged (`Missing <category> for term <id>`).
+  `Names.doFind` is unchanged.
+
 ## [0.8.0] - 2026-11-10
 - `Names.doFind` on an empty list throws `IllegalArgumentException` naming the requested spec and the names present,
   instead of `NoSuchElementException("None.get")`.

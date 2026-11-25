@@ -346,6 +346,68 @@ final class MetadataSpec extends AnyFunSuite:
     assert(noRussianPlural.getMessage.contains("fund"))
   }
 
+  test("missing language is IllegalArgumentException") {
+    val archive: Term = axis(
+      "archive",
+      Name("archive", en, plural = Some("archives"))
+    )
+    val fund: Term = axis("fund", Name("fund", en), Name("фонд", ru))
+    val catalog: TermCatalog = TermCatalog(Seq(archive, fund))
+    val bare: Language.Spec = Language.Spec.empty
+
+    val heading: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.heading("archive")(using bare)
+    }
+    assert(heading.getMessage.contains("archive"))
+    assert(heading.getMessage.contains("language"))
+    assert(heading.getMessage.contains(bare.toString))
+    assert(!heading.getMessage.contains("None.get"))
+
+    val plural: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.pluralHeading("archive")(using bare)
+    }
+    assert(plural.getMessage.contains("archive"))
+    assert(plural.getMessage.contains("language"))
+    assert(!plural.getMessage.contains("No plural"))
+
+    val noPluralEither: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.pluralHeading("fund")(using bare)
+    }
+    assert(noPluralEither.getMessage.contains("fund"))
+    assert(noPluralEither.getMessage.contains("language"))
+    assert(!noPluralEither.getMessage.contains("No plural"))
+
+    val stillNoPlural: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.pluralHeading("fund")(using ru)
+    }
+    assert(stillNoPlural.getMessage.contains("fund"))
+    assert(stillNoPlural.getMessage.contains("No plural"))
+
+    val card: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.cardinal("archive", 1)(using bare)
+    }
+    assert(card.getMessage.contains("archive"))
+    assert(card.getMessage.contains("language"))
+
+    val onTerm: IllegalArgumentException = intercept[IllegalArgumentException] {
+      archive.cardinal(1, bare)
+    }
+    assert(onTerm.getMessage.contains("archive"))
+    assert(onTerm.getMessage.contains("language"))
+
+    val unknown: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.cardinal("missing", 1)(using bare)
+    }
+    assert(unknown.getMessage.contains("Unknown term: missing"))
+
+    val unknownHeading: IllegalArgumentException = intercept[IllegalArgumentException] {
+      catalog.heading("missing")(using bare)
+    }
+    assert(unknownHeading.getMessage.contains("missing"))
+    assert(unknownHeading.getMessage.contains("language"))
+    assert(!unknownHeading.getMessage.contains("Unknown term"))
+  }
+
   test("sentenceCase") {
     assert(Language.Russian.sentenceCase("архивы") == "Архивы")
     assert(Language.English.sentenceCase("archives") == "Archives")
