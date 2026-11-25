@@ -18,6 +18,10 @@ podvalPublish {
   inceptionYear = '2026'
 }
 
+// api: bumping zioBlocksVersion is an API change of this library.
+// XmlCodecDeriver is a Deriver over Registers, Binding, and sealed Modifier.
+// README zio-blocks-schema-xml and zio-blocks-html coordinates track this number.
+// checkReadmeVersion does not look at them.
 String zioBlocksVersion = '0.0.56'
 String scalaXmlVersion = '2.5.0'
 String scalaTagsVersion = '0.13.1'

@@ -46,6 +46,8 @@ final case class XmlName(
 
   /** A pattern that contains `:` matches this qualified name.
     * A pattern with no colon matches this local name, whatever the prefix.
+    * A `tei:p` name matches `"p"` and `"tei:p"`.
+    * An unprefixed `p` does not match `"tei:p"`.
     */
   def matches(expected: String): Boolean =
     if expected.contains(':') then qName == expected else localName == expected

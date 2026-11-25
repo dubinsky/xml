@@ -6,6 +6,7 @@ import zio.blocks.schema.Schema
 final case class Term(
   id: String,
   override val names: Names,
+  /** Axis flag. Not `org.podval.store.Selector`. Lookup is `import org.podval.store.selector` (the extension in `By.scala`). */
   selector: Boolean = false
 ) extends HasNames derives CanEqual:
   def plural(spec: Language.Spec): Option[String] = names.doFind(spec).plural

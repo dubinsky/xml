@@ -79,6 +79,11 @@ object XmlNode:
 
     def isElement(elem: XmlElement): Boolean = name.is(elem)
 
+    /** A pattern that contains `:` is that qualified name. Any other pattern is the local name.
+      * An element `tei:p` is `isNamed("p")` and `isNamed("tei:p")`.
+      * An unprefixed `p` is not `isNamed("tei:p")`.
+      * Same rule as [[XmlName.matches]].
+      */
     def isNamed(name: String): Boolean = this.name.matches(name)
 
   final case class Text(value: String) extends XmlNode derives CanEqual

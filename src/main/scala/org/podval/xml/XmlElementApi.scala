@@ -25,10 +25,14 @@ private[xml] trait XmlElementApi:
   def setAttributes(attributes: Seq[(XmlName, String)]): XmlNode.Element =
     Xml.withAttributes(this, attributes)
 
+  /** Clark identity: local name plus URI, prefix ignored. `get(XmlAttribute.Id)` does not see `xml:id`.
+    * See [[XmlName.is(XmlAttribute)]] and [[XmlName.sameAs]].
+    */
   def get(attribute: XmlAttribute): Option[String] =
     getAttributes.collectFirst:
       case (n, v) if n.is(attribute) => v
 
+  /** Exact qualified name. `get("id")` does not see `xml:id`. Clark identity is `get(XmlAttribute)`. */
   def get(attribute: String): Option[String] =
     getAttributes.collectFirst:
       case (n, v) if n.qName == attribute => v
@@ -62,6 +66,11 @@ private[xml] trait XmlElementApi:
 
   def setHref(value: String): XmlNode.Element = set(XmlAttribute.Href, value)
 
+  /** `stopAtCode` defaults to true.
+    * An element whose local name is `code`, including `tei:code`, is returned unchanged.
+    * The function is not applied and its children are not walked.
+    * Pass `false` to enter it. The default stays true.
+    */
   def transform(
     transformElement: XmlNode.Element => XmlNode.Element,
     stopAtCode: Boolean = true
@@ -73,6 +82,11 @@ private[xml] trait XmlElementApi:
         result.setChildren(result.getChildren.map(xml => xml.asElement.fold(xml)(loop)))
     loop(this)
 
+  /** `stopAtCode` defaults to true.
+    * An element whose local name is `code`, including `tei:code`, is returned unchanged.
+    * The function is not applied and its children are not walked.
+    * Pass `false` to enter it. The default stays true.
+    */
   def rewrite(
     f: (XmlNode.Element, Option[XmlNode.Element]) => Xml.Rewrite,
     stopAtCode: Boolean = true
@@ -93,13 +107,20 @@ private[xml] trait XmlElementApi:
       case Seq(only) if only.asElement.nonEmpty => only.asElement.get
       case _ => throw XmlError("rewrite must leave exactly one element")
 
-  /** Elements for which `predicate` is true. `stopAtCode` matches [[gather]]. */
+  /** Elements for which `predicate` is true. `stopAtCode` matches [[gather]].
+    * The default is true, so a `code` element can match and its descendants are not visited.
+    */
   def elements(
     predicate: XmlNode.Element => Boolean,
     stopAtCode: Boolean = true
   ): Seq[XmlNode.Element] =
     gather(el => Option.when(predicate(el))(el), stopAtCode)
 
+  /** `stopAtCode` defaults to true.
+    * An element whose local name is `code`, including `tei:code`, is still passed to `gatherElement`.
+    * Its children are not visited.
+    * Pass `false` to descend.
+    */
   def gather[A](
     gatherElement: XmlNode.Element => Option[A],
     stopAtCode: Boolean = true
@@ -112,6 +133,7 @@ private[xml] trait XmlElementApi:
       fromElement.toSeq ++ fromChildren
     loop(this)
 
+  /** Same as [[gather]]: a `code` element, including `tei:code`, is visited and its children are not. */
   def gatherWithContext[A](
     gatherElement: (XmlNode.Element, Option[XmlNode.Element]) => Option[A],
     isContext: XmlNode.Element => Boolean,
